@@ -1,0 +1,16 @@
+# Python environments
+.venv/
+venv/
+__pycache__/
+
+# Ansible
+.ansible/
+*.retry
+downloaded-configs/
+
+# VS Code
+.vscode/
+
+# OS cruft
+.DS_Store
+Thumbs.db

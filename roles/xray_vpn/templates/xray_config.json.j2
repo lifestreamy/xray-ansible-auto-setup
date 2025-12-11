@@ -1,0 +1,42 @@
+{
+  "log": {
+    "loglevel": "info"
+  },
+  "inbounds": [
+    {
+      "port": 443,
+      "protocol": "vless",
+      "settings": {
+        "clients": [
+          {%- for uuid in xray_vpn_client_uuids %}
+          {
+            "id": "{{ uuid }}",
+            "flow": "xtls-rprx-vision"
+          }{{ "," if not loop.last else "" }}
+          {%- endfor %}
+        ],
+        "decryption": "none"
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "show": false,
+          "dest": "{{ reality_camouflage_domain }}:443",
+          "xver": 0,
+          "serverNames": [
+            "{{ reality_camouflage_domain }}"
+          ],
+          "privateKey": "{{ xray_vpn_xray_private_key }}",
+          "shortIds": ["{{ xray_vpn_xray_short_id }}"]
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "tag": "direct"
+    }
+  ]
+}

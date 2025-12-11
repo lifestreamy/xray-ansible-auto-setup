@@ -1,0 +1,123 @@
+---
+# Install Docker
+- name: Install Docker from Ubuntu repos
+  ansible.builtin.apt:
+    name: docker.io
+    state: present
+    update_cache: true
+  become: true
+  tags: docker
+
+- name: Ensure Docker service exists
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+    daemon_reload: true
+  become: true
+  tags: docker
+
+# Configure firewall
+- name: Allow Xray port in firewall
+  community.general.ufw:
+    rule: allow
+    port: '443'
+    proto: tcp
+  tags: firewall
+
+# Generate UUIDs for clients
+- name: Generate client UUIDs
+  ansible.builtin.set_fact:
+    xray_vpn_client_uuids: "{{ xray_vpn_client_uuids | default([]) + [lookup('pipe', 'uuidgen')] }}"
+  loop: "{{ range(num_clients | int) | list }}"
+  tags: config
+
+- name: Debug client UUIDs
+  ansible.builtin.debug:
+    msg: "Generated {{ num_clients }} client UUIDs: {{ xray_vpn_client_uuids }}"
+  tags: config
+
+# Create directories
+- name: Create Xray config directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - /root/xray-config
+    - /root/vpn-configs
+  tags: config
+
+# Generate the Public/Private key pair
+- name: Generate Xray Reality private key
+  ansible.builtin.shell: |
+    set -o pipefail
+    docker run --rm teddysun/xray:latest xray x25519 | grep PrivateKey | awk '{print $2}'
+  args:
+    executable: /bin/bash
+  register: xray_vpn_private_key_raw
+  changed_when: false
+  tags: config
+
+- name: Generate Xray Reality public key from private
+  ansible.builtin.shell: |
+    set -o pipefail
+    docker run --rm teddysun/xray:latest xray x25519 -i {{ xray_vpn_private_key_raw.stdout }}
+  args:
+    executable: /bin/bash
+  register: xray_vpn_public_key_raw
+  changed_when: false
+  tags: config
+
+- name: Set Xray key facts
+  ansible.builtin.set_fact:
+    xray_vpn_xray_private_key: "{{ xray_vpn_private_key_raw.stdout }}"
+    xray_vpn_xray_public_key: "{{ xray_vpn_public_key_raw.stdout_lines[1].split(': ')[1] }}"
+  tags: config
+
+# Generate the shortId
+- name: Generate Xray Reality shortId
+  ansible.builtin.set_fact:
+    xray_vpn_xray_short_id: "{{ (ansible_facts['date_time']['iso8601_basic_short'] | hash('md5'))[:8] }}"
+  tags: config
+
+- name: Debug extracted keys and generated shortId
+  ansible.builtin.debug:
+    msg: |
+      Private Key: {{ xray_vpn_xray_private_key }}
+      Public Key: {{ xray_vpn_xray_public_key }}
+      Short ID: {{ xray_vpn_xray_short_id }}
+  tags: config
+
+# Create Xray configuration
+- name: Create Xray config file
+  ansible.builtin.template:
+    src: xray_config.json.j2
+    dest: /root/xray-config/config.json
+    mode: '0644'
+  notify: Restart xray
+  tags: config
+
+# Create Xray systemd service file
+- name: Create Xray systemd service
+  ansible.builtin.template:
+    src: xray.service.j2
+    dest: /etc/systemd/system/xray.service
+    mode: '0644'
+  notify: Reload systemd
+  tags: service
+
+# Export client configs
+- name: Generate client configs
+  ansible.builtin.template:
+    src: client_config.json.j2
+    dest: "/root/vpn-configs/client_{{ item.0 }}.json"
+    mode: '0644'
+  loop: "{{ range(num_clients | int) | list | zip(xray_vpn_client_uuids) | list }}"
+  notify: Restart xray
+  tags: config
+
+- name: Info - Config files ready
+  ansible.builtin.debug:
+    msg: "VPN config files exported to /root/vpn-configs/"
+  tags: config

@@ -1,0 +1,46 @@
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "port": 10808,
+      "protocol": "socks",
+      "settings": {
+        "udp": true
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "vless",
+      "settings": {
+        "vnext": [
+          {
+            "address": "{{ ansible_host }}",
+            "port": 443,
+            "users": [
+              {
+                "id": "{{ item.1 }}",
+                "encryption": "none",
+                "flow": "xtls-rprx-vision"
+              }
+            ]
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "tcp",
+        "security": "reality",
+        "realitySettings": {
+          "serverName": "{{ reality_camouflage_domain }}",
+          "fingerprint": "chrome",
+          "show": false,
+          "publicKey": "{{ xray_vpn_xray_public_key }}",
+          "shortId": "{{ xray_vpn_xray_short_id }}",
+          "spiderX": ""
+        }
+      }
+    }
+  ]
+}

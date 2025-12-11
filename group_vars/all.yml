@@ -1,0 +1,2 @@
+num_clients: 3 # VPN profiles generated (each has a new UUID generated)
+reality_camouflage_domain: www.microsoft.com # REALITY uses this domain to redirect the censor probes there
