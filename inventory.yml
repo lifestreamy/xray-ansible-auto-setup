@@ -1,7 +1,8 @@
 all:
   hosts:
     your_host:
-      ansible_host: 
-      ansible_user: 
+      ansible_host:
+      ansible_user:
       ansible_port:
       ansible_ssh_private_key_file:
+      ansible_ssh_pass:
