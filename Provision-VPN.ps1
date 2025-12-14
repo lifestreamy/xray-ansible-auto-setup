@@ -327,15 +327,19 @@ if (-not $UseInventory) {
 
 Write-LogVerbose ("Final WSL args: " + ($wslArgs -join ' '))
 
+if ($DryRun) {
+    $wslArgs += '--dry-run'
+}
+
 # === DryRun output ===
 if ($DryRun) {
     Write-LogDefault ""
-    Write-LogDefault "[DryRun] Would execute the following WSL commands:" -ForegroundColor Yellow
+    Write-LogDefault "[DryRun] Executing bash script in dry-run mode (safe, no changes made):" -ForegroundColor Yellow
     Write-LogDefault "  wsl chmod +x $wslScriptPath" -ForegroundColor Yellow
     Write-LogDefault "  wsl bash $wslScriptPath $($wslArgs -join ' ')" -ForegroundColor Yellow
     Write-LogVerbose ""
     Write-LogVerbose ("WSL args as array: " + ($wslArgs | ForEach-Object { "'$_'" }) -join ", ")
-    return
+    Write-LogDefault ""  # blank line before bash output
 }
 
 # === Executing the bash script ===
