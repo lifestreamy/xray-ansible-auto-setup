@@ -223,6 +223,13 @@ if [[ "$USE_INVENTORY" -eq 1 ]]; then
   PASS=$(get_inventory_value "ansible_ssh_pass")
   PORT=$(get_inventory_value "ansible_port")
   USER_NAME=$(get_inventory_value "ansible_user")
+
+  echo "[DEBUG] After extraction:"
+  echo "HOST=[$HOST]"
+  echo "PORT=[$PORT]"
+  echo "USER_NAME=[$USER_NAME]"
+  echo "PKEY=[$PKEY]"
+  echo "PASS=[$(printf '%*s' ${#PASS} | tr ' ' '*')]"
 else
   echo "Mode: Using CLI parameters"
   
