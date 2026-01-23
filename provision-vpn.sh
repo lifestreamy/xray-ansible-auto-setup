@@ -372,7 +372,7 @@ else
   mkdir -p "$TARGET_DIR"
 
   if compgen -G "downloaded-configs/*.json" > /dev/null; then
-    cp downloaded-configs/*.json "$TARGET_DIR/"
+    scp downloaded-configs/*.json "$TARGET_DIR/"
     echo "Client configs saved to: $TARGET_DIR"
   else
     echo "No client configs found to copy."
