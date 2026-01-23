@@ -161,14 +161,13 @@ function Write-LogVerbose([string]$Message) {
     }
 }
 
-# === Best-effort simulation of wsl wslpath -a for DryRun mode (no WSL interactions) ===
-function Convert-ToWslPathMock([string]$Path) {
-    if ($Path -match '^[A-Za-z]:\\') {
-        $drive = $Path.Substring(0, 1).ToLower()
-        $rest = $Path.Substring(2) -replace '\\', '/'
-        return "/mnt/$drive$rest"
+function Convert-ToWslPath {
+    param([string]$Path)
+    $Path = $Path.Trim('"').TrimEnd('\','/') -replace '[/\\]','/'
+    if ($Path -match '^([A-Za-z]):(.*)') {
+        return "/mnt/$($matches[1].ToLowerInvariant())$($matches[2])"
     }
-    return ($Path -replace '\\', '/')
+    return $Path
 }
 
 # === The banner ===
@@ -249,13 +248,9 @@ $bashScriptPath = Join-Path $scriptDir 'provision-vpn.sh'
 Write-LogVerbose "Script directory (Windows): $scriptDir"
 Write-LogVerbose "Bash script path (Windows): $bashScriptPath"
 
-# === Convert paths to WSL style (mock in DryRun, real otherwise) ===
-if ($DryRun) {
-    $wslScriptPath = Convert-ToWslPathMock $bashScriptPath
-}
-else {
-    $wslScriptPath = wsl wslpath -a $bashScriptPath
-}
+# === Convert paths to WSL style ===
+$wslScriptPath = Convert-ToWslPath $bashScriptPath
+
 
 Write-LogVerbose "Bash script path (WSL): $wslScriptPath"
 
@@ -277,12 +272,7 @@ else {
 
 # === Determine output directory for Amnezia VPN client configs (.json) ===
 if ($ClientsDir) {
-    if ($DryRun) {
-        $wslClientsDir = Convert-ToWslPathMock $ClientsDir
-    }
-    else {
-        $wslClientsDir = wsl wslpath -a $ClientsDir
-    }
+    $wslClientsDir = Convert-ToWslPath $ClientsDir
     $wslArgs += @('--clients-dir', $wslClientsDir)
     Write-LogVerbose "ClientsDir (Windows): $ClientsDir"
     Write-LogVerbose "ClientsDir (WSL): $wslClientsDir"
@@ -295,12 +285,7 @@ else {
         Write-LogVerbose "Created default clients directory: $defaultClientsDir"
     }
 
-    if ($DryRun) {
-        $wslDefaultClientsDir = Convert-ToWslPathMock $defaultClientsDir
-    }
-    else {
-        $wslDefaultClientsDir = wsl wslpath -a $defaultClientsDir
-    }
+    $wslDefaultClientsDir = Convert-ToWslPath $defaultClientsDir
     $wslArgs += @('--clients-dir', $wslDefaultClientsDir)
     Write-LogVerbose "Using default ClientsDir (Windows): $defaultClientsDir"
     Write-LogVerbose "Using default ClientsDir (WSL): $wslDefaultClientsDir"
@@ -309,12 +294,7 @@ else {
 # === Configure authentication method (CLI mode only) ===
 if (-not $UseInventory) {
     if ($PKey) {
-        if ($DryRun) {
-            $wslPKey = Convert-ToWslPathMock $PKey
-        }
-        else {
-            $wslPKey = wsl wslpath -a $PKey
-        }
+        $wslPKey = Convert-ToWslPath $PKey
         $wslArgs += @('--pkey', $wslPKey)
         Write-LogVerbose "PKey path (Windows): $PKey"
         Write-LogVerbose "PKey path (WSL): $wslPKey"
@@ -350,3 +330,4 @@ Write-LogDefault "Running Ansible provisioning via WSL..."
 wsl bash $wslScriptPath @wslArgs
 
 Write-LogDefault "Provisioning complete."
+
