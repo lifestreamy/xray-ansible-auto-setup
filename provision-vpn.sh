@@ -24,7 +24,7 @@ Usage:
 This script:
   - Sets up a temporary workspace with your Ansible project.
   - Ensures required packages (python3, python3-venv, ansible, sshpass) are installed.
-  - Runs the Ansible playbook (main.yml) against the target VPS.
+  - Runs the Ansible playbook (deploy.yml) against the target VPS.
   - Copies generated client configs from 'downloaded-configs/' to a chosen directory.
 
 Parameter modes:
@@ -332,9 +332,9 @@ export ANSIBLE_HOST_KEY_CHECKING=False
 
 # Running the playbook itself
 if [[ "$DRY_RUN" -eq 1 ]]; then
-  echo "[dry-run] Would run: ansible-playbook -i inventory.yml main.yml -e \"num_clients=1 reality_camouflage_domain=www.microsoft.com\""
+  echo "[dry-run] Would run: ansible-playbook -i inventory.yml deploy.yml -e \"num_clients=1 reality_camouflage_domain=www.microsoft.com\""
 else
-  ansible-playbook -i "$WORK_DIR/inventory.yml" main.yml \
+  ansible-playbook -i "$WORK_DIR/inventory.yml" deploy.yml \
     -e "num_clients=${NUM_CLIENTS:-1} reality_camouflage_domain=${DOMAIN:-www.microsoft.com}"
 fi
 
