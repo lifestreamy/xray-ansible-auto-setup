@@ -352,10 +352,10 @@ export ANSIBLE_HOST_KEY_CHECKING=False
 
 # Running the playbook itself
 if [[ "$DRY_RUN" -eq 1 ]]; then
-  echo "[dry-run] Would run: ansible-playbook -i inventory.yml deploy.yml -e \"num_clients=1 reality_camouflage_domain=www.microsoft.com\""
+  echo "[dry-run] Would run: ansible-playbook -i inventory.yml deploy.yml -e \"num_clients=3 reality_camouflage_domain=www.microsoft.com\""
 else
   ansible-playbook -i "$WORK_DIR/inventory.yml" deploy.yml \
-    -e "num_clients=${NUM_CLIENTS:-1} reality_camouflage_domain=${DOMAIN:-www.microsoft.com}"
+    -e "num_clients=${NUM_CLIENTS:-3} reality_camouflage_domain=${DOMAIN:-www.microsoft.com}"
 fi
 
 # Decide where to download generated client configs
@@ -367,15 +367,24 @@ fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
   echo "[dry-run] Would create target directory: $TARGET_DIR"
-  echo "[dry-run] Would copy downloaded-configs/*.json -> $TARGET_DIR/ (if any exist)"
+  echo "[dry-run] Would fetch /root/vpn-configs/*.json from VPS via scp"
 else
   mkdir -p "$TARGET_DIR"
 
-  if compgen -G "downloaded-configs/*.json" > /dev/null; then
-    scp downloaded-configs/*.json "$TARGET_DIR/"
-    echo "Client configs saved to: $TARGET_DIR"
-  else
-    echo "No client configs found to copy."
+  # Fetch client configs from VPS using validated auth method
+  echo "Fetching client configs from VPS..."
+  if [[ -n "$PKEY" ]]; then
+    # Key-based authentication
+    scp -i "$PKEY" -P "$PORT" -o StrictHostKeyChecking=no \
+      "$USER_NAME@$HOST:/root/vpn-configs/*.json" "$TARGET_DIR/" 2>/dev/null \
+      && echo "Client configs saved to: $TARGET_DIR" \
+      || echo "Warning: scp failed. Check VPS connection or auth."
+  elif [[ -n "$PASS" ]]; then
+    # Password-based authentication
+    sshpass -p "$PASS" scp -P "$PORT" -o StrictHostKeyChecking=no \
+      "$USER_NAME@$HOST:/root/vpn-configs/*.json" "$TARGET_DIR/" 2>/dev/null \
+      && echo "Client configs saved to: $TARGET_DIR" \
+      || echo "Warning: scp failed. Check VPS connection or auth."
   fi
 fi
 
