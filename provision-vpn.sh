@@ -107,6 +107,13 @@ validate_inventory() {
     return 1
   fi
   
+  # Check mutual exclusion
+  if [[ -n "$inv_key" && -n "$inv_pass" ]]; then
+    echo "Error: You have both private key and password defined in inventory.yml." >&2
+    echo "Leave only one in the config (ansible_ssh_private_key_file OR ansible_ssh_pass)." >&2
+    return 1
+  fi
+
   return 0
 }
 
