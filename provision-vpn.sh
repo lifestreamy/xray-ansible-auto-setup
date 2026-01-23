@@ -203,13 +203,26 @@ if [[ "$USE_INVENTORY" -eq 1 ]]; then
     if ! validate_inventory; then
       exit 1
     fi
-    echo "[OK] inventory.yml validation passed"
+    echo "[OK] inventory.yml validation passed (all fields present, pkey and pass are mutually exclusive)"
   fi
   
   # Warn if CLI params provided
-  if [[ -n "$HOST" || -n "$PKEY" || -n "$PASS" ]]; then
+  if [[ -n "$HOST" || -n "$PKEY" || -n "$PASS" || -n "$PORT" || -n "$USER_NAME" ]]; then
     echo "Warning: --use-inventory specified; ignoring CLI connection/auth parameters" >&2
+    # Clear to avoid conflicts later 
+    HOST=""
+    PKEY=""
+    PASS=""
+    PORT=""
+    USER_NAME=""
   fi
+
+  # Parameters verified at this point, either PASS or PKEY exists, the other must be empty
+  HOST=$(get_inventory_value "ansible_host")
+  PKEY=$(get_inventory_value "ansible_ssh_private_key_file")
+  PASS=$(get_inventory_value "ansible_ssh_pass")
+  PORT=$(get_inventory_value "ansible_port")
+  USER_NAME=$(get_inventory_value "ansible_user")
 else
   echo "Mode: Using CLI parameters"
   
