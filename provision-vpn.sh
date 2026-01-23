@@ -81,7 +81,7 @@ EOF
 get_inventory_value() {
   local key="$1"
   local file="${2:-$SCRIPT_DIR/inventory.yml}"
-  grep "^\s*${key}:" "$file" 2>/dev/null | sed "s/.*${key}:\s*//" | xargs
+  grep "^\s*${key}\s*:" "$file" 2>/dev/null | head -1 | sed "s/.*${key}\s*:\s*//" | tr -d '\r\n' | xargs
 }
 
 # Validate inventory.yml has all required fields
@@ -372,20 +372,23 @@ else
   mkdir -p "$TARGET_DIR"
 
   # Fetch client configs from VPS using validated auth method
-  echo "Fetching client configs from VPS..."
-  if [[ -n "$PKEY" ]]; then
-    # Key-based authentication
-    scp -i "$PKEY" -P "$PORT" -o StrictHostKeyChecking=no \
-      "$USER_NAME@$HOST:/root/vpn-configs/*.json" "$TARGET_DIR/" 2>/dev/null \
-      && echo "Client configs saved to: $TARGET_DIR" \
-      || echo "Warning: scp failed. Check VPS connection or auth."
-  elif [[ -n "$PASS" ]]; then
-    # Password-based authentication
-    sshpass -p "$PASS" scp -P "$PORT" -o StrictHostKeyChecking=no \
-      "$USER_NAME@$HOST:/root/vpn-configs/*.json" "$TARGET_DIR/" 2>/dev/null \
-      && echo "Client configs saved to: $TARGET_DIR" \
-      || echo "Warning: scp failed. Check VPS connection or auth."
-  fi
+echo "Fetching client configs from VPS..."
+if [[ -n "$PKEY" ]]; then
+  # Key-based authentication
+  echo "[DEBUG] Using key: $PKEY, Port: $PORT, User: $USER_NAME, Host: $HOST"
+  scp -i "$PKEY" -P "$PORT" -o StrictHostKeyChecking=no \
+    "$USER_NAME@$HOST:/root/vpn-configs/*.json" "$TARGET_DIR/" \
+    && echo "Client configs saved to: $TARGET_DIR" \
+    || echo "Warning: scp failed. Check VPS connection or auth."
+elif [[ -n "$PASS" ]]; then
+  # Password-based authentication  
+  echo "[DEBUG] Using password auth, Port: $PORT, User: $USER_NAME, Host: $HOST"
+  sshpass -p "$PASS" scp -P "$PORT" -o StrictHostKeyChecking=no \
+    "$USER_NAME@$HOST:/root/vpn-configs/*.json" "$TARGET_DIR/" \
+    && echo "Client configs saved to: $TARGET_DIR" \
+    || echo "Warning: scp failed. Check VPS connection or auth."
+fi
+
 fi
 
 # Cleanup logic
