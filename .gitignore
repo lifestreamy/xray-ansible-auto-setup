@@ -16,3 +16,7 @@ inventory.yml
 # OS cruft
 .DS_Store
 Thumbs.db
+
+.llm_context/
+
+.kilo/
