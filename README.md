@@ -219,7 +219,7 @@ sudo apt-get update && sudo apt-get install -y ansible
 
 ## Contributing
 
-Contributions welcome. Please follow conventional commits, test with a `--dry-run` and a real run with your own VPS instance (including testing the connection via Amnezia client) before submitting changes.
+Contributions welcome. Please follow conventional commits, test with a `--dry-run` and a real run with your own VPS instance (including testing the connection via clients) before submitting changes.
 
 ## Issues
 
