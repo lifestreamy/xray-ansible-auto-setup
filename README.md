@@ -2,7 +2,7 @@
 
 **Fully automated Ansible setup for deploying an Xray Reality VPN server on a remote VPS.**
 
-> Automatically generates any number of Amnezia-compatible client configs you can instantly import and use.
+> Generates client configs for Clash Verge / FlClash (Mihomo Meta YAML) and Amnezia VPN (JSON). Clash Verge & FlClash are the recommended clients; Amnezia is secondary with known caveats (see [Advanced Configuration](#advanced-configuration)).
 
 ## Runs On 
 - Linux
@@ -16,7 +16,7 @@
 ## What This Setup Does
 
 - Provisions a fresh Ubuntu/Debian VPS with Xray-core VPN server and VLESS protocol with Reality transport (stealth mode)
-- Auto-generates and exports to your local machine client configuration files (.json) for Amnezia VPN app
+- Auto-generates and exports client configs: Clash Meta YAML (`.yaml`) for Clash Verge/FlClash + JSON (`.json`) for Amnezia VPN
 - Cleans up afterward, reverting only the changes it made 
 
 
@@ -135,13 +135,18 @@ Same parameters with PowerShell naming:
 ## Output
 
 Client configuration files are saved on your local machine as:
-- Linux: `./downloaded-clients/*.json`
-- Windows: `.\downloaded-clients\*.json`
+- Linux: `./downloaded-clients/*.json` and `./downloaded-clients/*.yaml`
+- Windows: `.\downloaded-clients\*.json` and `.\downloaded-clients\*.yaml`
 
 As well as on the target VPS as:
-- Linux: `/root/vpn-configs/*.json`
+- `/root/vpn-configs/*.json` (Amnezia) and `/root/vpn-configs/*.yaml` (Clash Verge / FlClash)
 
-Import these files into the Amnezia VPN app on your devices. 
+**Recommended client path:** import `clash_client_*.yaml` into Clash Verge (Windows/macOS/Linux TUN mode) or FlClash (Android).  
+**Secondary (caveats):** Amnezia `client_*.json` is available but has known stability issues — Windows split-tunnel may crash the network stack; Android keepalive / background connectivity is unreliable. Use Clash Verge or FlClash instead unless you specifically need Amnezia.  
+References:  
+- Clash Verge: https://github.com/clash-verge-rev/clash-verge-rev  
+- FlClash: https://github.com/chen08209/FlClash  
+- Amnezia: https://github.com/amnezia-vpn/amnezia-client
 
 ## Advanced Configuration
 
@@ -149,7 +154,7 @@ For granular control over provisioning, edit `all.yml`:
 
 ```yaml
 num_clients: 3                        # Number of VPN profiles to generate
-reality_camouflage_domain: www.microsoft.com  # Domain for REALITY transport obfuscation
+reality_camouflage_domain: dl.google.com  # Domain for REALITY transport obfuscation
 ```
 
 - `num_clients`: Number of client configs generated (each gets a unique UUID)
@@ -157,6 +162,20 @@ reality_camouflage_domain: www.microsoft.com  # Domain for REALITY transport obf
 - `reality_camouflage_domain`: Legitimate domain that REALITY redirects suspicious connections to, making VPN traffic indistinguishable from normal HTTPS
 
 These settings are passed to the Ansible playbook during provisioning.
+
+## Pinned Image & WARP IPv4
+
+**Xray Docker image is pinned** to `teddysun/xray:26.6.27` (known-good).  
+`:latest` is intentionally **not used** in production units — an auto-update to 26.7.11 broke VLESS+REALITY compatibility in July 2026.  
+To upgrade deliberately: change `xray_docker_image` in `group_vars/all.yml` (tag or digest `sha256:…`), test, then deploy.
+
+**WARP outbound defaults to IPv4-only** for compatibility with VPS that have no IPv6 route.  
+- `warp_ipv6: false` — IPv6 WireGuard addresses are omitted from the Xray config.  
+- `warp_endpoint: "162.159.192.1:2408"` — Cloudflare WARP IPv4 anycast (stable name `engage.cloudflareclient.com:2408`). Override in `group_vars/all.yml` if needed.  
+- WARP is enabled via `warp_enabled: true` (requires `wgcf` 2.2.22, auto-downloaded).  
+- The `warp` outbound is the default route for all traffic when enabled; `direct` is fallback.
+
+**Secret rotation** is documented in [docs/SECRET_ROTATION.md](docs/SECRET_ROTATION.md).
 
 ## More Examples
 
