@@ -166,6 +166,15 @@
   notify: Restart xray
   tags: config
 
+# Export Clash Verge / FlClash client configs (Mihomo Meta YAML)
+- name: Generate Clash Meta YAML client configs
+  ansible.builtin.template:
+    src: clash_meta.yaml.j2
+    dest: "{{ xray_client_configs_dir }}/clash_client_{{ item.0 }}.yaml"
+    mode: '0644'
+  loop: "{{ range(num_clients | int) | list | zip(xray_vpn_client_uuids) | list }}"
+  tags: config,clients
+
 - name: Info - Config files ready
   ansible.builtin.debug:
     msg: "VPN config files exported to {{ xray_client_configs_dir }}/"
