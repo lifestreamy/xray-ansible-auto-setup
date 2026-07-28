@@ -17,11 +17,26 @@
   become: true
   tags: docker
 
+# Explicit Xray image pull (idempotent; no :latest auto-pull on restart)
+- name: Pull pinned Xray Docker image
+  ansible.builtin.command:
+    cmd: docker pull {{ xray_docker_image }}
+  changed_when: false
+  register: docker_pull
+  become: true
+  tags: docker
+
+# Prepare optional Cloudflare WARP outbound settings before rendering Xray config
+- name: Include WARP tasks
+  ansible.builtin.import_tasks: warp.yml
+  when: warp_enabled | default(false) | bool
+  tags: warp
+
 # Configure firewall
 - name: Allow Xray port in firewall
   community.general.ufw:
     rule: allow
-    port: '443'
+    port: '{{ xray_port }}'
     proto: tcp
   tags: firewall
 
@@ -44,15 +59,15 @@
     state: directory
     mode: '0755'
   loop:
-    - /root/xray-config
-    - /root/vpn-configs
+    - "{{ xray_config_dir }}"
+    - "{{ xray_client_configs_dir }}"
   tags: config
 
 # Generate the Public/Private key pair
 - name: Generate Xray Reality private key
   ansible.builtin.shell: |
     set -o pipefail
-    docker run --rm teddysun/xray:latest xray x25519 | grep PrivateKey | awk '{print $2}'
+    docker run --rm {{ xray_docker_image }} xray x25519 | grep PrivateKey | awk '{print $2}'
   args:
     executable: /bin/bash
   register: xray_vpn_private_key_raw
@@ -62,7 +77,7 @@
 - name: Generate Xray Reality public key from private
   ansible.builtin.shell: |
     set -o pipefail
-    docker run --rm teddysun/xray:latest xray x25519 -i {{ xray_vpn_private_key_raw.stdout }}
+    docker run --rm {{ xray_docker_image }} xray x25519 -i {{ xray_vpn_private_key_raw.stdout }}
   args:
     executable: /bin/bash
   register: xray_vpn_public_key_raw
@@ -89,14 +104,48 @@
       Short ID: {{ xray_vpn_xray_short_id }}
   tags: config
 
+# Backup existing config before overwriting
+- name: Stat existing Xray config
+  ansible.builtin.stat:
+    path: "{{ xray_config_dir }}/config.json"
+  register: xray_config_stat
+  when: xray_backup_enabled | default(true)
+  tags: config,backup
+
+- name: Backup Xray config before overwrite
+  ansible.builtin.copy:
+    src: "{{ xray_config_dir }}/config.json"
+    dest: "{{ xray_config_dir }}/config.json.bak-{{ ansible_date_time.date }}-{{ ansible_date_time.time }}"
+    remote_src: true
+    mode: '0600'
+  when: xray_backup_enabled | default(true) and xray_config_stat.stat.exists
+  tags: config,backup
+
 # Create Xray configuration
 - name: Create Xray config file
   ansible.builtin.template:
     src: xray_config.json.j2
-    dest: /root/xray-config/config.json
+    dest: "{{ xray_config_dir }}/config.json"
     mode: '0644'
   notify: Restart xray
   tags: config
+
+# Backup existing systemd unit before overwriting
+- name: Stat existing xray systemd unit
+  ansible.builtin.stat:
+    path: /etc/systemd/system/xray.service
+  register: xray_unit_stat
+  when: xray_backup_enabled | default(true)
+  tags: service,backup
+
+- name: Backup xray systemd unit before overwrite
+  ansible.builtin.copy:
+    src: /etc/systemd/system/xray.service
+    dest: "/etc/systemd/system/xray.service.bak-{{ ansible_date_time.date }}-{{ ansible_date_time.time }}"
+    remote_src: true
+    mode: '0600'
+  when: xray_backup_enabled | default(true) and xray_unit_stat.stat.exists
+  tags: service,backup
 
 # Create Xray systemd service file
 - name: Create Xray systemd service
@@ -111,7 +160,7 @@
 - name: Generate client configs
   ansible.builtin.template:
     src: client_config.json.j2
-    dest: "/root/vpn-configs/client_{{ item.0 }}.json"
+    dest: "{{ xray_client_configs_dir }}/client_{{ item.0 }}.json"
     mode: '0644'
   loop: "{{ range(num_clients | int) | list | zip(xray_vpn_client_uuids) | list }}"
   notify: Restart xray
@@ -119,5 +168,10 @@
 
 - name: Info - Config files ready
   ansible.builtin.debug:
-    msg: "VPN config files exported to /root/vpn-configs/"
+    msg: "VPN config files exported to {{ xray_client_configs_dir }}/"
   tags: config
+
+# Post-deploy smoke checks (non-fatal)
+- name: Run smoke checks
+  ansible.builtin.import_tasks: smoke.yml
+  tags: smoke,always

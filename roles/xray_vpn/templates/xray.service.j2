@@ -8,13 +8,12 @@ StartLimitBurst=3
 [Service]
 Type=simple
 User=root
-ExecStartPre=/usr/bin/docker pull teddysun/xray:latest
 ExecStart=/usr/bin/docker run \
   --rm \
   --name xray \
   -v /root/xray-config:/etc/xray \
   -p 443:443/tcp \
-  teddysun/xray:latest \
+  {{ xray_docker_image }} \
   /usr/bin/xray -c /etc/xray/config.json
 
 ExecStop=/usr/bin/docker stop xray

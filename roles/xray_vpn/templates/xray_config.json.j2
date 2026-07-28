@@ -34,9 +34,29 @@
     }
   ],
   "outbounds": [
-    {
-      "protocol": "freedom",
-      "tag": "direct"
+  {% if warp_enabled | default(false) %}
+  {
+    "tag": "warp",
+    "protocol": "wireguard",
+    "settings": {
+      "secretKey": "{{ warp_parsed.secret_key }}",
+      "address": [
+        "{{ warp_parsed.ipv4 }}",
+        "{{ warp_parsed.ipv6 }}"
+      ],
+      "peers": [
+        {
+          "publicKey": "{{ warp_parsed.peer_public_key }}",
+          "endpoint": "{{ warp_parsed.endpoint }}"
+        }
+      ],
+      "mtu": {{ warp_mtu }}
     }
-  ]
+  },
+  {% endif %}
+  {
+    "protocol": "freedom",
+    "tag": "direct"
+  }
+]
 }

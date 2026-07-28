@@ -1,2 +1,21 @@
-num_clients: 3 # VPN profiles generated (each has a new UUID generated)
-reality_camouflage_domain: dl.google.com # REALITY uses this domain to redirect the censor probes there
+num_clients: 3  # Number of client configs to generate; each gets its own UUID.
+reality_camouflage_domain: dl.google.com  # REALITY camouflage/SNI domain used for probe redirection (active censorship protection)) 
+
+# Xray Docker image (PINNED — known-good; do NOT use :latest in prod)
+# Incident 2026-07-28: teddysun/xray:latest -> 26.7.11 broke VLESS+REALITY+vision.
+# To upgrade deliberately: bump this tag or switch to digest (sha256:...).
+xray_docker_image: "teddysun/xray:26.6.27"
+
+xray_config_dir: /root/xray-config
+xray_client_configs_dir: /root/vpn-configs
+xray_port: 443  # VLESS inbound port; change to migrate
+
+warp_enabled: true  # Enable Cloudflare WARP outbound in Xray.
+warp_ipv6: false  # IPv4-only VPS safe: omit IPv6 WireGuard address (incident root cause #2)
+warp_endpoint: "162.159.192.1:2408"  # Cloudflare WARP IPv4 anycast endpoint (stable name: engage.cloudflareclient.com:2408; override in group_vars if needed)
+warp_mtu: 1420  # Safe high MTU for most networks; lower only if something breaks. The old Warp client's default of 1280 is too low for some connections
+warp_wgcf_version: "2.2.22"  # wgcf version to download on the server.
+warp_wgcf_url: "https://github.com/ViRb3/wgcf/releases/download/v{{ warp_wgcf_version }}/wgcf_{{ warp_wgcf_version }}_linux_amd64"  # Linux amd64 wgcf binary.
+warp_smoke_egress: false  # Opt-in WARP egress smoke check (fails from some home networks)
+
+xray_backup_enabled: true  # Timestamped backups before overwriting config/unit

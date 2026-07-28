@@ -1,0 +1,11 @@
+---
+# Role defaults — safe fallbacks if group_vars not set.
+# Override in group_vars/all.yml or playbook when needed.
+xray_docker_image: "teddysun/xray:26.6.27"
+xray_config_dir: /root/xray-config
+xray_client_configs_dir: /root/vpn-configs
+xray_port: 443
+warp_ipv6: false
+warp_endpoint: "162.159.192.1:2408"
+warp_smoke_egress: false
+xray_backup_enabled: true

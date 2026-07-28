@@ -1,0 +1,35 @@
+---
+- name: Ensure Xray config dir exists
+  ansible.builtin.file:
+    path: /root/xray-config
+    state: directory
+    mode: "0755"
+
+- name: Download wgcf binary
+  ansible.builtin.get_url:
+    url: "{{ warp_wgcf_url }}"
+    dest: /usr/local/bin/wgcf
+    mode: "0755"
+    force: false
+  tags: warp
+
+- name: Register WARP account once
+  ansible.builtin.command:
+    cmd: /usr/local/bin/wgcf register --accept-tos
+    chdir: /root/xray-config
+    creates: /root/xray-config/wgcf-account.toml
+  tags: warp
+
+- name: Generate WARP WireGuard profile once
+  ansible.builtin.command:
+    cmd: /usr/local/bin/wgcf generate
+    chdir: /root/xray-config
+    creates: /root/xray-config/wgcf-profile.conf
+  tags: warp
+
+- name: Read generated WARP profile
+  ansible.builtin.slurp:
+    src: /root/xray-config/wgcf-profile.conf
+  register: warp_profile_raw
+  tags: warp
+  
