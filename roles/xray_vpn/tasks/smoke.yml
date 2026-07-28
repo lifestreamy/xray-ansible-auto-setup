@@ -1,0 +1,46 @@
+---
+# Post-deploy smoke checks (non-fatal — warnings only).
+
+- name: Check Xray container is running with pinned image
+  ansible.builtin.command:
+    cmd: docker inspect xray --format "{{ '{{' }} .Config.Image {{ '}}' }}"
+  register: xray_image_check
+  changed_when: false
+  become: true
+  failed_when: false
+  tags: smoke
+
+- name: Verify pinned Xray image in container
+  ansible.builtin.assert:
+    that:
+      - xray_image_check.stdout is search(xray_docker_image | default(''))
+    success_msg: "Xray container uses pinned image: {{ xray_image_check.stdout }}"
+    fail_msg: "WARNING: Xray container image '{{ xray_image_check.stdout }}' may not match pinned '{{ xray_docker_image }}'"
+  when: xray_image_check.stdout | default('') != ''
+  failed_when: false
+  tags: smoke
+
+- name: Wait for Xray TCP port to be listening
+  ansible.builtin.wait_for:
+    port: "{{ xray_port | default(443) }}"
+    host: localhost
+    timeout: 10
+  when: xray_image_check.stdout | default('') != ''
+  failed_when: false
+  tags: smoke
+
+- name: Scan journal for Xray errors (non-fatal)
+  ansible.builtin.command:
+    cmd: journalctl -u xray --no-pager -n 20
+  register: xray_journal
+  changed_when: false
+  become: true
+  failed_when: false
+  tags: smoke
+
+- name: Report Xray journal error summary
+  ansible.builtin.debug:
+    msg: "Xray journal error lines: {{ xray_journal.stdout_lines | select('search', 'error|ERROR|fail|FAIL|panic|PANIC') | list | length }}"
+  when: xray_journal.stdout_lines is defined
+  tags: smoke
+
