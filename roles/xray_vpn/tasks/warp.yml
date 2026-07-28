@@ -1,9 +1,9 @@
 ---
 - name: Ensure Xray config dir exists
   ansible.builtin.file:
-    path: /root/xray-config
+    path: "{{ xray_config_dir }}"
     state: directory
-    mode: "0755"
+    mode: "0700"
 
 - name: Download wgcf binary
   ansible.builtin.get_url:
@@ -16,20 +16,65 @@
 - name: Register WARP account once
   ansible.builtin.command:
     cmd: /usr/local/bin/wgcf register --accept-tos
-    chdir: /root/xray-config
-    creates: /root/xray-config/wgcf-account.toml
+    chdir: "{{ xray_config_dir }}"
+    creates: "{{ xray_config_dir }}/wgcf-account.toml"
   tags: warp
 
 - name: Generate WARP WireGuard profile once
   ansible.builtin.command:
     cmd: /usr/local/bin/wgcf generate
-    chdir: /root/xray-config
-    creates: /root/xray-config/wgcf-profile.conf
+    chdir: "{{ xray_config_dir }}"
+    creates: "{{ xray_config_dir }}/wgcf-profile.conf"
   tags: warp
 
-- name: Read generated WARP profile
-  ansible.builtin.slurp:
-    src: /root/xray-config/wgcf-profile.conf
-  register: warp_profile_raw
+- name: Lock down WARP secrets
+  ansible.builtin.file:
+    path: "{{ item }}"
+    mode: "0600"
+  loop:
+    - "{{ xray_config_dir }}/wgcf-account.toml"
+    - "{{ xray_config_dir }}/wgcf-profile.conf"
   tags: warp
-  
+
+- name: Parse WARP profile with Python configparser
+  ansible.builtin.shell: |
+    python3 - <<'PY'
+    import configparser, json, sys, os
+    profile_path = os.environ['WARP_PROFILE']
+    want_ipv6 = os.environ.get('WARP_IPV6', 'false').lower() in ('true', '1', 'yes')
+    cfg = configparser.ConfigParser()
+    if not cfg.read(profile_path):
+        raise FileNotFoundError(f"cannot read WARP profile: {profile_path}")
+    try:
+        secret_key = cfg.get('Interface', 'PrivateKey')
+        address_line = cfg.get('Interface', 'Address')
+        peer_public_key = cfg.get('Peer', 'PublicKey')
+    except (configparser.NoSectionError, configparser.NoOptionError) as e:
+        raise RuntimeError(f"missing required WARP profile field: {e}")
+    tokens = [t.strip() for t in address_line.split(',')]
+    ipv4 = ipv6 = None
+    for t in tokens:
+        if '.' in t:
+            ipv4 = t
+        elif ':' in t:
+            ipv6 = t
+    if not ipv4:
+        raise ValueError("no IPv4 tunnel address in WARP profile")
+    if want_ipv6 and not ipv6:
+        raise ValueError("warp_ipv6 is true but no IPv6 address in WARP profile")
+    result = {'secret_key': secret_key, 'ipv4': ipv4, 'peer_public_key': peer_public_key}
+    if want_ipv6:
+        result['ipv6'] = ipv6
+    json.dump(result, sys.stdout)
+    PY
+  environment:
+    WARP_PROFILE: "{{ xray_config_dir }}/wgcf-profile.conf"
+    WARP_IPV6: "{{ warp_ipv6 | default(false) | string }}"
+  register: warp_parsed_raw
+  changed_when: false
+  tags: warp
+
+- name: Build warp_parsed fact
+  ansible.builtin.set_fact:
+    warp_parsed: "{{ (warp_parsed_raw.stdout | from_json) | combine({'endpoint': warp_endpoint}) }}"
+  tags: warp

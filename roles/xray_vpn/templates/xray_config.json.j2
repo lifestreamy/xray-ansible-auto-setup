@@ -41,13 +41,14 @@
     "settings": {
       "secretKey": "{{ warp_parsed.secret_key }}",
       "address": [
-        "{{ warp_parsed.ipv4 }}",
-        "{{ warp_parsed.ipv6 }}"
+        "{{ warp_parsed.ipv4 }}"{% if warp_ipv6 | default(false) %},
+        "{{ warp_parsed.ipv6 }}"{% endif %}
+
       ],
       "peers": [
         {
           "publicKey": "{{ warp_parsed.peer_public_key }}",
-          "endpoint": "{{ warp_parsed.endpoint }}"
+          "endpoint": "{{ warp_endpoint }}"
         }
       ],
       "mtu": {{ warp_mtu }}
