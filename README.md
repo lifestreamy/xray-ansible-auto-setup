@@ -1,5 +1,7 @@
 # Xray Reality VPN Server Provisioning
 
+[English](README.md) | [Русский](README.ru.md)
+
 **Fully automated Ansible setup for deploying an Xray Reality VPN server on a remote VPS.**
 
 > Generates client configs for Clash Verge / FlClash (Mihomo Meta YAML) and Amnezia VPN (JSON). Clash Verge & FlClash are the recommended clients; Amnezia is secondary with known caveats (see [Advanced Configuration](#advanced-configuration)).
