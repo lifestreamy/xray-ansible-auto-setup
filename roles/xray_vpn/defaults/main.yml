@@ -7,5 +7,5 @@ xray_client_configs_dir: /root/vpn-configs
 xray_port: 443
 warp_ipv6: false
 warp_endpoint: "162.159.192.1:2408"
-warp_smoke_egress: false
 xray_backup_enabled: true
+xray_reality_rotate: false

@@ -40,68 +40,252 @@
     proto: tcp
   tags: firewall
 
-# Generate UUIDs for clients
-- name: Generate client UUIDs
-  ansible.builtin.set_fact:
-    xray_vpn_client_uuids: "{{ xray_vpn_client_uuids | default([]) + [lookup('pipe', 'uuidgen')] }}"
-  loop: "{{ range(num_clients | int) | list }}"
-  tags: config
-
 - name: Debug client UUIDs
   ansible.builtin.debug:
     msg: "Generated {{ num_clients }} client UUIDs: {{ xray_vpn_client_uuids }}"
   tags: config
 
 # Create directories
-- name: Create Xray config directories
+- name: Create Xray config directory
   ansible.builtin.file:
-    path: "{{ item }}"
+    path: "{{ xray_config_dir }}"
     state: directory
-    mode: '0755'
-  loop:
-    - "{{ xray_config_dir }}"
-    - "{{ xray_client_configs_dir }}"
+    mode: '0700'
   tags: config
 
-# Generate the Public/Private key pair
-- name: Generate Xray Reality private key
+- name: Create Xray client configs directory
+  ansible.builtin.file:
+    path: "{{ xray_client_configs_dir }}"
+    state: directory
+    mode: '0750'
+  tags: config
+
+# === REALITY identity persistence ===
+
+# -- Step 1: Inspect current state --
+- name: Check if REALITY state file exists
+  ansible.builtin.stat:
+    path: "{{ xray_config_dir }}/reality-state.json"
+  register: reality_state_stat
+  tags: config
+
+- name: Check if existing Xray config exists (for migration)
+  ansible.builtin.stat:
+    path: "{{ xray_config_dir }}/config.json"
+  register: existing_config_stat
+  when: not reality_state_stat.stat.exists
+  tags: config
+
+# -- Step 2: Read existing state (if present) --
+- name: Read REALITY state
+  ansible.builtin.slurp:
+    src: "{{ xray_config_dir }}/reality-state.json"
+  register: reality_state_raw
+  when: reality_state_stat.stat.exists
+  tags: config
+
+- name: Parse REALITY state
+  ansible.builtin.set_fact:
+    reality_state: "{{ reality_state_raw['content'] | b64decode | from_json }}"
+  when: reality_state_stat.stat.exists
+  tags: config
+
+# -- Step 3: Compute identity gates (BEFORE mutation) --
+- name: Set identity gates
+  ansible.builtin.set_fact:
+    xray_do_migration: "{{ 
+      not reality_state_stat.stat.exists 
+      and (existing_config_stat.stat.exists | default(false)) 
+      and not (xray_reality_rotate | default(false) | bool) 
+    }}"
+    xray_generate_identity: "{{ 
+      (xray_reality_rotate | default(false) | bool) 
+      or (not reality_state_stat.stat.exists 
+          and not (existing_config_stat.stat.exists | default(false))) 
+    }}"
+  tags: config
+
+# -- Step 4: Rotation (backup + delete state) --
+- name: Backup state before rotation
+  ansible.builtin.copy:
+    src: "{{ xray_config_dir }}/reality-state.json"
+    dest: "{{ xray_config_dir }}/reality-state.json.bak-{{ ansible_date_time.date }}-{{ ansible_date_time.time }}"
+    remote_src: true
+    mode: '0600'
+  when:
+    - reality_state_stat.stat.exists
+    - xray_reality_rotate | default(false) | bool
+  tags: config
+
+- name: Remove state to force regeneration
+  ansible.builtin.file:
+    path: "{{ xray_config_dir }}/reality-state.json"
+    state: absent
+  when:
+    - reality_state_stat.stat.exists
+    - xray_reality_rotate | default(false) | bool
+  tags: config
+
+# -- Step 5: Migration from existing config.json --
+- name: Slurp existing config.json for migration
+  ansible.builtin.slurp:
+    src: "{{ xray_config_dir }}/config.json"
+  register: existing_config_raw
+  when: xray_do_migration | bool
+  tags: config
+
+- name: Parse existing config.json
+  ansible.builtin.set_fact:
+    existing_config: "{{ existing_config_raw['content'] | b64decode | from_json }}"
+  when: xray_do_migration | bool
+  tags: config
+
+- name: Extract identity from existing config
+  ansible.builtin.set_fact:
+    migrated_private_key: "{{ existing_config.inbounds[0].streamSettings.realitySettings.privateKey }}"
+    migrated_short_id: "{{ existing_config.inbounds[0].streamSettings.realitySettings.shortIds[0] }}"
+    migrated_uuids: "{{ existing_config.inbounds[0].settings.clients | map(attribute='id') | list }}"
+  when: xray_do_migration | bool
+  tags: config
+
+- name: Derive public key from migrated private key
+  ansible.builtin.shell: |
+    echo "{{ migrated_private_key }}" | docker run -i --rm {{ xray_docker_image }} xray x25519 -i -
+  args:
+    executable: /bin/bash
+  register: migrated_public_key_raw
+  changed_when: false
+  no_log: true
+  when: xray_do_migration | bool
+  tags: config
+
+- name: Write migrated REALITY state
+  ansible.builtin.copy:
+    content: "{{ {
+      'private_key': migrated_private_key,
+      'public_key': migrated_public_key_raw.stdout_lines[1].split(': ')[1],
+      'short_id': migrated_short_id,
+      'client_uuids': migrated_uuids
+    } | to_nice_json }}"
+    dest: "{{ xray_config_dir }}/reality-state.json"
+    mode: '0600'
+  when: xray_do_migration | bool
+  tags: config
+
+- name: Set reality_state from migration
+  ansible.builtin.set_fact:
+    reality_state:
+      private_key: "{{ migrated_private_key }}"
+      public_key: "{{ migrated_public_key_raw.stdout_lines[1].split(': ')[1] }}"
+      short_id: "{{ migrated_short_id }}"
+      client_uuids: "{{ migrated_uuids }}"
+  when: xray_do_migration | bool
+  tags: config
+
+- name: Fail if migration necessary but failed
+  ansible.builtin.fail:
+    msg: "REALITY state file missing but config.json exists — migration failed. Check config.json integrity."
+  when:
+    - xray_do_migration | bool
+    - reality_state is not defined
+  tags: config
+
+# -- Step 6: Fresh identity generation --
+- name: Generate fresh REALITY private key
   ansible.builtin.shell: |
     set -o pipefail
     docker run --rm {{ xray_docker_image }} xray x25519 | grep PrivateKey | awk '{print $2}'
   args:
     executable: /bin/bash
-  register: xray_vpn_private_key_raw
+  register: fresh_private_key_raw
   changed_when: false
+  when: xray_generate_identity | bool
   tags: config
 
-- name: Generate Xray Reality public key from private
+- name: Derive public key from fresh private key
   ansible.builtin.shell: |
-    set -o pipefail
-    docker run --rm {{ xray_docker_image }} xray x25519 -i {{ xray_vpn_private_key_raw.stdout }}
+    echo "{{ fresh_private_key_raw.stdout }}" | docker run -i --rm {{ xray_docker_image }} xray x25519 -i -
   args:
     executable: /bin/bash
-  register: xray_vpn_public_key_raw
+  register: fresh_public_key_raw
   changed_when: false
+  no_log: true
+  when: xray_generate_identity | bool
   tags: config
 
-- name: Set Xray key facts
+- name: Generate random short ID
   ansible.builtin.set_fact:
-    xray_vpn_xray_private_key: "{{ xray_vpn_private_key_raw.stdout }}"
-    xray_vpn_xray_public_key: "{{ xray_vpn_public_key_raw.stdout_lines[1].split(': ')[1] }}"
+    fresh_short_id: "{{ lookup('password', '/dev/null chars=hexdigits length=8') }}"
+  when: xray_generate_identity | bool
   tags: config
 
-# Generate the shortId
-- name: Generate Xray Reality shortId
+- name: Generate fresh client UUIDs
   ansible.builtin.set_fact:
-    xray_vpn_xray_short_id: "{{ (ansible_facts['date_time']['iso8601_basic_short'] | hash('md5'))[:8] }}"
+    fresh_uuids: "{{ fresh_uuids | default([]) + [lookup('pipe', 'uuidgen')] }}"
+  loop: "{{ range(num_clients | int) | list }}"
+  when: xray_generate_identity | bool
   tags: config
 
-- name: Debug extracted keys and generated shortId
+- name: Write fresh REALITY state file
+  ansible.builtin.copy:
+    content: "{{ {
+      'private_key': fresh_private_key_raw.stdout,
+      'public_key': fresh_public_key_raw.stdout_lines[1].split(': ')[1],
+      'short_id': fresh_short_id,
+      'client_uuids': fresh_uuids
+    } | to_nice_json }}"
+    dest: "{{ xray_config_dir }}/reality-state.json"
+    mode: '0600'
+  when: xray_generate_identity | bool
+  tags: config
+
+- name: Set reality_state from fresh generation
+  ansible.builtin.set_fact:
+    reality_state:
+      private_key: "{{ fresh_private_key_raw.stdout }}"
+      public_key: "{{ fresh_public_key_raw.stdout_lines[1].split(': ')[1] }}"
+      short_id: "{{ fresh_short_id }}"
+      client_uuids: "{{ fresh_uuids }}"
+  when: xray_generate_identity | bool
+  tags: config
+
+# -- Step 7: UUID count adjustment (append only, never truncate state) --
+- name: Ensure state has enough UUIDs for num_clients
+  ansible.builtin.set_fact:
+    reality_state: "{{ reality_state | combine({'client_uuids': reality_state.client_uuids + [lookup('pipe', 'uuidgen')]}) }}"
+  loop: "{{ range((num_clients | int) - (reality_state.client_uuids | length)) | list }}"
+  when:
+    - reality_state is defined
+    - (reality_state.client_uuids | length) < (num_clients | int)
+  tags: config
+
+- name: Persist updated UUID list to state file
+  ansible.builtin.copy:
+    content: "{{ reality_state | to_nice_json }}"
+    dest: "{{ xray_config_dir }}/reality-state.json"
+    mode: '0600'
+  when:
+    - reality_state is defined
+    - (reality_state.client_uuids | length) != (num_clients | int)
+  tags: config
+
+# -- Step 8: Set facts from reality_state (always) --
+- name: Set REALITY facts from state
+  ansible.builtin.set_fact:
+    xray_vpn_xray_private_key: "{{ reality_state.private_key }}"
+    xray_vpn_xray_public_key: "{{ reality_state.public_key }}"
+    xray_vpn_xray_short_id: "{{ reality_state.short_id }}"
+    xray_vpn_client_uuids: "{{ reality_state.client_uuids[:num_clients | int] }}"
+  when: reality_state is defined
+  tags: config
+
+# -- Step 9: Debug (public info only — NO private key) --
+- name: Debug REALITY identity (public info only)
   ansible.builtin.debug:
     msg: |
-      Private Key: {{ xray_vpn_xray_private_key }}
       Public Key: {{ xray_vpn_xray_public_key }}
       Short ID: {{ xray_vpn_xray_short_id }}
+      Client UUIDs: {{ xray_vpn_client_uuids }}
   tags: config
 
 # Backup existing config before overwriting
@@ -126,7 +310,7 @@
   ansible.builtin.template:
     src: xray_config.json.j2
     dest: "{{ xray_config_dir }}/config.json"
-    mode: '0644'
+    mode: '0600'
   notify: Restart xray
   tags: config
 
@@ -161,7 +345,7 @@
   ansible.builtin.template:
     src: client_config.json.j2
     dest: "{{ xray_client_configs_dir }}/client_{{ item.0 }}.json"
-    mode: '0644'
+    mode: '0640'
   loop: "{{ range(num_clients | int) | list | zip(xray_vpn_client_uuids) | list }}"
   notify: Restart xray
   tags: config
@@ -171,10 +355,10 @@
   ansible.builtin.template:
     src: clash_meta.yaml.j2
     dest: "{{ xray_client_configs_dir }}/clash_client_{{ item.0 }}.yaml"
-    mode: '0644'
+    mode: '0640'
   loop: "{{ range(num_clients | int) | list | zip(xray_vpn_client_uuids) | list }}"
   tags: config,clients
-
+  
 - name: Info - Config files ready
   ansible.builtin.debug:
     msg: "VPN config files exported to {{ xray_client_configs_dir }}/"

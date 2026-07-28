@@ -16,6 +16,6 @@ warp_endpoint: "162.159.192.1:2408"  # Cloudflare WARP IPv4 anycast endpoint (st
 warp_mtu: 1420  # Safe high MTU for most networks; lower only if something breaks. The old Warp client's default of 1280 is too low for some connections
 warp_wgcf_version: "2.2.22"  # wgcf version to download on the server.
 warp_wgcf_url: "https://github.com/ViRb3/wgcf/releases/download/v{{ warp_wgcf_version }}/wgcf_{{ warp_wgcf_version }}_linux_amd64"  # Linux amd64 wgcf binary.
-warp_smoke_egress: false  # Opt-in WARP egress smoke check (fails from some home networks)
 
 xray_backup_enabled: true  # Timestamped backups before overwriting config/unit
+xray_reality_rotate: false  # Set true to force REALITY key + UUID regeneration (backs up old state first)

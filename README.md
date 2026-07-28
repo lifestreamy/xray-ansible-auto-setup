@@ -4,7 +4,7 @@
 
 **Fully automated Ansible setup for deploying an Xray Reality VPN server on a remote VPS.**
 
-> Generates client configs for Clash Verge / FlClash (Mihomo Meta YAML) and Amnezia VPN (JSON). Clash Verge & FlClash are the recommended clients; Amnezia is secondary with known caveats (see [Advanced Configuration](#advanced-configuration)).
+> Generates client configs for Clash Verge / FlClash (Mihomo Meta YAML) and Amnezia VPN (JSON). Clash Verge & FlClash are recommended; Amnezia is secondary with known caveats.
 
 ## Runs On 
 - Linux
@@ -14,13 +14,11 @@
 
 ---
 
-
 ## What This Setup Does
 
 - Provisions a fresh Ubuntu/Debian VPS with Xray-core VPN server and VLESS protocol with Reality transport (stealth mode)
 - Auto-generates and exports client configs: Clash Meta YAML (`.yaml`) for Clash Verge/FlClash + JSON (`.json`) for Amnezia VPN
 - Cleans up afterward, reverting only the changes it made 
-
 
 ## Requirements
 
@@ -146,9 +144,9 @@ As well as on the target VPS as:
 **Recommended client path:** import `clash_client_*.yaml` into Clash Verge (Windows/macOS/Linux TUN mode) or FlClash (Android).  
 **Secondary (caveats):** Amnezia `client_*.json` is available but has known stability issues — Windows split-tunnel may crash the network stack; Android keepalive / background connectivity is unreliable. Use Clash Verge or FlClash instead unless you specifically need Amnezia.  
 References:  
-- Clash Verge: https://github.com/clash-verge-rev/clash-verge-rev  
-- FlClash: https://github.com/chen08209/FlClash  
-- Amnezia: https://github.com/amnezia-vpn/amnezia-client
+- Clash Verge: [https://github.com/clash-verge-rev/clash-verge-rev](https://github.com/clash-verge-rev/clash-verge-rev)  
+- FlClash: [https://github.com/chen08209/FlClash](https://github.com/chen08209/FlClash)  
+- Amnezia: [https://github.com/amnezia-vpn/amnezia-client](https://github.com/amnezia-vpn/amnezia-client) 
 
 ## Advanced Configuration
 
@@ -176,6 +174,24 @@ To upgrade deliberately: change `xray_docker_image` in `group_vars/all.yml` (tag
 - `warp_endpoint: "162.159.192.1:2408"` — Cloudflare WARP IPv4 anycast (stable name `engage.cloudflareclient.com:2408`). Override in `group_vars/all.yml` if needed.  
 - WARP is enabled via `warp_enabled: true` (requires `wgcf` 2.2.22, auto-downloaded).  
 - The `warp` outbound is the default route for all traffic when enabled; `direct` is fallback.
+
+## Persistent Identity
+
+REALITY keys, short ID, and client UUIDs are persisted in `/root/xray-config/reality-state.json`.  
+Normal reruns preserve existing identity — client configs remain stable.  
+To rotate all credentials: set `xray_reality_rotate: true` in `group_vars/all.yml` (or `-e xray_reality_rotate=true`).  
+Old state is backed up with timestamp before rotation.
+
+## Security
+
+- Sensitive files (`config.json`, `reality-state.json`, WARP profiles) use `0600` (root-only).
+- Client configs (`/root/vpn-configs/`) use `0640`.
+- No private keys appear in Ansible output or logs.
+
+## Smoke Checks
+
+Post-deploy checks verify: container uses pinned image, port is listening, journal has no obvious errors.  
+These checks do NOT verify WARP egress — connect from a real VLESS client to confirm routing.
 
 **Secret rotation** is documented in [docs/SECRET_ROTATION.md](docs/SECRET_ROTATION.md).
 

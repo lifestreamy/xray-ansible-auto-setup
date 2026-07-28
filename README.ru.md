@@ -4,7 +4,7 @@
 
 **Полностью автоматизированная Ansible-настройка для установки Xray Reality VPN-сервера на удалённый VPS.**
 
-> Генерирует клиентские конфигурации для Clash Verge / FlClash (Mihomo Meta YAML) и Amnezia VPN (JSON). Clash Verge и FlClash являются рекомендуемыми клиентами; Amnezia — вторичный вариант с известными ограничениями (см. [Расширенная конфигурация](#расширенная-конфигурация)).
+> Генерирует клиентские конфигурации для Clash Verge / FlClash (Mihomo Meta YAML) и Amnezia VPN (JSON). Clash Verge и FlClash являются рекомендуемыми клиентами; Amnezia — вторичный вариант с известными ограничениями.
 
 ## Где запускается
 - Linux
@@ -43,11 +43,7 @@
 
 **В минимальном случае вам нужны только IP-адрес VPS и пароль, всё остальное делает скрипт.**
 
-Скрипты-обёртки позволяют легко запускать настройку как из Windows, так и из Linux.
-
 ### Linux/WSL (Bash)
-
-Полную справку по CLI можно получить: `./provision-vpn.sh -h`
 
 ```bash
 # Режим CLI (передача параметров напрямую) 
@@ -61,8 +57,6 @@
 ```
 
 ### Windows (PowerShell)
-
-Полную справку по CLI можно получить: `Get-Help .\Provision-VPN.ps1 -Full`
 
 ```powershell
 # Режим CLI
@@ -80,8 +74,6 @@
 ### Вариант 1: CLI-параметры
 
 > Поддерживает SSH-ключ, парольную аутентификацию или интерактивный ввод пароля (скрытый)
-
-Передайте параметры подключения через флаги командной строки:
 
 ```bash
 ./provision-vpn.sh -H <VPS_IP> -u <SSH_USER> -p <SSH_PORT> --pkey <PATH_TO_KEY>
@@ -124,7 +116,6 @@ all:
 
 ### PowerShell-скрипт
 
-Те же параметры с PowerShell-именами:
 - `-HostName` вместо `--host`
 - `-PKey` вместо `--pkey`
 - `-Pass` вместо `--pass`
@@ -142,15 +133,15 @@ all:
 - `/root/vpn-configs/*.json` (Amnezia) и `/root/vpn-configs/*.yaml` (Clash Verge / FlClash)
 
 **Рекомендуемый путь:** импортируйте `clash_client_*.yaml` в Clash Verge (Windows/macOS/Linux, режим TUN) или FlClash (Android).  
-**Вторичный вариант** (с оговорками): Amnezia `client_*.json` доступен, но имеет известные проблемы стабильности — Windows split-tunnel может обрушить сетевой стек; Android keepalive / фоновая работа ненадёжны. Используйте Clash Verge или FlClash, если вам не требуется именно Amnezia.  
+**Вторичный вариант:** Amnezia `client_*.json` доступен, но имеет известные проблемы стабильности — Windows split-tunnel может обрушить сетевой стек; Android keepalive / фоновая работа ненадёжны. Используйте Clash Verge или FlClash, если вам не требуется именно Amnezia.  
 Ссылки:  
-- Clash Verge: https://github.com/clash-verge-rev/clash-verge-rev  
-- FlClash: https://github.com/chen08209/FlClash  
-- Amnezia: https://github.com/amnezia-vpn/amnezia-client
+- Clash Verge: [https://github.com/clash-verge-rev/clash-verge-rev](https://github.com/clash-verge-rev/clash-verge-rev)  
+- FlClash: [https://github.com/chen08209/FlClash](https://github.com/chen08209/FlClash)  
+- Amnezia: [https://github.com/amnezia-vpn/amnezia-client](https://github.com/amnezia-vpn/amnezia-client)
 
 ## Расширенная конфигурация
 
-Для детального контроля над развёртыванием отредактируйте `group_vars/all.yml`:
+Отредактируйте `group_vars/all.yml` для детального контроля:
 
 ```yaml
 num_clients: 3                        # Количество генерируемых VPN-профилей
@@ -158,79 +149,81 @@ reality_camouflage_domain: dl.google.com  # Домен для REALITY-обфус
 ```
 
 - `num_clients`: Количество создаваемых клиентских конфигураций (каждая с уникальным UUID)
-> Даже одного конфигурационного файла достаточно для неограниченного числа одновременных подключений, но несколько профилей рекомендуются для раздачи другим людям и гранулярного контроля.
-- `reality_camouflage_domain`: Легитимный домен, на который REALITY перенаправляет подозрительные соединения, делая VPN-трафик неотличимым от обычного HTTPS
+- `reality_camouflage_domain`: Легитимный домен, на который REALITY перенаправляет подозрительные соединения
 
 Эти настройки передаются в Ansible playbook при развёртывании.
 
 ## Закреплённый образ и WARP IPv4
 
 **Docker-образ Xray закреплён** на `teddysun/xray:26.6.27` (проверенная версия).  
-`:latest` намеренно **не используется** в production-юнитах — автообновление до версии 26.7.11 в июле 2026 сломало совместимость VLESS+REALITY.  
-Для осознанного обновления: измените `xray_docker_image` в `group_vars/all.yml` (тег или digest `sha256:…`), протестируйте, затем разверните.
+`:latest` намеренно **не используется** — автообновление до 26.7.11 в июле 2026 сломало совместимость VLESS+REALITY.  
+Для осознанного обновления: измените `xray_docker_image` в `group_vars/all.yml`, протестируйте, затем разверните.
 
-**WARP outbound по умолчанию настроен на IPv4-only** для совместимости с VPS без IPv6-маршрута.  
+**WARP outbound настроен на IPv4-only** для совместимости с VPS без IPv6-маршрута.  
 - `warp_ipv6: false` — IPv6 WireGuard-адреса исключаются из конфигурации Xray.  
-- `warp_endpoint: "162.159.192.1:2408"` — Cloudflare WARP IPv4 anycast (стабильное имя: `engage.cloudflareclient.com:2408`). При необходимости переопределите в `group_vars/all.yml`.  
+- `warp_endpoint: "162.159.192.1:2408"` — Cloudflare WARP IPv4 anycast.  
 - WARP включается через `warp_enabled: true` (требуется `wgcf` 2.2.22, скачивается автоматически).  
 - Outbound `warp` является маршрутом по умолчанию для всего трафика при включении; `direct` — запасной.
+
+## Персистентная идентичность
+
+REALITY-ключи, short ID и клиентские UUID сохраняются в `/root/xray-config/reality-state.json`.  
+Обычные повторные запуски сохраняют существующую идентичность — клиентские конфиги остаются стабильными.  
+Для ротации всех учётных данных: установите `xray_reality_rotate: true` в `group_vars/all.yml` (или `-e xray_reality_rotate=true`).  
+Старое состояние архивируется с меткой времени перед ротацией.
+
+## Безопасность
+
+- Чувствительные файлы (`config.json`, `reality-state.json`, WARP-профили) имеют режим `0600` (только root).
+- Клиентские конфиги (`/root/vpn-configs/`) имеют режим `0640`.
+- Приватные ключи не выводятся в логи Ansible.
+
+## Дымовые проверки
+
+Пост-деплой проверки: контейнер использует закреплённый образ, порт слушает, journal не содержит очевидных ошибок.  
+Эти проверки НЕ верифицируют WARP-маршрутизацию — для этого подключитесь реальным VLESS-клиентом.
 
 **Ротация секретов** описана в [docs/SECRET_ROTATION.md](docs/SECRET_ROTATION.md).
 
 ## Дополнительные примеры
 
-**Нестандартный SSH-порт и папка для конфигов:**
 ```bash
-./provision-vpn.sh -H vps.example.com -p 2222 \
-  --pkey ~/.ssh/id_rsa --clients-dir ~/vpn-configs
-```
+# Нестандартный SSH-порт и папка для конфигов
+./provision-vpn.sh -H vps.example.com -p 2222 --pkey ~/.ssh/id_rsa --clients-dir ~/vpn-configs
 
-**Сухой прогон (тест без выполнения):**
-```bash
+# Сухой прогон (тест без выполнения)
 ./provision-vpn.sh -H 1.2.3.4 --pkey ~/.ssh/id_rsa --dry-run
-```
 
-**Полная очистка (удаление установленных пакетов после прогона):**
-```bash
+# Полная очистка
 ./provision-vpn.sh -H 1.2.3.4 --pkey ~/.ssh/id_rsa --full-cleanup
 ```
 
 ## Устранение неполадок
 
 **"Command not found: ansible"**
-- Скрипт должен установить ansible автоматически. Если не получилось, выполните вручную:
+- Скрипт должен установить ansible автоматически. Если нет:
 ```bash
 sudo apt-get update && sudo apt-get install -y ansible
 ```
 
 **"Permission denied (publickey)"**
-- Проверьте права SSH-ключа: `chmod 600 ~/.ssh/id_rsa`
-- Проверьте SSH вручную: `ssh -i ~/.ssh/id_rsa user@host`
+- Проверьте права ключа: `chmod 600 ~/.ssh/id_rsa`
 
 **"inventory.yml missing required fields"**
-- Используйте `--use-inventory` только после заполнения всех полей в `inventory.yml`
-- Или используйте CLI-режим с флагами `-H`, `--pkey`/`--pass`
+- Используйте `--use-inventory` только после заполнения всех полей
 
 **Проблемы с переносами строк (LF vs CRLF)**
-- Скрипты форсируют LF через `.gitattributes`, поэтому проблем быть не должно
-- Если проблемы сохраняются: `dos2unix provision-vpn.sh`, переклонируйте репозиторий или создайте issue на GitHub
+- `dos2unix provision-vpn.sh` или переклонируйте репозиторий
 
 ## Участие в проекте
 
-Вклад приветствуется. Пожалуйста, соблюдайте conventional commits, тестируйте с `--dry-run` и реальным запуском на вашем собственном VPS (включая проверку подключения через клиенты) перед отправкой изменений.
+Вклад приветствуется. Соблюдайте conventional commits, тестируйте с `--dry-run` и на собственном VPS перед отправкой изменений.
 
 ## Issues
 
-Нашли баг? Пожалуйста, откройте issue с:
-- Вашей настройкой (Linux/Windows, версия bash/PowerShell)
-- Ожидаемое vs фактическое поведение
-- Шаги для воспроизведения
-- Релевантные логи из вывода
+Ошибка? Откройте issue с: настройкой, ожидаемым/фактическим поведением, шагами воспроизведения, логами.
 
-Есть предложение? Пожалуйста, откройте issue с:
-- Как вы сейчас используете проект
-- Что хотели бы добавить
-- Если вы готовы предоставить и протестировать эту функциональность сами
+Предложение? Откройте issue с: как используете, что добавить, готовы ли протестировать.
 
 ## Лицензия
 
@@ -239,4 +232,4 @@ MIT
 ## Автор
 
 Tim Korelov  
-https://github.com/lifestreamy
+[https://github.com/lifestreamy](https://github.com/lifestreamy)
