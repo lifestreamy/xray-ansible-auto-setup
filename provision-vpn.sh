@@ -7,7 +7,7 @@ AUTHOR="Tim Korelov"
 CONTACT_URL="https://github.com/lifestreamy"
 
 show_banner() {
-  echo "=== XRAY+Amnezia VPN Provisioning Script (${VERSION}) ==="
+  echo "=== Xray VPN Provisioning Script (Clash Verge, FlClash, Amnezia) (${VERSION}) ==="
   echo "Author: ${AUTHOR}  |  ${CONTACT_URL}"
   echo "License: ${LICENSE}"
   echo "Tip: Run '$(basename "$0") --help' to see the project description, all options, and examples."
@@ -307,6 +307,8 @@ else
     --exclude='__pycache__/' \
     --exclude='.git/' \
     --exclude='downloaded-configs/' \
+    --exclude='.llm_context/' \
+    --exclude='.kilo/' \
     "$SCRIPT_DIR/" "$WORK_DIR/"
 
   cd "$WORK_DIR"
@@ -359,10 +361,9 @@ export ANSIBLE_HOST_KEY_CHECKING=False
 
 # Running the playbook itself
 if [[ "$DRY_RUN" -eq 1 ]]; then
-  echo "[dry-run] Would run: ansible-playbook -i inventory.yml deploy.yml -e \"num_clients=3 reality_camouflage_domain=www.microsoft.com\""
+  echo "[dry-run] Would run: ansible-playbook -i inventory.yml deploy.yml"
 else
-  ansible-playbook -i "$WORK_DIR/inventory.yml" deploy.yml \
-    -e "num_clients=${NUM_CLIENTS:-3} reality_camouflage_domain=${DOMAIN:-www.microsoft.com}"
+  ansible-playbook -i "$WORK_DIR/inventory.yml" deploy.yml
 fi
 
 # Decide where to download generated client configs
@@ -374,26 +375,44 @@ fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
   echo "[dry-run] Would create target directory: $TARGET_DIR"
-  echo "[dry-run] Would fetch /root/vpn-configs/*.json from VPS via scp"
+  echo "[dry-run] Would fetch /root/vpn-configs/*.{json,yaml} from VPS via scp"
 else
   mkdir -p "$TARGET_DIR"
 
   # Fetch client configs from VPS using validated auth method
 echo "Fetching client configs from VPS..."
+
+fetch_success=0
+
 if [[ -n "$PKEY" ]]; then
-  # Key-based authentication
-  echo "[DEBUG] Using key: $PKEY, Port: $PORT, User: $USER_NAME, Host: $HOST"
+  set +e
   scp -i "$PKEY" -P "$PORT" -o StrictHostKeyChecking=no \
-    "$USER_NAME@$HOST:/root/vpn-configs/*.json" "$TARGET_DIR/" \
-    && echo "Client configs saved to: $TARGET_DIR" \
-    || echo "Warning: scp failed. Check VPS connection or auth."
+    "$USER_NAME@$HOST:/root/vpn-configs/*.json" "$TARGET_DIR/" 2>/dev/null
+  json_rc=$?
+  scp -i "$PKEY" -P "$PORT" -o StrictHostKeyChecking=no \
+    "$USER_NAME@$HOST:/root/vpn-configs/*.yaml" "$TARGET_DIR/" 2>/dev/null
+  yaml_rc=$?
+  set -e
 elif [[ -n "$PASS" ]]; then
-  # Password-based authentication  
-  echo "[DEBUG] Using password auth, Port: $PORT, User: $USER_NAME, Host: $HOST"
-  sshpass -p "$PASS" scp -P "$PORT" -o StrictHostKeyChecking=no \
-    "$USER_NAME@$HOST:/root/vpn-configs/*.json" "$TARGET_DIR/" \
-    && echo "Client configs saved to: $TARGET_DIR" \
-    || echo "Warning: scp failed. Check VPS connection or auth."
+  export SSHPASS="$PASS"
+  set +e
+  sshpass -e scp -P "$PORT" -o StrictHostKeyChecking=no \
+    "$USER_NAME@$HOST:/root/vpn-configs/*.json" "$TARGET_DIR/" 2>/dev/null
+  json_rc=$?
+  sshpass -e scp -P "$PORT" -o StrictHostKeyChecking=no \
+    "$USER_NAME@$HOST:/root/vpn-configs/*.yaml" "$TARGET_DIR/" 2>/dev/null
+  yaml_rc=$?
+  set -e
+  unset SSHPASS
+fi
+
+[[ "$json_rc" == "0" ]] && { echo "  [JSON] downloaded successfully"; fetch_success=1; }
+[[ "$yaml_rc" == "0" ]] && { echo "  [YAML] downloaded successfully"; fetch_success=1; }
+
+if [[ "$fetch_success" == "1" ]]; then
+  echo "Client configs saved to: $TARGET_DIR"
+else
+  echo "Warning: no client configs were downloaded. Check VPS connection or auth."
 fi
 
 fi

@@ -142,7 +142,7 @@ param(
 
 # === Configuration for runtime banner ===
 $boxWidth = 58  # internal box width
-$title = "XRAY+Amnezia VPN Provisioning Wrapper"
+$title = "Xray VPN Provisioning Wrapper (Clash Verge, FlClash, Amnezia)"
 $version = 'v2025-12-13' # YYYY-MM-DD
 $license = 'MIT'
 $author = 'Tim Korelov'
