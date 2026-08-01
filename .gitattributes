@@ -1,4 +1,10 @@
 # .gitattributes
-.gitattributes eol=lf
+* text=auto eol=lf
 *.sh text eol=lf
+mvnw text eol=lf
+*.bat text eol=crlf
+*.cmd text eol=crlf
+mvnw.cmd text eol=crlf
+*.jar binary
+*.png binary
 *.ps1 text eol=lf

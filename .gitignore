@@ -20,3 +20,15 @@ Thumbs.db
 .llm_context/
 
 .kilo/
+
+# --- Python extras ---
+.ruff_cache/
+.pytest_cache/
+
+# --- Env files (any project) ---
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.env
