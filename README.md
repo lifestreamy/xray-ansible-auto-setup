@@ -252,7 +252,10 @@ Have a suggestion? Please open an issue with:
 
 ## License
 
-MIT
+AGPL-3.0 with a Commercial Use Restriction.  
+Free for personal use and non-commercial distribution.  
+Commercial use requires prior written permission from the author: **tim.korelov@yandex.com**.  
+See [LICENSE](LICENSE) for the full text (English) and [LICENSE.ru.md](LICENSE.ru.md) for a plain-language summary in Russian.
 
 ## Author
 
