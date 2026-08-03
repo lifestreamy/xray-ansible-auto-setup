@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-Provision and configure an XRAY+Amnezia VPN server via Linux/WSL + Ansible.
+Provision and configure an Xray VLESS + REALITY VPN server via Linux/WSL + Ansible.
 
 .DESCRIPTION
 This script is a Windows/PowerShell wrapper around provision-vpn.sh.
@@ -26,13 +26,15 @@ hidden input, specify neither -Pass nor -PKey.
 +--------------------------------------------------------------+
 | Release: v2026-08-03                                         |
 | Author:  Tim Korelov                                         |
-| Contact: [https://github.com/lifestreamy](https://github.com/lifestreamy)                      |
-| License: MIT                                                 |
+| Contact: https://github.com/lifestreamy                      |
+| License: AGPL-3.0 + commercial-use restriction                |
 +--------------------------------------------------------------+
 
 .PARAMETER UseInventory
 Use values from inventory.yml instead of CLI parameters.
 When specified, connection/auth parameters are ignored.
+Mutual exclusion between ansible_ssh_private_key_file and ansible_ssh_pass
+is validated by the underlying bash script.
 
 .PARAMETER HostName
 VPS IP or hostname to connect to (required in CLI mode).
@@ -45,12 +47,15 @@ SSH port. Defaults to 22.
 
 .PARAMETER PKey
 Path to the SSH private key for key-based authentication.
-Mutually exclusive with -Pass.
+Must be an OpenSSH-format key readable from WSL (e.g. C:\Users\You\.ssh\id_rsa,
+which is converted to /mnt/c/Users/You/.ssh/id_rsa). PuTTY .ppk files are
+not supported. Mutually exclusive with -Pass.
 
 .PARAMETER Pass
 SSH password for password-based authentication (plain text).
 If omitted and -PKey is not provided, you will be prompted in
-interactive mode with hidden input.
+interactive mode with hidden input. The password is never logged,
+even in -LogLevel Verbose or -DryRun output.
 
 .PARAMETER ClientsDir
 Directory on Windows where generated client configs will be stored.
@@ -66,8 +71,10 @@ Allowed values:
 Defaults to Default.
 
 .PARAMETER DryRun
-Developer mode. Validates parameters and shows the WSL commands that
-would be executed, but does not invoke WSL, the bash script, or Ansible.
+Developer mode. The wrapper still invokes WSL and runs provision-vpn.sh,
+but with --dry-run so that no packages are installed, no Ansible run
+modifies the VPS, and no temporary files are removed. Useful for previewing
+the final command line and verifying parameters.
 
 .PARAMETER LogLevel
 Controls output verbosity.
@@ -97,7 +104,7 @@ Defaults to Default.
 
 .EXAMPLE
 .\Provision-VPN.ps1 -HostName 1.2.3.4 -User root -DryRun -LogLevel Verbose
-# dry run with full verbose output, does not execute anything
+# dry run with full verbose output, no system changes
 #>
 
 [CmdletBinding()]
@@ -138,10 +145,10 @@ param(
     [string]$LogLevel = 'Default'
 )
 
-$boxWidth = 58
-$title = "Xray VPN Provisioning Wrapper (Clash Verge, FlClash, Amnezia)"
+$boxWidth = 60
+$title = "Xray VPN Provisioning Wrapper (Clash Verge / FlClash / Amnezia)"
 $version = 'v2026-08-03'
-$license = 'MIT'
+$license = 'AGPL-3.0 + commercial-use restriction'
 $author = 'Tim Korelov'
 $contact = 'https://github.com/lifestreamy'
 
@@ -166,28 +173,28 @@ function Convert-ToWslPath {
     return "/mnt/$drive$rest"
 }
 
-Write-LogDefault "+--------------------------------------------------------------+"
+Write-LogDefault "+------------------------------------------------------------+"
 Write-LogDefault ("| {0,-58} |" -f $title.PadLeft(($boxWidth + $title.Length) / 2).PadRight($boxWidth))
 Write-LogDefault ("| {0,-58} |" -f "")
 Write-LogDefault ("| Release: {0,-49} |" -f $version)
 Write-LogDefault ("| Author:  {0,-49} |" -f $author)
 Write-LogDefault ("| Contact: {0,-49} |" -f $contact)
 Write-LogDefault ("| License: {0,-49} |" -f $license)
-Write-LogDefault "+--------------------------------------------------------------+"
+Write-LogDefault "+------------------------------------------------------------+"
 Write-LogDefault ""
 Write-LogDefault "Tip: Run 'Get-Help .\$(Split-Path -Leaf $MyInvocation.MyCommand.Path) -Full' for full documentation."
 Write-LogDefault ""
 
 if ($DryRun) {
-    Write-LogDefault "[DryRun] Active: will validate parameters and show commands, but not execute them."
-    Write-LogVerbose "[DryRun] Path conversions use best-effort mock; real runs use 'wsl wslpath -a'."
+    Write-LogDefault "[DryRun] Active: bash script will be executed with --dry-run inside WSL. No changes on the VPS."
+    Write-LogVerbose "[DryRun] Local Windows paths are converted to WSL /mnt/<drive>/... paths in-process."
 }
 
 if ($UseInventory) {
     Write-LogDefault "Mode: Using inventory.yml for parameters"
     Write-LogVerbose "Inventory mode active; CLI connection/auth parameters will be ignored."
-    if ($HostName -or $PKey -or $Pass) {
-        Write-Host "Warning: -UseInventory specified; ignoring CLI connection/auth parameters." -ForegroundColor Yellow
+    if ($HostName -or $User -ne 'root' -or $Port -ne 22 -or $PKey -or $Pass) {
+        Write-Host "Warning: -UseInventory specified; ignoring CLI connection/auth parameters (-HostName, -User, -Port, -PKey, -Pass)." -ForegroundColor Yellow
     }
 } else {
     Write-LogDefault "Mode: Using CLI parameters"
