@@ -34,30 +34,40 @@
     }
   ],
   "outbounds": [
-  {% if warp_enabled | default(false) %}
-  {
-    "tag": "warp",
-    "protocol": "wireguard",
-    "settings": {
-      "secretKey": "{{ warp_parsed.secret_key }}",
-      "address": [
-        "{{ warp_parsed.ipv4 }}"{% if warp_ipv6 | default(false) %},
-        "{{ warp_parsed.ipv6 }}"{% endif %}
-
-      ],
-      "peers": [
-        {
-          "publicKey": "{{ warp_parsed.peer_public_key }}",
-          "endpoint": "{{ warp_endpoint }}"
-        }
-      ],
-      "mtu": {{ warp_mtu }}
+    {% if warp_enabled | default(false) %}
+    {
+      "tag": "warp",
+      "protocol": "wireguard",
+      "settings": {
+        "secretKey": "{{ warp_parsed.secret_key }}",
+        "address": [
+          "{{ warp_parsed.ipv4 }}"{% if warp_ipv6 | default(false) %},
+          "{{ warp_parsed.ipv6 }}"{% endif %}
+        ],
+        "peers": [
+          {
+            "publicKey": "{{ warp_parsed.peer_public_key }}",
+            "endpoint": "{{ warp_endpoint }}",
+            "allowedIPs": [
+              "0.0.0.0/0",
+              "::/0"
+            ],
+            "keepAlive": 25
+          }
+        ],
+        "mtu": {{ warp_mtu }},
+        "reserved": [
+          {{ warp_reserved[0] | default(0) }},
+          {{ warp_reserved[1] | default(0) }},
+          {{ warp_reserved[2] | default(0) }}
+        ],
+        "domainStrategy": "{{ warp_domain_strategy | default('ForceIPv4v6') }}"
+      }
+    },
+    {% endif %}
+    {
+      "protocol": "freedom",
+      "tag": "direct"
     }
-  },
-  {% endif %}
-  {
-    "protocol": "freedom",
-    "tag": "direct"
-  }
-]
+  ]
 }

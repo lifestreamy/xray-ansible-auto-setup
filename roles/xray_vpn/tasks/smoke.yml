@@ -43,4 +43,3 @@
     msg: "Xray journal error lines: {{ xray_journal.stdout_lines | select('search', 'error|ERROR|fail|FAIL|panic|PANIC') | list | length }}"
   when: xray_journal.stdout_lines is defined
   tags: smoke
-

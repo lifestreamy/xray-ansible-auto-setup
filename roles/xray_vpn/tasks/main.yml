@@ -26,6 +26,12 @@
   become: true
   tags: docker
 
+- name: Debug docker pull result
+  ansible.builtin.debug:
+    var: docker_pull
+  when: xray_debug | default(false) | bool
+  tags: docker,debug
+
 # Prepare optional Cloudflare WARP outbound settings before rendering Xray config
 - name: Include WARP tasks
   ansible.builtin.import_tasks: warp.yml
@@ -39,11 +45,6 @@
     port: '{{ xray_port }}'
     proto: tcp
   tags: firewall
-
-- name: Debug client UUIDs
-  ansible.builtin.debug:
-    msg: "Generated {{ num_clients }} client UUIDs: {{ xray_vpn_client_uuids }}"
-  tags: config
 
 # Create directories
 - name: Create Xray config directory
@@ -59,6 +60,19 @@
     state: directory
     mode: '0750'
   tags: config
+
+- name: Debug key path settings
+  ansible.builtin.debug:
+    msg:
+      - "xray_config_dir={{ xray_config_dir }}"
+      - "xray_client_configs_dir={{ xray_client_configs_dir }}"
+      - "xray_docker_image={{ xray_docker_image }}"
+      - "xray_port={{ xray_port }}"
+      - "num_clients={{ num_clients }}"
+      - "warp_enabled={{ warp_enabled | default(false) }}"
+      - "xray_reality_rotate={{ xray_reality_rotate | default(false) }}"
+  when: xray_debug | default(false) | bool
+  tags: config,debug
 
 # === REALITY identity persistence ===
 
@@ -76,6 +90,14 @@
   when: not reality_state_stat.stat.exists
   tags: config
 
+- name: Debug file existence state
+  ansible.builtin.debug:
+    msg:
+      - "reality_state_exists={{ reality_state_stat.stat.exists }}"
+      - "existing_config_exists={{ existing_config_stat.stat.exists | default(false) }}"
+  when: xray_debug | default(false) | bool
+  tags: config,debug
+
 # -- Step 2: Read existing state (if present) --
 - name: Read REALITY state
   ansible.builtin.slurp:
@@ -90,20 +112,38 @@
   when: reality_state_stat.stat.exists
   tags: config
 
+- name: Debug loaded REALITY state
+  ansible.builtin.debug:
+    var: reality_state
+  when:
+    - xray_debug | default(false) | bool
+    - reality_state is defined
+  tags: config,debug
+
 # -- Step 3: Compute identity gates (BEFORE mutation) --
 - name: Set identity gates
   ansible.builtin.set_fact:
-    xray_do_migration: "{{ 
-      not reality_state_stat.stat.exists 
-      and (existing_config_stat.stat.exists | default(false)) 
-      and not (xray_reality_rotate | default(false) | bool) 
-    }}"
-    xray_generate_identity: "{{ 
-      (xray_reality_rotate | default(false) | bool) 
-      or (not reality_state_stat.stat.exists 
-          and not (existing_config_stat.stat.exists | default(false))) 
-    }}"
+    xray_do_migration: >-
+      {{
+        not reality_state_stat.stat.exists
+        and (existing_config_stat.stat.exists | default(false))
+        and not (xray_reality_rotate | default(false) | bool)
+      }}
+    xray_generate_identity: >-
+      {{
+        (xray_reality_rotate | default(false) | bool)
+        or (not reality_state_stat.stat.exists
+            and not (existing_config_stat.stat.exists | default(false)))
+      }}
   tags: config
+
+- name: Debug identity gates
+  ansible.builtin.debug:
+    msg:
+      - "xray_do_migration={{ xray_do_migration }}"
+      - "xray_generate_identity={{ xray_generate_identity }}"
+  when: xray_debug | default(false) | bool
+  tags: config,debug
 
 # -- Step 4: Rotation (backup + delete state) --
 - name: Backup state before rotation
@@ -140,6 +180,14 @@
   when: xray_do_migration | bool
   tags: config
 
+- name: Debug existing config structure
+  ansible.builtin.debug:
+    var: existing_config
+  when:
+    - xray_debug | default(false) | bool
+    - xray_do_migration | bool
+  tags: config,debug
+
 - name: Extract identity from existing config
   ansible.builtin.set_fact:
     migrated_private_key: "{{ existing_config.inbounds[0].streamSettings.realitySettings.privateKey }}"
@@ -148,9 +196,21 @@
   when: xray_do_migration | bool
   tags: config
 
+- name: Debug migrated identity inputs
+  ansible.builtin.debug:
+    msg:
+      - "migrated_private_key={{ migrated_private_key | default('UNDEFINED') }}"
+      - "migrated_short_id={{ migrated_short_id | default('UNDEFINED') }}"
+      - "migrated_uuids={{ migrated_uuids | default([]) }}"
+  when:
+    - xray_debug | default(false) | bool
+    - xray_do_migration | bool
+  tags: config,debug
+
 - name: Derive public key from migrated private key
   ansible.builtin.shell: |
-    echo "{{ migrated_private_key }}" | docker run -i --rm {{ xray_docker_image }} xray x25519 -i -
+    set -o pipefail
+    docker run --rm {{ xray_docker_image }} xray x25519 -i {{ migrated_private_key }}
   args:
     executable: /bin/bash
   register: migrated_public_key_raw
@@ -159,11 +219,68 @@
   when: xray_do_migration | bool
   tags: config
 
+- name: Debug migrated x25519 stdout
+  ansible.builtin.debug:
+    var: migrated_public_key_raw.stdout
+  when:
+    - xray_debug | default(false) | bool
+    - xray_do_migration | bool
+  tags: config,debug
+
+- name: Debug migrated x25519 stdout_lines
+  ansible.builtin.debug:
+    var: migrated_public_key_raw.stdout_lines
+  when:
+    - xray_debug | default(false) | bool
+    - xray_do_migration | bool
+  tags: config,debug
+
+- name: Parse migrated x25519 output
+  ansible.builtin.shell: |
+    python3 - <<'PY'
+    import json, os
+    lines = json.loads(os.environ['XRAY_LINES'])
+    value = None
+    for line in lines:
+        line = line.strip()
+        if line.startswith('Password (PublicKey):'):
+            value = line.split(':', 1)[1].strip()
+            break
+        if line.startswith('Password:'):
+            value = line.split(':', 1)[1].strip()
+            break
+    if not value:
+        raise SystemExit('xray x25519 output does not contain Password or Password (PublicKey) line during migration')
+    print(value)
+    PY
+  args:
+    executable: /bin/bash
+  environment:
+    XRAY_LINES: "{{ migrated_public_key_raw.stdout_lines | default([]) | to_json }}"
+  register: migrated_public_key_parsed
+  changed_when: false
+  when: xray_do_migration | bool
+  tags: config
+
+- name: Debug migrated parsed public key output
+  ansible.builtin.debug:
+    var: migrated_public_key_parsed
+  when:
+    - xray_debug | default(false) | bool
+    - xray_do_migration | bool
+  tags: config,debug
+
+- name: Set migrated public key
+  ansible.builtin.set_fact:
+    migrated_public_key: "{{ migrated_public_key_parsed.stdout | trim }}"
+  when: xray_do_migration | bool
+  tags: config
+
 - name: Write migrated REALITY state
   ansible.builtin.copy:
     content: "{{ {
       'private_key': migrated_private_key,
-      'public_key': migrated_public_key_raw.stdout_lines[1].split(': ')[1],
+      'public_key': migrated_public_key,
       'short_id': migrated_short_id,
       'client_uuids': migrated_uuids
     } | to_nice_json }}"
@@ -176,7 +293,7 @@
   ansible.builtin.set_fact:
     reality_state:
       private_key: "{{ migrated_private_key }}"
-      public_key: "{{ migrated_public_key_raw.stdout_lines[1].split(': ')[1] }}"
+      public_key: "{{ migrated_public_key }}"
       short_id: "{{ migrated_short_id }}"
       client_uuids: "{{ migrated_uuids }}"
   when: xray_do_migration | bool
@@ -194,7 +311,7 @@
 - name: Generate fresh REALITY private key
   ansible.builtin.shell: |
     set -o pipefail
-    docker run --rm {{ xray_docker_image }} xray x25519 | grep PrivateKey | awk '{print $2}'
+    docker run --rm {{ xray_docker_image }} xray x25519 | awk -F': ' '/^PrivateKey:/ {print $2; exit}'
   args:
     executable: /bin/bash
   register: fresh_private_key_raw
@@ -202,14 +319,83 @@
   when: xray_generate_identity | bool
   tags: config
 
+- name: Debug fresh private key details
+  ansible.builtin.debug:
+    msg:
+      - "private_key_len={{ fresh_private_key_raw.stdout | length }}"
+      - "private_key_repr={{ fresh_private_key_raw.stdout | to_json }}"
+      - "private_key_lines={{ fresh_private_key_raw.stdout_lines | default([]) }}"
+  when:
+    - xray_debug | default(false) | bool
+    - xray_generate_identity | bool
+  tags: config,debug
+
 - name: Derive public key from fresh private key
   ansible.builtin.shell: |
-    echo "{{ fresh_private_key_raw.stdout }}" | docker run -i --rm {{ xray_docker_image }} xray x25519 -i -
+    set -o pipefail
+    docker run --rm {{ xray_docker_image }} xray x25519 -i {{ fresh_private_key_raw.stdout }}
   args:
     executable: /bin/bash
   register: fresh_public_key_raw
   changed_when: false
   no_log: true
+  when: xray_generate_identity | bool
+  tags: config
+
+- name: Debug fresh x25519 stdout
+  ansible.builtin.debug:
+    var: fresh_public_key_raw.stdout
+  when:
+    - xray_debug | default(false) | bool
+    - xray_generate_identity | bool
+  tags: config,debug
+
+- name: Debug fresh x25519 stdout_lines
+  ansible.builtin.debug:
+    var: fresh_public_key_raw.stdout_lines
+  when:
+    - xray_debug | default(false) | bool
+    - xray_generate_identity | bool
+  tags: config,debug
+
+- name: Parse fresh x25519 output
+  ansible.builtin.shell: |
+    python3 - <<'PY'
+    import json, os
+    lines = json.loads(os.environ['XRAY_LINES'])
+    value = None
+    for line in lines:
+        line = line.strip()
+        if line.startswith('Password (PublicKey):'):
+            value = line.split(':', 1)[1].strip()
+            break
+        if line.startswith('Password:'):
+            value = line.split(':', 1)[1].strip()
+            break
+    if not value:
+        raise SystemExit('xray x25519 output does not contain Password or Password (PublicKey) line during fresh generation')
+    print(value)
+    PY
+  args:
+    executable: /bin/bash
+  environment:
+    XRAY_LINES: "{{ fresh_public_key_raw.stdout_lines | default([]) | to_json }}"
+  register: fresh_public_key_parsed
+  changed_when: false
+  when: xray_generate_identity | bool
+  tags: config
+
+- name: Debug fresh parsed public key output
+  ansible.builtin.debug:
+    var: fresh_public_key_parsed
+  when:
+    - xray_debug | default(false) | bool
+    - xray_generate_identity | bool
+  tags: config,debug
+
+- name: Set fresh public key
+  ansible.builtin.set_fact:
+    fresh_public_key: "{{ fresh_public_key_parsed.stdout | trim }}"
   when: xray_generate_identity | bool
   tags: config
 
@@ -219,6 +405,14 @@
   when: xray_generate_identity | bool
   tags: config
 
+- name: Debug generated short ID
+  ansible.builtin.debug:
+    var: fresh_short_id
+  when:
+    - xray_debug | default(false) | bool
+    - xray_generate_identity | bool
+  tags: config,debug
+
 - name: Generate fresh client UUIDs
   ansible.builtin.set_fact:
     fresh_uuids: "{{ fresh_uuids | default([]) + [lookup('pipe', 'uuidgen')] }}"
@@ -226,11 +420,19 @@
   when: xray_generate_identity | bool
   tags: config
 
+- name: Debug generated fresh UUIDs
+  ansible.builtin.debug:
+    var: fresh_uuids
+  when:
+    - xray_debug | default(false) | bool
+    - xray_generate_identity | bool
+  tags: config,debug
+
 - name: Write fresh REALITY state file
   ansible.builtin.copy:
     content: "{{ {
       'private_key': fresh_private_key_raw.stdout,
-      'public_key': fresh_public_key_raw.stdout_lines[1].split(': ')[1],
+      'public_key': fresh_public_key,
       'short_id': fresh_short_id,
       'client_uuids': fresh_uuids
     } | to_nice_json }}"
@@ -243,7 +445,7 @@
   ansible.builtin.set_fact:
     reality_state:
       private_key: "{{ fresh_private_key_raw.stdout }}"
-      public_key: "{{ fresh_public_key_raw.stdout_lines[1].split(': ')[1] }}"
+      public_key: "{{ fresh_public_key }}"
       short_id: "{{ fresh_short_id }}"
       client_uuids: "{{ fresh_uuids }}"
   when: xray_generate_identity | bool
@@ -253,7 +455,7 @@
 - name: Ensure state has enough UUIDs for num_clients
   ansible.builtin.set_fact:
     reality_state: "{{ reality_state | combine({'client_uuids': reality_state.client_uuids + [lookup('pipe', 'uuidgen')]}) }}"
-  loop: "{{ range((num_clients | int) - (reality_state.client_uuids | length)) | list }}"
+  loop: "{{ range([0, (num_clients | int) - (reality_state.client_uuids | length)] | max) | list }}"
   when:
     - reality_state is defined
     - (reality_state.client_uuids | length) < (num_clients | int)
@@ -269,6 +471,12 @@
     - (reality_state.client_uuids | length) != (num_clients | int)
   tags: config
 
+- name: Debug final reality_state
+  ansible.builtin.debug:
+    var: reality_state
+  when: xray_debug | default(false) | bool
+  tags: config,debug
+
 # -- Step 8: Set facts from reality_state (always) --
 - name: Set REALITY facts from state
   ansible.builtin.set_fact:
@@ -279,13 +487,19 @@
   when: reality_state is defined
   tags: config
 
-# -- Step 9: Debug (public info only — NO private key) --
+- name: Debug client UUIDs
+  ansible.builtin.debug:
+    msg: "Generated {{ num_clients }} client UUIDs: {{ xray_vpn_client_uuids }}"
+  when: xray_vpn_client_uuids is defined
+  tags: config
+
 - name: Debug REALITY identity (public info only)
   ansible.builtin.debug:
     msg: |
       Public Key: {{ xray_vpn_xray_public_key }}
       Short ID: {{ xray_vpn_xray_short_id }}
       Client UUIDs: {{ xray_vpn_client_uuids }}
+  when: xray_vpn_xray_public_key is defined
   tags: config
 
 # Backup existing config before overwriting
@@ -348,6 +562,7 @@
     mode: '0640'
   loop: "{{ range(num_clients | int) | list | zip(xray_vpn_client_uuids) | list }}"
   notify: Restart xray
+  when: xray_vpn_client_uuids is defined
   tags: config
 
 # Export Clash Verge / FlClash client configs (Mihomo Meta YAML)
@@ -357,8 +572,9 @@
     dest: "{{ xray_client_configs_dir }}/clash_client_{{ item.0 }}.yaml"
     mode: '0640'
   loop: "{{ range(num_clients | int) | list | zip(xray_vpn_client_uuids) | list }}"
+  when: xray_vpn_client_uuids is defined
   tags: config,clients
-  
+
 - name: Info - Config files ready
   ansible.builtin.debug:
     msg: "VPN config files exported to {{ xray_client_configs_dir }}/"
