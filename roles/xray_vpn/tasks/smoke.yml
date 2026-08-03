@@ -1,5 +1,9 @@
 ---
-# Post-deploy smoke checks (non-fatal — warnings only).
+# Post-deploy smoke checks (non-fatal; warnings only).
+# These checks verify the pinned image, that the Xray TCP port is listening
+# locally, and that the Xray journal has no obvious errors. They do NOT
+# validate a REALITY handshake or WARP egress — confirm those with a real
+# client from outside the VPS.
 
 - name: Check Xray container is running with pinned image
   ansible.builtin.command:
@@ -29,7 +33,7 @@
   failed_when: false
   tags: smoke
 
-- name: Scan journal for Xray errors (non-fatal)
+- name: Scan Xray journal for error lines
   ansible.builtin.command:
     cmd: journalctl -u xray --no-pager -n 20
   register: xray_journal
