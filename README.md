@@ -1,270 +1,213 @@
-# Xray Reality VPN Server Provisioning
+**Version:** v0.2 · **Last updated:** 2026-08-12
 
-[English](README.md) | [Русский](README.ru.md)
-
-This is an Ansible setup for deploying an Xray VLESS + REALITY VPN server on a remote VPS.
-It generates client configs for Clash Verge / FlClash (Mihomo Meta YAML) and Amnezia VPN (JSON).
-Clash Verge and FlClash are the recommended daily drivers. Amnezia is a secondary option with known caveats.
-
-## Where it runs
-
-- Linux: through the bash wrapper, or directly with `ansible-playbook` (no client-config download that way).
-- Windows: PowerShell wrapper + WSL.
+[![English](https://img.shields.io/badge/English-808080?style=flat)](README.en.md)
+[![Русский](https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-00a693?style=flat)](README.md)
 
 ---
+# Xray Reality VPN Server — развёртывание
 
-## What this does
+> Личный VPN-сервер на своём VPS (облачном сервере) — в минимальном варианте достаточно передать в параметрах только IP и пароль root пользователя. Автоматическая настройка VLESS Xray Reality VPN + Cloudflare Warp outbound (опционально) через Ansible. Генерирует и загружает в директорию проекта готовые .json/.yaml конфиги для Amnezia / Clash Verge / FlClash — подключайтесь сразу. Благодаря персональному развёртыванию ваши данные в безопасности.
 
-- Provisions a fresh Ubuntu/Debian VPS with Xray-core VPN server, VLESS protocol, and REALITY transport (stealth mode).
-- Generates client configs and copies them to your local machine: Clash Meta YAML for Clash Verge / FlClash, JSON for Amnezia.
-- Cleans up the local temporary workspace after the run. In `--full-cleanup` mode it also removes the packages it installed. It does not touch the VPS after configuration.
+## Привет, это [Тим Корелов](https://github.com/lifestreamy)
 
-## Requirements
+Делюсь своим решением для развёртывания персонального VPN, который и вы сами можете свободно и бесплатно использовать (исключительно для защиты персональных данных, естественно, и согласно всем законам). Не забудьте посмотреть правила лицензии. 
 
-**Local machine:**
+Зачем я всё это сделал? Мой сервер — мои правила. Мне захотелось иметь свой личный VPN, где:
+- никто не слушает мой трафик и не логирует мои данные
+- не нужно покупать сервис у кого-то, кто может завтра упасть или поменять условия
+- я вижу своими глазами, что на моём сервере происходит и почему, а не доверяю на слово кому-то другому
+- я могу в любой момент обновить его компоненты и кастомизировать так, как захочу, например, добавить туннель, дополнительные сервисы
 
-Linux:
-- Ubuntu/Debian (or any distro with `apt`).
-- SSH access to the target VPS.
+Всё автоматизировал специально, чтобы можно было переиспользовать, и не настраивать руками каждый раз.
 
-Windows:
-- WSL2 with Ubuntu/Debian (pre-installed).
-- PowerShell 5.1+ (built-in on Windows 10/11).
+Остановился на Ansible — подробнее, почему, в блоке ниже.
 
-**VPS:**
-- Fresh Ubuntu 20.04+ or Debian 11+.
-- Root or sudo.
-- Public IP.
+<details>
+  <summary>Почему Ansible (подробности для технарей)</summary>
 
-The wrapper installs Python 3, Ansible, and `sshpass` on your local machine if they are missing. On Windows, only WSL is required.
+  Ansible — зрелый инструмент автоматизации. Он идемпотентен: повторный запуск не ломает состояние, приводит сервер к нужному виду. Он расширяемый — роли и плагины уже написаны и проверены, их не нужно писать заново. Он показывает, что именно меняется на каждом шаге, и ничего не трогает, пока не попросите. Он декларативен (но позволяет добавлять и императивные части). Вся логика уже написана: я только описываю желаемое состояние сервера через готовые модули.
 
-## Quick start
+  Ansible запускается на вашей машине (в WSL на Windows — внутри него) и по SSH выполняет команды на сервере. На VPS он не устанавливается.
 
-For the minimal case, you only need the VPS IP and password. Everything else is handled by the script.
+</details>
+
+Проект не просто протестирован разово — я (и множество других людей) пользуюсь им постоянно, так как делал его в первую очередь для себя и под себя. Если что-то ломается — оно ломается и у меня, поэтому я быстро вношу правки.
+
+Но если я что-то упустил, у вас что-то сломалось, не запускается изначально или есть пожелания — создайте новый issue.
+
+
+## Содержание
+
+- [Для кого это](#для-кого-это)
+- [Что делает](#что-делает)
+- [Быстрый старт](#быстрый-старт)
+- [Конфигурация](#конфигурация)
+- [Клиенты](#клиенты)
+- [Подробная документация](#подробная-документация)
+- [Лицензия](#лицензия)
+- [Автор и контакты](#автор-и-контакты)
+
+## Для кого это
+
+Для тех, кто хочет свой VPN и не готов полагаться на чужие сервисы. Не важно, разбираетесь вы в Ansible, Xray, VPN, серверах или нет — скрипт сделает всё сам. Если захотите копнуть глубже, технические детали — в раскрывающихся блоках и в [`docs/`](docs/GLOSSARY.md).
+
+## Что делает и в чём смысл
+
+- Поднимает VPN-сервер на вашем VPS за один запуск скрипта.
+- Ваши данные проходят только через ваш сервер в зашифрованном виде, никто кроме вас не читает и не логирует их. На своём сервере вы уверены, что трафик видите только вы. В публичном VPN-сервисе такой уверенности нет, особенно если вы пользуетесь „бесплатным" тарифом.
+- Вы не зависите от провайдера VPN: его аптайма, условий, цены, других ограничений. Не делите канал с другими пользователями.
+- Полная кастомизация — это ваш сервер, вы решаете, какие функции вам нужны и в каком виде.
+- Генерирует готовые конфиги для клиентов: Clash Verge / FlClash / Amnezia.
+
+```mermaid
+flowchart LR
+    A[Ваше устройство\n+ VPN-клиент\nClash Verge / FlClash / Amnezia] -->|VLESS + REALITY\nзамаскированный TLS| B[Ваш VPS\nXray-сервер]
+    B -->|напрямую\nесли WARP выключен| D[Внешний сайт\nто, что вы открываете]
+    B -->|через Cloudflare WARP\nесли включён| C[Cloudflare WARP\nсайт видит IP Cloudflare]
+    C --> D
+```
+
+Конечная цель — внешний сайт. Сайт видит IP вашего VPS (напрямую) или IP Cloudflare (через WARP).
+
+> 💡 В моих планах — собственный мультиплатформенный клиент с простым интерфейсом, чтобы развёртывание и управление были ещё проще. Полный список планов — в [docs/PLANNED.md](docs/PLANNED.md).
+
+<details>
+  <summary>Подробности для технарей</summary>
+
+  Реальный стек: Ansible-роль `roles/xray_vpn/`, шаблоны Jinja2,
+  Docker-образ `teddysun/xray:26.6.27`, персистентное состояние
+  `/root/xray-config/reality-state.json`. Транспорт — VLESS + REALITY
+  (модифицированный TLS 1.3, X25519). Опционально — исходящий туннель
+  через Cloudflare WARP.
+
+</details>
+
+## Преимущества подхода
+
+Xray VLESS + REALITY не требует своего домена и TLS-сертификата. Сервер маскируется под чужой легитимный сайт (`reality_camouflage_domain`, по умолчанию `dl.google.com`). Это снимает главный барьер для самостоятельной настройки VPN: не нужно покупать домен, получать и продлевать сертификат, настраивать DNS.
+
+Ядро сервера — [Xray-core](https://github.com/XTLS/Xray-core) в Docker-контейнере (`teddysun/xray:26.6.27`). Оно стабильно, проверено, на нём держится весь стек: VLESS + REALITY.
+
+От вас нужно три вещи: 
+- купить VPS (Ubuntu 20.04+ или Debian 11+) — могу подсказать проверенных провайдеров, буду признателен за регистрацию по моей реферальной ссылке
+- скачать файлы проекта 
+- запустить скрипт для вашей платформы — команды в разделе [«Быстрый старт»](#быстрый-старт) ниже. 
+
+> Получить файлы можно так: кнопка **Code → Download ZIP** на странице репозитория, либо архив исходников в разделе **Releases** (справа). Дальше скрипт сам установит Python 3, Ansible и `sshpass` на вашу локальную машину, развернёт Xray на VPS, сгенерирует клиентские конфиги и скачает их к вам. Знание Ansible, SSH или Xray не требуется. НО потребуется базовое умение пользоваться командной строкой для запуска скриптов с параметрами.
+
+WARP outbound через Cloudflare включается одной строкой (`warp_enabled: true` в `group_vars/all.yml`). С ним сайты видят IP Cloudflare вместо IP вашего VPS.
+
+Перед оплатой VPS на длительный срок проверьте его через [`carrox-vps-check`](https://github.com/AiCarrox/carrox-vps-check) или похожий инструмент. Подробности — в [`docs/TEST-VPS.md`](docs/TEST-VPS.md).
+
+## Где запускается
+
+- Linux: через bash-обёртку `provision-vpn.sh`, либо напрямую `ansible-playbook` (тогда клиентские конфиги не скачиваются автоматически).
+- Windows: PowerShell-обёртка `Provision-VPN.ps1` + WSL2.
+
+## Требования
+
+**VPS:** свежий Ubuntu 20.04+ или Debian 11+, root или sudo, публичный IP.
+
+**Локальная машина:**
+
+- Linux: Ubuntu/Debian (или любой дистрибутив с `apt`), SSH-доступ к VPS.
+- Windows: WSL2 с Ubuntu/Debian, PowerShell 5.1+.
+
+Обёртка сама доустанавливает Python 3, Ansible и `sshpass`, если их нет. На Windows нужен только WSL.
+
+## Быстрый старт
+
+Минимальный случай — только IP VPS. Пароль будет скрыто запрошен интерактивно.
+
+### Про конфигурацию
+
+Минимально достаточно IP и пароля — всё остальное настроится само. Если нужно что-то поменять (число клиентов, WARP, порт, домен маскировки), дополнительная конфигурация производится через такие файлы:
+
+- `inventory.yml` — подключение к VPS (создаётся из `inventory.yml.example`).
+- `group_vars/all.yml` — параметры сервера: `num_clients`, `warp_enabled`, `xray_port`, `reality_camouflage_domain` и другие.
+- `roles/xray_vpn/defaults/main.yml` — дефолты роли (обычно не трогаются).
+- `deploy.yml` — точка входа playbook.
+
+Подробнее про каждый файл — в [`docs/SETUP.md`](docs/SETUP.md), раздел «Файлы конфигурации».
 
 ### Linux / WSL (Bash)
 
-Full help: `./provision-vpn.sh -h`
+На Windows должен быть доступен WSL с созданным образом Ubuntu/Debian — как проверить и настроить, в [`docs/SETUP.md`](docs/SETUP.md). Если Ubuntu в WSL установлен, в меню «Пуск» будет видна иконка.
+
+Если вы уже на Linux, то вам вряд ли нужно объяснять, как пользоваться терминалом. На Windows — найдите в поиске (Win + S) powershell или terminal.
 
 ```bash
-# SSH key, password from the key file.
-./provision-vpn.sh -H 1.2.3.4 --pkey ~/.ssh/id_rsa
-
-# Only the host. Password will be prompted interactively with hidden input.
+# Только хост. Пароль спросит интерактивно (скрытый ввод).
 ./provision-vpn.sh -H 1.2.3.4
 
-# Inventory mode: pre-filled inventory.yml.
+# С SSH-ключом.
+./provision-vpn.sh -H 1.2.3.4 --pkey ~/.ssh/id_rsa
+
+# Режим inventory: используется предзаполненный inventory.yml.
 ./provision-vpn.sh --use-inventory
 ```
 
 ### Windows (PowerShell)
 
-Full help: `Get-Help .\Provision-VPN.ps1 -Full`
+Как открыть командную строку: Пуск → наберите «PowerShell» → Enter. Перейдите в папку проекта:
 
 ```powershell
-# SSH key (Windows path; the wrapper converts it to the WSL path).
-.\Provision-VPN.ps1 -HostName 1.2.3.4 -PKey C:\Users\You\.ssh\id_rsa
+cd C:\путь\к\проекту
+```
 
-# Only the host. Password will be prompted interactively with hidden input.
+(вместо `C:\путь\к\проекту` подставьте реальный путь, куда распаковали файлы)
+
+```powershell
+# Только хост. Пароль спросит интерактивно.
 .\Provision-VPN.ps1 -HostName 1.2.3.4
 
-# Inventory mode.
-.\Provision-VPN.ps1 -UseInventory
+# С SSH-ключом (Windows-путь; обёртка сама переведёт в WSL-путь).
+.\Provision-VPN.ps1 -HostName 1.2.3.4 -PKey C:\Users\You\.ssh\id_rsa
 ```
 
-## Configuration
+## Конфигурация
 
-### Option 1: CLI parameters
+Два способа:
+
+- **CLI-параметры** — `--pkey` или `--pass` (взаимоисключающие). Если ни один не задан — пароль спросит скрыто.
+- **Inventory-файл** — `inventory.yml` + `--use-inventory`.
+
+Для режима `--use-inventory` нужен файл `inventory.yml` в корне проекта. В репозитории лежит шаблон `inventory.yml.example` — скопируйте его и заполните своими данными:
 
 ```bash
-./provision-vpn.sh -H <VPS_IP> -u <SSH_USER> -p <SSH_PORT> --pkey <PATH_TO_KEY>
+cp inventory.yml.example inventory.yml
 ```
 
-Authentication: SSH key, password, or interactive password prompt (hidden). `--pkey` and `--pass` are mutually exclusive.
+Заполните `ansible_host`, `ansible_user`, `ansible_port` и один из двух: `ansible_ssh_private_key_file` или `ansible_ssh_pass`. Файл `inventory.yml` в `.gitignore` — личные данные в git не уйдут.
 
-### Option 2: Inventory file
+CLI-режим (`-H` без `--use-inventory`) файл `inventory.yml` не использует — скрипт сам соберёт нужный inventory во временной папке на время запуска.
 
-Edit `inventory.yml` and run with `--use-inventory`:
+Это — способы передать параметры подключения. Остальная конфигурация (число клиентов, WARP, порт, домен маскировки) задаётся в `group_vars/all.yml` и `roles/xray_vpn/defaults/main.yml` — подробнее в [`docs/SETUP.md`](docs/SETUP.md), раздел «Файлы конфигурации».
 
-```yaml
-all:
-  hosts:
-    your_host:
-      ansible_host: 1.2.3.4
-      ansible_user: root
-      ansible_port: 22
-      ansible_ssh_private_key_file: /path/to/key
-      # ansible_ssh_pass: (use only if you don't have an SSH key)
-```
+## Клиенты
 
-Leave only one of `ansible_ssh_private_key_file` or `ansible_ssh_pass`. Setting both is an error.
+Я пользуюсь Clash Verge (Windows) и FlClash (Android). Amnezia работает, но из-за нестабильности рекомендую Mihomo-клиенты. Честная таблица про то, что я проверил сам, а что нет — [`docs/CLIENT-STATUS.md`](docs/CLIENT-STATUS.md).
 
-In inventory mode the wrapper reads values from `inventory.yml` and ignores all CLI connection/auth parameters. On Windows, key paths in `inventory.yml` must already be valid from inside WSL (e.g. `/mnt/c/Users/You/.ssh/id_rsa`).
+## Подробная документация
 
-## Parameters
+- [`docs/SETUP.md`](docs/SETUP.md) — настройка, переменные `group_vars/all.yml`, WARP, проверка после развёртывания.
+- [`docs/ROTATION.md`](docs/ROTATION.md) — смена ключей и UUID клиентов.
+- [`docs/TEST-VPS.md`](docs/TEST-VPS.md) — проверка VPS перед оплатой.
+- [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — термины проекта.
+- [`docs/CLIENT-STATUS.md`](docs/CLIENT-STATUS.md) — статус клиентов.
+- [`docs/PLANNED.md`](docs/PLANNED.md) — что запланировано дальше.
 
-### Bash script
+## Лицензия
 
-| Flag | Description | Required |
-|------|-------------|----------|
-| `-H, --host` | VPS IP / hostname | Yes (CLI mode) |
-| `-u, --user` | SSH user | No (default: `root`) |
-| `-p, --port` | SSH port | No (default: `22`) |
-| `--pkey` | SSH private key path | No* |
-| `--pass` | SSH password | No* |
-| `--use-inventory` | Use `inventory.yml` instead of CLI arguments | No |
-| `--clients-dir` | Local directory for downloaded client configs | No |
-| `--cleanup` | Remove the temporary workspace (default) | No |
-| `--full-cleanup` | Remove workspace + packages the script installed | No |
-| `--no-cleanup` | Keep the workspace for debugging | No |
-| `--debug` | Ansible `-vvv` + `xray_debug=true` | No |
-| `--verbose` | Ansible `-vvvv` + `xray_debug=true` | No |
-| `--dry-run` | Simulate the run inside WSL, no changes | No |
+AGPL-3.0 с дополнительным ограничением коммерческого использования.
 
-\* `--pkey` and `--pass` are mutually exclusive. If neither is given, the script prompts for a hidden password.
+Свободно для личного использования и некоммерческого распространения. Коммерческое использование — только с моего письменного разрешения: **tim.korelov@yandex.com**.
 
-### PowerShell script
+Полный текст — в [`LICENSE`](LICENSE) (English). Краткое описание на русском — в [`LICENSE.ru.md`](LICENSE.ru.md).
 
-The same flags with PowerShell naming plus two extras:
+## Автор и контакты
 
-- `-HostName` instead of `--host`
-- `-PKey` instead of `--pkey`
-- `-Pass` instead of `--pass`
-- `-UseInventory` instead of `--use-inventory`
-- `-ClientsDir` instead of `--clients-dir`
-- `-CleanupMode` (`Default`, `Full`, `None`)
-- `-LogLevel` (`None`, `Default`, `Verbose`)
-- `-DryRun` — runs the bash script with `--dry-run` inside WSL. No system changes.
+Tim Korelov — https://github.com/lifestreamy
 
-`-PKey` accepts an OpenSSH-format key readable from WSL. PuTTY `.ppk` files are not supported.
-
-## Output
-
-Local machine:
-- Linux: `./downloaded-clients/*.json` and `./downloaded-clients/*.yaml`
-- Windows: `.\downloaded-clients\*.json` and `.\downloaded-clients\*.yaml`
-
-VPS:
-- `/root/vpn-configs/*.json` (Amnezia) and `/root/vpn-configs/*.yaml` (Clash Verge / FlClash)
-
-Recommended client: import `clash_client_*.yaml` into Clash Verge (Windows/macOS/Linux, TUN mode) or FlClash (Android).
-
-Secondary, with caveats: Amnezia `client_*.json` exists but has known stability issues — Windows split-tunnel can crash the network stack, Android keepalive / background connectivity is unreliable. Use Clash Verge or FlClash unless you specifically need Amnezia.
-
-References:
-- Clash Verge: https://github.com/clash-verge-rev/clash-verge-rev
-- FlClash: https://github.com/chen08209/FlClash
-- Amnezia: https://github.com/amnezia-vpn/amnezia-client
-
-## Advanced configuration
-
-Edit `group_vars/all.yml` for granular control:
-
-```yaml
-num_clients: 3                        # Number of VPN profiles to generate
-reality_camouflage_domain: dl.google.com  # Domain for REALITY transport obfuscation
-warp_enabled: true                    # Enable Cloudflare WARP outbound
-```
-
-- `num_clients`: how many client configs to generate. Each gets a unique UUID. Increasing the value adds UUIDs to the persistent state; decreasing only hides the extras from generated configs.
-- `reality_camouflage_domain`: legitimate domain that REALITY redirects suspicious connections to, making VPN traffic look like normal HTTPS.
-- `warp_enabled`: enable the Cloudflare WARP outbound. WARP toggle is config-only — there is no CLI flag for it.
-
-## Pinned image and WARP IPv4
-
-The Xray Docker image is pinned to `teddysun/xray:26.6.27` (known-good). `:latest` is intentionally not used in production — an auto-update to 26.7.11 broke VLESS+REALITY compatibility in July 2026. To upgrade deliberately, change `xray_docker_image` in `group_vars/all.yml` (tag or digest `sha256:…`), test, then deploy.
-
-The WARP outbound (`warp_ipv6: false`) defaults to IPv4-only for compatibility with VPS that have no IPv6 route. The WireGuard interface uses only IPv4 in that mode. `warp_endpoint: "162.159.192.1:2408"` is the Cloudflare WARP IPv4 anycast (stable name `engage.cloudflareclient.com:2408`). Override in `group_vars/all.yml` if needed.
-
-`warp_enabled: true` requires `wgcf` 2.2.22, which the role downloads automatically. The persistent WARP credentials are `wgcf-account.toml` and `wgcf-profile.conf` under `/root/xray-config/`.
-
-## Persistent identity
-
-REALITY keys, short ID, and client UUIDs are persisted in `/root/xray-config/reality-state.json` (mode `0600`). Normal reruns keep the existing identity — client configs stay stable.
-
-To rotate credentials, set `xray_reality_rotate: true` in `group_vars/all.yml` (or pass `-e xray_reality_rotate=true`). The old state is backed up with a timestamp, then a fresh identity is generated. Set the toggle back to `false` after the run. See [docs/SECRET_ROTATION.md](docs/SECRET_ROTATION.md) for the full runbook.
-
-## Security
-
-- Sensitive files (`config.json`, `reality-state.json`, WARP profiles) use mode `0600` (root-only).
-- Client configs in `/root/vpn-configs/` use mode `0640`.
-- Real private keys and client UUIDs are stored only in `/root/xray-config/reality-state.json` — never in client configs.
-- `--debug` and `--verbose` print extra diagnostic messages that include the `private_key` and `client_uuids` from `reality-state.json`. Use them deliberately and do not forward such logs.
-
-## Post-deploy checks
-
-After the run, the role runs a small set of non-fatal checks: the container uses the pinned image, the Xray TCP port is listening locally, and the Xray journal has no obvious errors. These checks do not validate a REALITY handshake or WARP egress. Confirm those with a real client from outside the VPS.
-
-Secret rotation is documented in [docs/SECRET_ROTATION.md](docs/SECRET_ROTATION.md).
-
-## More examples
-
-```bash
-# Custom SSH port and output directory.
-./provision-vpn.sh -H vps.example.com -p 2222 \
-  --pkey ~/.ssh/id_rsa --clients-dir ~/vpn-configs
-
-# Dry run: script runs inside WSL with --dry-run, no system changes.
-./provision-vpn.sh -H 1.2.3.4 --pkey ~/.ssh/id_rsa --dry-run
-
-# Full cleanup: remove the workspace and packages the script installed.
-./provision-vpn.sh -H 1.2.3.4 --pkey ~/.ssh/id_rsa --full-cleanup
-```
-
-## Windows and WSL notes
-
-- WSL2 with Ubuntu/Debian is required. The wrapper invokes the bash script through WSL.
-- `-PKey` accepts an OpenSSH private key. Pass the Windows path; the wrapper converts it to `/mnt/<drive>/...` for WSL. PuTTY `.ppk` files are not supported.
-- In inventory mode, the wrapper passes only `--use-inventory` to the bash script. The key path in `inventory.yml` must be a path that WSL can read. For Windows-stored keys, use `/mnt/c/...`.
-- The default `--clients-dir` becomes `.\downloaded-clients\` next to the script. The wrapper creates it automatically.
-- `-Pass` is never logged, even in `-LogLevel Verbose` or `-DryRun` output.
-
-## Troubleshooting
-
-**"Command not found: ansible"**
-The script auto-installs it. If that fails:
-```bash
-sudo apt-get update && sudo apt-get install -y ansible
-```
-
-**"Permission denied (publickey)"**
-Check the key permissions on the host you pass to the wrapper:
-```bash
-chmod 600 ~/.ssh/id_rsa
-```
-Test manually: `ssh -i ~/.ssh/id_rsa user@host`.
-
-**"inventory.yml missing required fields"**
-Fill all required fields in `inventory.yml` before running `--use-inventory`, or use CLI mode with `-H`, `--pkey`/`--pass`.
-
-**Line endings (LF vs CRLF)**
-Scripts enforce LF via `.gitattributes`. If you still see issues: `dos2unix provision-vpn.sh`, re-clone the repo, or open a GitHub issue.
-
-## Contributing
-
-Contributions are welcome. Use conventional commits. Test with `--dry-run` and a real run on your own VPS, including verifying the connection through a real client.
-
-## Issues
-
-Bug? Open an issue with:
-- Your setup (Linux/Windows, bash/PowerShell version).
-- Expected vs actual behavior.
-- Steps to reproduce.
-- Relevant logs.
-
-Suggestion? Open an issue with:
-- How you currently use the project.
-- What you'd like to add.
-- Whether you can test it yourself.
-
-## License
-
-AGPL-3.0 with a Commercial Use Restriction.
-Free for personal use and non-commercial distribution.
-Commercial use requires prior written permission from the author: **tim.korelov@yandex.com**.
-Full text: [LICENSE](LICENSE) (English). Summary in Russian: [LICENSE.ru.md](LICENSE.ru.md).
-
-## Author
-
-Tim Korelov
-https://github.com/lifestreamy
+Почта: **tim.korelov@yandex.com**
+Telegram: **@timkore** (рабочий) — по вопросам этого проекта, с предложениями поработать вместе, приглашениями и т. п.

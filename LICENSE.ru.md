@@ -25,7 +25,7 @@
 
 ## Если ты просто хочешь развернуть VPN для себя
 
-Смело используй. Читай [README.md](README.md) / [README.ru.md](README.ru.md), запускай `provision-vpn.sh` или `Provision-VPN.ps1`, всё под лицензией разрешено.
+Смело используй. Читай [README.md](README.md) / [README.en.md](README.en.md), запускай `provision-vpn.sh` или `Provision-VPN.ps1`, всё под лицензией разрешено.
 
 ## Полный текст
 
