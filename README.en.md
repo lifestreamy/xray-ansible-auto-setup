@@ -1,4 +1,4 @@
-**Version:** v0.2 · **Last updated:** 2026-08-12
+**Version:** v0.2 · **Last updated:** 2026-08-20
 
 [![Русский](https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-808080?style=flat)](README.md)
 [![English](https://img.shields.io/badge/English-00a693?style=flat)](README.en.md)
@@ -9,9 +9,27 @@
 
 > A personal VPN server on your own VPS (cloud server) — the minimal case needs only the IP and root password passed as parameters. Automated setup of VLESS Xray Reality VPN + Cloudflare WARP outbound (optional) via Ansible. Generates and downloads ready .json/.yaml configs for Amnezia / Clash Verge / FlClash into the project directory — connect right away. With personal deployment, your data is safe.
 
-## Hi, I'm [Tim Korelov](https://github.com/lifestreamy)
+## Table of contents
 
-I'm sharing my solution for deploying a personal VPN that you can use freely and free of charge (solely to protect your personal data, naturally, and in accordance with all laws). Don't forget to check the license terms.
+- [Hi](#hi)
+- [Quick start](#quick-start)
+- [Who this is for](#who-this-is-for)
+- [What it does](#what-it-does)
+- [Why this approach](#why-this-approach)
+- [Where it runs](#where-it-runs)
+- [Requirements](#requirements)
+- [Configuration](#configuration)
+- [Clients](#clients)
+- [Detailed documentation](#detailed-documentation)
+- [License](#license)
+- [Author and contacts](#author-and-contacts)
+
+## Hi!
+
+Hi, I'm [Tim Korelov](https://github.com/lifestreamy). Here is my solution for deploying a personal VPN that you can use freely and free of charge (solely to protect your personal data, naturally, and in accordance with all laws). Don't forget to check the license terms.
+
+> [!TIP]
+> Want to jump straight in? — [Quick start](#quick-start).
 
 Why did I build this? My server, my rules. I wanted a personal VPN where:
 - nobody listens to my traffic or logs my data
@@ -36,84 +54,7 @@ This project isn't a one-time test — I (and many other people) use it constant
 
 But if I missed something, something broke for you, it doesn't start at all, or you have suggestions — create a new issue.
 
-## Table of contents
 
-- [Who this is for](#who-this-is-for)
-- [What it does](#what-it-does)
-- [Quick start](#quick-start)
-- [Configuration](#configuration)
-- [Clients](#clients)
-- [Detailed documentation](#detailed-documentation)
-- [License](#license)
-- [Author and contacts](#author-and-contacts)
-
-## Who this is for
-
-For those who want their own VPN and don't want to rely on third-party services. It doesn't matter whether you know Ansible, Xray, VPN or servers — the script does everything. If you want to dig deeper, technical details are in collapsible blocks and in [`docs/`](docs/GLOSSARY.en.md).
-
-## What it does
-
-- Sets up a VPN server on your VPS with a single script run.
-- Your data goes only through your server, encrypted — nobody but you reads or logs it. On your own server you're sure only you see the traffic. With a public VPN service there's no such certainty, especially on a „free" tier.
-- You're not tied to a VPN provider: not its uptime, terms, price or other limits. No shared channel with other users.
-- Full customization — it's your server, you decide which features you need and in what form.
-- Generates ready client configs: Clash Verge / FlClash / Amnezia.
-
-```mermaid
-flowchart LR
-    A[Your device\n+ VPN client\nClash Verge / FlClash / Amnezia] -->|VLESS + REALITY\nmasked TLS| B[Your VPS\nXray server]
-    B -->|direct\nif WARP is off| D[External website\nwhat you open]
-    B -->|via Cloudflare WARP\nif enabled| C[Cloudflare WARP\nsites see Cloudflare IP]
-    C --> D
-```
-
-The end goal is the external website. It sees your VPS IP (direct) or Cloudflare IP (via WARP).
-
-> 💡 I'm planning my own cross-platform client with a simple interface to make deployment and management even easier. The full list of plans is in [docs/PLANNED.en.md](docs/PLANNED.en.md).
-
-<details>
-  <summary>Tech stack details</summary>
-
-  Real stack: Ansible role `roles/xray_vpn/`, Jinja2 templates,
-  Docker image `teddysun/xray:26.6.27`, persistent state
-  `/root/xray-config/reality-state.json`. Transport — VLESS + REALITY
-  (modified TLS 1.3, X25519). Optionally — outgoing tunnel through
-  Cloudflare WARP.
-
-</details>
-
-## Why this approach
-
-Xray VLESS + REALITY needs no domain of your own or a TLS certificate. The server masks itself as a legitimate third-party site (`reality_camouflage_domain`, default `dl.google.com`). This removes the main barrier to setting up a VPN yourself: no domain purchase, no certificate issuance and renewal, no DNS setup.
-
-The server core is [Xray-core](https://github.com/XTLS/Xray-core) in a Docker container (`teddysun/xray:26.6.27`). It's stable and proven — the whole stack (VLESS + REALITY) runs on it.
-
-Three things are needed from you:
-- buy a VPS (Ubuntu 20.04+ or Debian 11+) — I can point you to trusted providers, and I'd appreciate registration via my referral link
-- download the project files
-- run the script for your platform — commands are in the [Quick start](#quick-start) section below.
-
-> To get the files: the **Code → Download ZIP** button on the repository page, or the source archive in the **Releases** section (on the right). Then the script installs Python 3, Ansible and `sshpass` on your local machine, deploys Xray on the VPS, generates client configs and downloads them to you. No Ansible, SSH or Xray knowledge required. BUT basic command-line skills are needed to run scripts with parameters.
-
-WARP outbound via Cloudflare is enabled with one line (`warp_enabled: true` in `group_vars/all.yml`). With it, sites see Cloudflare IP instead of your VPS IP.
-
-Before paying for a VPS long-term, check it with [`carrox-vps-check`](https://github.com/AiCarrox/carrox-vps-check) or a similar tool. Details — in [`docs/TEST-VPS.en.md`](docs/TEST-VPS.en.md).
-
-## Where it runs
-
-- Linux: via the `provision-vpn.sh` bash wrapper, or directly with `ansible-playbook` (then client configs are not downloaded automatically).
-- Windows: the `Provision-VPN.ps1` PowerShell wrapper + WSL2.
-
-## Requirements
-
-**VPS:** fresh Ubuntu 20.04+ or Debian 11+, root or sudo, public IP.
-
-**Local machine:**
-
-- Linux: Ubuntu/Debian (or any distro with `apt`), SSH access to the VPS.
-- Windows: WSL2 with Ubuntu/Debian, PowerShell 5.1+.
-
-The wrapper installs Python 3, Ansible and `sshpass` if they're missing. On Windows only WSL is needed.
 
 ## Quick start
 
@@ -165,6 +106,74 @@ cd C:\path\to\project
 .\Provision-VPN.ps1 -HostName 1.2.3.4 -PKey C:\Users\You\.ssh\id_rsa
 ```
 
+## Who this is for
+
+For those who want their own VPN and don't want to rely on third-party services. It doesn't matter whether you know Ansible, Xray, VPN or servers — the script does everything. If you want to dig deeper, technical details are in collapsible blocks and in [`docs/`](docs/GLOSSARY.en.md).
+
+## What it does
+
+- Sets up a VPN server on your VPS with a single script run.
+- Your data goes only through your server, encrypted — nobody but you reads or logs it. On your own server you're sure only you see the traffic. With a public VPN service there's no such certainty, especially on a „free" tier.
+- You're not tied to a VPN provider: not its uptime, terms, price or other limits. No shared channel with other users.
+- Full customization — it's your server, you decide which features you need and in what form.
+- Generates ready client configs: Clash Verge / FlClash / Amnezia.
+
+```mermaid
+flowchart LR
+    A[Your device\n+ VPN client\nClash Verge / FlClash / Amnezia] -->|VLESS + REALITY\nmasked TLS| B[Your VPS\nXray server]
+    B -->|direct\nif WARP is off| D[External website\nwhat you open]
+    B -->|via Cloudflare WARP\nif enabled| C[Cloudflare WARP\nsites see Cloudflare IP]
+    C --> D
+```
+
+The end goal is the external website. It sees your VPS IP (direct) or Cloudflare IP (via WARP).
+
+> 💡 I'm planning my own cross-platform client with a simple interface to make deployment and management even easier. The full list of plans is in [docs/PLANNED.en.md](docs/PLANNED.en.md).
+
+<details>
+  <summary>Tech stack details</summary>
+
+  Real stack: Ansible role `roles/xray_vpn/`, Jinja2 templates,
+  Docker image `teddysun/xray:26.6.27`, persistent state
+  `/root/xray-config/reality-state.json`. Transport — VLESS + REALITY
+  (modified TLS 1.3, X25519). Optionally — outgoing tunnel through
+  Cloudflare WARP.
+
+</details>
+
+## Why this approach
+
+Xray VLESS + REALITY needs no domain of your own or a TLS certificate. The server masks itself as a legitimate third-party site (`reality_camouflage_domain`, default `dl.google.com`). This removes the main barrier to setting up a VPN yourself: no domain purchase, no certificate issuance and renewal, no DNS setup.
+
+The server core is [Xray-core](https://github.com/XTLS/Xray-core) in a Docker container (`teddysun/xray:26.6.27`). It's stable and proven — the whole stack (VLESS + REALITY) runs on it.
+
+Three things are needed from you:
+- buy a VPS (Ubuntu 20.04+ or Debian 11+) — I can point you to trusted providers, and I'd appreciate registration via my referral link
+- download the project files
+- run the script for your platform — commands are in the [Quick start](#quick-start) section above.
+
+> To get the files: the **Code → Download ZIP** button on the repository page, or the source archive in the **Releases** section (on the right). Then the script installs Python 3, Ansible and `sshpass` on your local machine, deploys Xray on the VPS, generates client configs and downloads them to you. No Ansible, SSH or Xray knowledge required. BUT basic command-line skills are needed to run scripts with parameters.
+
+WARP outbound via Cloudflare is enabled with one line (`warp_enabled: true` in `group_vars/all.yml`). With it, sites see Cloudflare IP instead of your VPS IP.
+
+Before paying for a VPS long-term, check it with [`carrox-vps-check`](https://github.com/AiCarrox/carrox-vps-check) or a similar tool. Details — in [`docs/TEST-VPS.en.md`](docs/TEST-VPS.en.md).
+
+## Where it runs
+
+- Linux: via the `provision-vpn.sh` bash wrapper, or directly with `ansible-playbook` (then client configs are not downloaded automatically).
+- Windows: the `Provision-VPN.ps1` PowerShell wrapper + WSL2.
+
+## Requirements
+
+**VPS:** fresh Ubuntu 20.04+ or Debian 11+, root or sudo, public IP.
+
+**Local machine:**
+
+- Linux: Ubuntu/Debian (or any distro with `apt`), SSH access to the VPS.
+- Windows: WSL2 with Ubuntu/Debian, PowerShell 5.1+.
+
+The wrapper installs Python 3, Ansible and `sshpass` if they're missing. On Windows only WSL is needed.
+
 ## Configuration
 
 Two ways:
@@ -186,7 +195,7 @@ These are ways to pass connection parameters. The rest of the configuration (num
 
 ## Clients
 
-I use Clash Verge (Windows) and FlClash (Android). Amnezia works, but because of instability I recommend Mihomo clients. An honest table of what I tested myself and what I didn't — [`docs/CLIENT-STATUS.en.md`](docs/CLIENT-STATUS.en.md).
+I use Clash Verge (Windows) and FlClash (Android). Amnezia works, but because of instability I recommend Mihomo clients. A table of what I tested myself and what I didn't — [`docs/CLIENT-STATUS.en.md`](docs/CLIENT-STATUS.en.md).
 
 ## Detailed documentation
 
