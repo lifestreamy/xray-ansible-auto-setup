@@ -34,8 +34,8 @@ Three scenarios:
 
 | Component | Where it lives / action | Effect |
 |---|---|---|
-| Changing `xray_reality_rotate` | `group_vars/all.yml` or `-e ...` | Full rotation of REALITY keys, short ID and client UUIDs. |
-| Changing `num_clients` | `group_vars/all.yml` | How many client configs to generate. Without `xray_reality_rotate: true` it acts as add/reduce. |
+| Changing `xray_reality_rotate` | `config/settings.yml` or `-e ...` | Full rotation of REALITY keys, short ID and client UUIDs. |
+| Changing `num_clients` | `config/settings.yml` | How many client configs to generate. Without `xray_reality_rotate: true` it acts as add/reduce. |
 | WARP rotation | `/root/xray-config/wgcf-account.toml`, `/root/xray-config/wgcf-profile.conf` — delete manually, then re-run | Rotates WARP credentials (if enabled). Independent of `xray_reality_rotate`. Details in §4. |
 
 ## 2. Rotating the REALITY identity
@@ -48,7 +48,7 @@ The role has one switch:
 xray_reality_rotate: true
 ```
 
-Pass it via `group_vars/all.yml` for a one-off run, or via `-e xray_reality_rotate=true` on the command line:
+Pass it via `config/settings.yml` for a one-off run, or via `-e xray_reality_rotate=true` on the command line:
 
 ```bash
 ansible-playbook -i inventory.yml deploy.yml -e xray_reality_rotate=true
@@ -101,7 +101,7 @@ ls -la /root/xray-config/reality-state.json*   # the backup and the new file sho
 
 - New client configs will be downloaded locally to the project folder from which you ran the script — `/downloaded-clients/` — and saved to `/root/vpn-configs/` on the VPS.
 - Load the new configs into your VPN clients: Clash Verge / FlClash / Amnezia.
-- Set `xray_reality_rotate` back to `false` in `group_vars/all.yml` if you want to keep the identity on the next runs.
+- Set `xray_reality_rotate` back to `false` in `config/settings.yml` if you want to keep the identity on the next runs.
 
 ## 4. Rotating WARP credentials
 
@@ -154,7 +154,7 @@ The role creates a timestamped backup before rotation. Typical recovery:
    chown root:root /root/xray-config/reality-state.json
    chmod 0600 /root/xray-config/reality-state.json
    ```
-4. Make sure `xray_reality_rotate: false` is set in `group_vars/all.yml`.
+4. Make sure `xray_reality_rotate: false` is set in `config/settings.yml`.
 5. Re-run the playbook. The role will pick up the restored state and regenerate `config.json` and the client configs to match it.
 
 Keep the latest backup until you've verified the new rotation end to end.

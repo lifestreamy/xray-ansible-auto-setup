@@ -15,11 +15,10 @@ The full glossary is in [`docs/GLOSSARY.en.md`](GLOSSARY.en.md).
 | File | What it configures | How it affects |
 |---|---|---|
 | `inventory.yml` (created from `inventory.yml.example`) | VPS connection: host, user, port, key or password | Only for `--use-inventory`; CLI mode builds its own inventory |
-| `group_vars/all.yml` | All server parameters: `num_clients`, `reality_camouflage_domain`, `warp_enabled`, `xray_port`, `xray_docker_image` and others | Read on every Ansible playbook run |
-| `roles/xray_vpn/defaults/main.yml` | Role defaults — safe fallback values | Overridden by `group_vars/all.yml`; change only if you know why |
+| `config/settings.yml` | All server parameters: `num_clients`, `reality_camouflage_domain`, `warp_enabled`, `xray_port`, `xray_docker_image` and others | Read on every Ansible playbook run via `vars_files` |
 | `deploy.yml` | The playbook entry point | Usually left alone |
 
-Which parameters can be passed as CLI flags — only connection parameters (`-H`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`, cleanup and verbosity). The rest of the configuration goes through `group_vars/all.yml`. The "CLI flags for all parameters" item — in [`docs/PLANNED.en.md`](PLANNED.en.md), planned after 0.3.
+Which parameters can be passed as CLI flags — only connection parameters (`-H`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`, cleanup and verbosity). The rest of the configuration goes through `config/settings.yml`. The "CLI flags for all parameters" item — in [`docs/PLANNED.en.md`](PLANNED.en.md), planned after 0.3.
 
 ## About the project
 
@@ -47,7 +46,7 @@ Windows:
 
 Before paying for a VPS long-term, check it with `carrox-vps-check` or `ipcheck-plus`. Details — in [`docs/TEST-VPS.en.md`](TEST-VPS.en.md).
 
-## `group_vars/all.yml` variables
+## `config/settings.yml` variables
 
 <details>
   <summary>All variables (for techies)</summary>
@@ -77,7 +76,7 @@ Before paying for a VPS long-term, check it with `carrox-vps-check` or `ipcheck-
 
 **IPv4-only by default.** The `warp_ipv6: false` parameter excludes the IPv6 address from the WireGuard interface. This is for compatibility with VPSes without an IPv6 route. In this mode `allowedIPs` and `domainStrategy` remain, but the actual tunnel goes over IPv4 only. If you have working IPv6, switch to `true`.
 
-**Endpoint.** Default `162.159.192.1:2408` — the Cloudflare WARP IPv4 anycast. The stable name is `engage.cloudflareclient.com:2408`. Override in `group_vars/all.yml` if needed.
+**Endpoint.** Default `162.159.192.1:2408` — the Cloudflare WARP IPv4 anycast. The stable name is `engage.cloudflareclient.com:2408`. Override in `config/settings.yml` if needed.
 
 **Requirements.** `wgcf` 2.2.22. The role downloads the binary itself when `warp_enabled: true`. Persistent credentials are `wgcf-account.toml` and `wgcf-profile.conf` in `/root/xray-config/`.
 
@@ -118,7 +117,7 @@ The role's built-in checks cover only the pinned image, the listening port and o
 
 ## Adding more clients without rotation
 
-To add a new client config without touching existing keys — increase `num_clients` in `group_vars/all.yml` and run the playbook. New UUIDs will be added to `reality-state.json`, new configs will appear in `/root/vpn-configs/` on the VPS and in `./downloaded-clients/` locally. Existing clients keep working.
+To add a new client config without touching existing keys — increase `num_clients` in `config/settings.yml` and run the playbook. New UUIDs will be added to `reality-state.json`, new configs will appear in `/root/vpn-configs/` on the VPS and in `./downloaded-clients/` locally. Existing clients keep working.
 
 ## License
 

@@ -12,7 +12,7 @@
 
 ## Переключатель `xray_reality_rotate`
 
-Параметр в `group_vars/all.yml` или флаг `-e xray_reality_rotate=true` в командной строке. Заставляет Ansible-роль пересоздать ключи, short ID и UUID клиентов.
+Параметр в `config/settings.yml` или флаг `-e xray_reality_rotate=true` в командной строке. Заставляет Ansible-роль пересоздать ключи, short ID и UUID клиентов.
 
 ## REALITY
 
@@ -40,7 +40,7 @@
 
 ## WARP
 
-Дополнительный исходящий туннель через Cloudflare. Скрывает IP вашего VPS от посещаемых сайтов — вместо IP VPS они видят IP Cloudflare WARP. Опционален. Включается в `group_vars/all.yml` через `warp_enabled: true`.
+Дополнительный исходящий туннель через Cloudflare. Скрывает IP вашего VPS от посещаемых сайтов — вместо IP VPS они видят IP Cloudflare WARP. Опционален. Включается в `config/settings.yml` через `warp_enabled: true`.
 
 Учётные данные WARP — `wgcf-account.toml` и `wgcf-profile.conf` в `/root/xray-config/`. Они ротируются отдельно от REALITY (через удаление файлов и rerun playbook).
 
@@ -66,4 +66,4 @@ Ansible — инструмент для управления конфигура�
 
 ---
 
-Все параметры `group_vars/all.yml` описаны в `docs/SETUP.md`.
+Все параметры `config/settings.yml` описаны в `docs/SETUP.md`.

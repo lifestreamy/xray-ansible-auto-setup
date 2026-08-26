@@ -12,7 +12,7 @@ Replacing credentials with new ones. After rotation, old client configs stop con
 
 ## The `xray_reality_rotate` switch
 
-A parameter in `group_vars/all.yml` or the `-e xray_reality_rotate=true` command-line flag. Makes the Ansible role regenerate keys, short IDs and client UUIDs.
+A parameter in `config/settings.yml` or the `-e xray_reality_rotate=true` command-line flag. Makes the Ansible role regenerate keys, short IDs and client UUIDs.
 
 ## REALITY
 
@@ -40,7 +40,7 @@ How many client configs to generate. Increasing adds new UUIDs to `reality-state
 
 ## WARP
 
-An extra outgoing tunnel through Cloudflare. Hides your VPS IP from visited sites — instead of your VPS IP they see the Cloudflare WARP IP. Optional. Enabled in `group_vars/all.yml` via `warp_enabled: true`.
+An extra outgoing tunnel through Cloudflare. Hides your VPS IP from visited sites — instead of your VPS IP they see the Cloudflare WARP IP. Optional. Enabled in `config/settings.yml` via `warp_enabled: true`.
 
 WARP credentials are `wgcf-account.toml` and `wgcf-profile.conf` in `/root/xray-config/`. They rotate separately from REALITY (by deleting the files and re-running the playbook).
 
@@ -66,4 +66,4 @@ Ansible is a configuration management tool. The project role (`roles/xray_vpn/`)
 
 ---
 
-All `group_vars/all.yml` parameters are described in `docs/SETUP.en.md`.
+All `config/settings.yml` parameters are described in `docs/SETUP.en.md`.

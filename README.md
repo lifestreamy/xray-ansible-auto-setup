@@ -65,8 +65,7 @@
 Минимально достаточно IP и пароля — всё остальное настроится само. Если нужно что-то поменять (число клиентов, WARP, порт, домен маскировки), дополнительная конфигурация производится через такие файлы:
 
 - `inventory.yml` — подключение к VPS (создаётся из `inventory.yml.example`).
-- `group_vars/all.yml` — параметры сервера: `num_clients`, `warp_enabled`, `xray_port`, `reality_camouflage_domain` и другие.
-- `roles/xray_vpn/defaults/main.yml` — дефолты роли (обычно не трогаются).
+- `config/settings.yml` — параметры сервера: `num_clients`, `warp_enabled`, `xray_port`, `reality_camouflage_domain` и другие.
 - `deploy.yml` — точка входа playbook.
 
 Подробнее про каждый файл — в [`docs/SETUP.md`](docs/SETUP.md), раздел «Файлы конфигурации».
@@ -154,7 +153,7 @@ Xray VLESS + REALITY не требует своего домена и TLS-сер
 
 > Получить файлы можно так: кнопка **Code → Download ZIP** на странице репозитория, либо архив исходников в разделе **Releases** (справа). Дальше скрипт сам установит Python 3, Ansible и `sshpass` на вашу локальную машину, развернёт Xray на VPS, сгенерирует клиентские конфиги и скачает их к вам. Знание Ansible, SSH или Xray не требуется. НО потребуется базовое умение пользоваться командной строкой для запуска скриптов с параметрами.
 
-WARP outbound через Cloudflare включается одной строкой (`warp_enabled: true` в `group_vars/all.yml`). С ним сайты видят IP Cloudflare вместо IP вашего VPS.
+WARP outbound через Cloudflare включается одной строкой (`warp_enabled: true` в `config/settings.yml`). С ним сайты видят IP Cloudflare вместо IP вашего VPS.
 
 Перед оплатой VPS на длительный срок проверьте его через [`carrox-vps-check`](https://github.com/AiCarrox/carrox-vps-check) или похожий инструмент. Подробности — в [`docs/TEST-VPS.md`](docs/TEST-VPS.md).
 
@@ -191,7 +190,7 @@ cp inventory.yml.example inventory.yml
 
 CLI-режим (`-H` без `--use-inventory`) файл `inventory.yml` не использует — скрипт сам соберёт нужный inventory во временной папке на время запуска.
 
-Это — способы передать параметры подключения. Остальная конфигурация (число клиентов, WARP, порт, домен маскировки) задаётся в `group_vars/all.yml` и `roles/xray_vpn/defaults/main.yml` — подробнее в [`docs/SETUP.md`](docs/SETUP.md), раздел «Файлы конфигурации».
+Это — способы передать параметры подключения. Остальная конфигурация (число клиентов, WARP, порт, домен маскировки) задаётся в `config/settings.yml` — подробнее в [`docs/SETUP.md`](docs/SETUP.md), раздел «Файлы конфигурации».
 
 ## Клиенты
 
@@ -199,7 +198,7 @@ CLI-режим (`-H` без `--use-inventory`) файл `inventory.yml` не и�
 
 ## Подробная документация
 
-- [`docs/SETUP.md`](docs/SETUP.md) — настройка, переменные `group_vars/all.yml`, WARP, проверка после развёртывания.
+- [`docs/SETUP.md`](docs/SETUP.md) — настройка, переменные `config/settings.yml`, WARP, проверка после развёртывания.
 - [`docs/ROTATION.md`](docs/ROTATION.md) — смена ключей и UUID клиентов.
 - [`docs/TEST-VPS.md`](docs/TEST-VPS.md) — проверка VPS перед оплатой.
 - [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — термины проекта.

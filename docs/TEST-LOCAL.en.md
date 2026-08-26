@@ -137,7 +137,7 @@ ICMP is not tunnelled through Xray, so `ping` does not work here. Use TCP instea
 
 When all 7 checks are green, the manual end-to-end test passes.
 
-Record the result in this file (or in the project `HISTORY.md`):
+Record the result in this file (or in the project history):
 
 ```
 - 2026-08-21 — end-to-end test passed (molecule + mihomo, WSL2, Ubuntu 22.04).

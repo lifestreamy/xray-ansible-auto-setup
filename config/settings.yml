@@ -1,21 +1,40 @@
-num_clients: 3  # Number of client configs to generate; each gets its own UUID.
-reality_camouflage_domain: dl.google.com  # REALITY camouflage/SNI domain used for probe redirection (active censorship protection)) 
+---
+# Single source of truth for xray_vpn role variables.
+# Loaded via `vars_files: - config/settings.yml` in deploy.yml.
+# Personal overrides go into inventory.yml (gitignored) or via CLI flags when available.
 
-# Xray Docker image (PINNED — known-good; do NOT use :latest in prod)
+# Number of client configs to generate; each gets its own UUID.
+num_clients: 3  
+
+# REALITY camouflage/SNI domain used for probe redirection (active censorship protection)
+reality_camouflage_domain: dl.google.com  
+
+# Xray Docker image (PINNED — known-good; do NOT use :latest in prod) 
 # Incident 2026-07-28: teddysun/xray:latest -> 26.7.11 broke VLESS+REALITY+vision.
 # To upgrade deliberately: bump this tag or switch to digest (sha256:...).
 xray_docker_image: "teddysun/xray:26.6.27"
 
+# Paths
 xray_config_dir: /root/xray-config
 xray_client_configs_dir: /root/vpn-configs
-xray_port: 443  # VLESS inbound port; change to migrate
 
+# VLESS inbound listening port
+xray_port: 443  
+
+# --- Cloudflare WARP outbound options ---
 warp_enabled: true  # Enable Cloudflare WARP outbound in Xray.
 warp_ipv6: false  # IPv4-only VPS safe: omit IPv6 WireGuard address (incident root cause #2)
-warp_endpoint: "162.159.192.1:2408"  # Cloudflare WARP IPv4 anycast endpoint (stable name: engage.cloudflareclient.com:2408; override in group_vars if needed)
+warp_endpoint: "162.159.192.1:2408"  # Cloudflare WARP IPv4 anycast endpoint (stable name: engage.cloudflareclient.com:2408; override if needed)
 warp_mtu: 1420  # Safe high MTU for most networks; lower only if something breaks. The old Warp client's default of 1280 is too low for some connections
 warp_wgcf_version: "2.2.22"  # wgcf version to download on the server.
 warp_wgcf_url: "https://github.com/ViRb3/wgcf/releases/download/v{{ warp_wgcf_version }}/wgcf_{{ warp_wgcf_version }}_linux_amd64"  # Linux amd64 wgcf binary.
+# ----
 
+# --- Backup and rotation ---
 xray_backup_enabled: true  # Timestamped backups before overwriting config/unit
 xray_reality_rotate: false  # Set true to force REALITY key + UUID regeneration (backs up old state first)
+# ---
+
+# Role behavior 
+# Overrideable in inventory.yml (gitignored); for tests — in the molecule scenario.
+xray_manage_firewall: true  # Run ufw task; set false in molecule (ufw unreliable in container)

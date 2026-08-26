@@ -65,8 +65,7 @@ The minimal case — just the VPS IP. The password will be requested interactive
 IP and password are enough — everything else configures itself. If you need to change something (number of clients, WARP, port, camouflage domain), additional configuration is done through these files:
 
 - `inventory.yml` — VPS connection (created from `inventory.yml.example`).
-- `group_vars/all.yml` — server parameters: `num_clients`, `warp_enabled`, `xray_port`, `reality_camouflage_domain` and others.
-- `roles/xray_vpn/defaults/main.yml` — role defaults (usually left alone).
+- `config/settings.yml` — server parameters: `num_clients`, `warp_enabled`, `xray_port`, `reality_camouflage_domain` and others.
 - `deploy.yml` — the playbook entry point.
 
 More about each file — in [`docs/SETUP.en.md`](docs/SETUP.en.md), the "Configuration files" section.
@@ -154,7 +153,7 @@ Three things are needed from you:
 
 > To get the files: the **Code → Download ZIP** button on the repository page, or the source archive in the **Releases** section (on the right). Then the script installs Python 3, Ansible and `sshpass` on your local machine, deploys Xray on the VPS, generates client configs and downloads them to you. No Ansible, SSH or Xray knowledge required. BUT basic command-line skills are needed to run scripts with parameters.
 
-WARP outbound via Cloudflare is enabled with one line (`warp_enabled: true` in `group_vars/all.yml`). With it, sites see Cloudflare IP instead of your VPS IP.
+WARP outbound via Cloudflare is enabled with one line (`warp_enabled: true` in `config/settings.yml`). With it, sites see Cloudflare IP instead of your VPS IP.
 
 Before paying for a VPS long-term, check it with [`carrox-vps-check`](https://github.com/AiCarrox/carrox-vps-check) or a similar tool. Details — in [`docs/TEST-VPS.en.md`](docs/TEST-VPS.en.md).
 
@@ -191,7 +190,7 @@ Fill in `ansible_host`, `ansible_user`, `ansible_port` and one of the two: `ansi
 
 CLI mode (`-H` without `--use-inventory`) doesn't use `inventory.yml` — the script builds its own inventory in a temp folder for the duration of the run.
 
-These are ways to pass connection parameters. The rest of the configuration (number of clients, WARP, port, camouflage domain) is set in `group_vars/all.yml` and `roles/xray_vpn/defaults/main.yml` — more in [`docs/SETUP.en.md`](docs/SETUP.en.md), the "Configuration files" section.
+These are ways to pass connection parameters. The rest of the configuration (number of clients, WARP, port, camouflage domain) is set in `config/settings.yml` — more in [`docs/SETUP.en.md`](docs/SETUP.en.md), the "Configuration files" section.
 
 ## Clients
 
@@ -199,7 +198,7 @@ I use Clash Verge (Windows) and FlClash (Android). Amnezia works, but because of
 
 ## Detailed documentation
 
-- [`docs/SETUP.en.md`](docs/SETUP.en.md) — setup, `group_vars/all.yml` variables, WARP, post-deployment checks.
+- [`docs/SETUP.en.md`](docs/SETUP.en.md) — setup, `config/settings.yml` variables, WARP, post-deployment checks.
 - [`docs/ROTATION.en.md`](docs/ROTATION.en.md) — rotating keys and client UUIDs.
 - [`docs/TEST-VPS.en.md`](docs/TEST-VPS.en.md) — checking a VPS before paying.
 - [`docs/GLOSSARY.en.md`](docs/GLOSSARY.en.md) — project terms.

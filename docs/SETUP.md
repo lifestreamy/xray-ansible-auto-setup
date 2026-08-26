@@ -15,11 +15,10 @@
 | Файл | Что настраивает | Как влияет |
 |---|---|---|
 | `inventory.yml` (создаётся из `inventory.yml.example`) | Подключение к VPS: хост, пользователь, порт, ключ или пароль | Только для `--use-inventory`; CLI-режим собирает свой inventory сам |
-| `group_vars/all.yml` | Все параметры сервера: `num_clients`, `reality_camouflage_domain`, `warp_enabled`, `xray_port`, `xray_docker_image` и остальные | Читается при каждом запуске Ansible playbook |
-| `roles/xray_vpn/defaults/main.yml` | Дефолты роли — безопасные значения по умолчанию | Переопределяются `group_vars/all.yml`; менять, только если знаете зачем |
+| `config/settings.yml` | Все параметры сервера: `num_clients`, `reality_camouflage_domain`, `warp_enabled`, `xray_port`, `xray_docker_image` и остальные | Читается при каждом запуске Ansible playbook через `vars_files` |
 | `deploy.yml` | Точка входа playbook | Обычно не трогается |
 
-Какие параметры можно передать как CLI-флаги скрипта — только параметры подключения (`-H`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`, cleanup и verbosity). Остальная конфигурация — через `group_vars/all.yml`. Пункт «CLI-флаги для всех параметров» — в [`docs/PLANNED.md`](PLANNED.md), планируется после 0.3.
+Какие параметры можно передать как CLI-флаги скрипта — только параметры подключения (`-H`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`, cleanup и verbosity). Остальная конфигурация — через `config/settings.yml`. Пункт «CLI-флаги для всех параметров» — в [`docs/PLANNED.md`](PLANNED.md), планируется после 0.3.
 
 ## Про проект
 
@@ -47,7 +46,7 @@ Windows:
 
 Перед оплатой VPS на длительный срок — проверьте его через `carrox-vps-check` или `ipcheck-plus`. Подробности в [`docs/TEST-VPS.md`](TEST-VPS.md).
 
-## Переменные `group_vars/all.yml`
+## Переменные `config/settings.yml`
 
 <details>
   <summary>Все переменные (для технарей)</summary>
@@ -77,7 +76,7 @@ Windows:
 
 **IPv4-only по умолчанию.** Параметр `warp_ipv6: false` исключает IPv6-адрес из WireGuard-интерфейса. Это для совместимости с VPS без IPv6-маршрута. В этом режиме `allowedIPs` и `domainStrategy` остаются, но фактический туннель идёт только по IPv4. Если у вас есть рабочий IPv6 — поменяйте на `true`.
 
-**Endpoint.** По умолчанию `162.159.192.1:2408` — это Cloudflare WARP IPv4-anycast. Стабильное имя — `engage.cloudflareclient.com:2408`. При необходимости переопределите в `group_vars/all.yml`.
+**Endpoint.** По умолчанию `162.159.192.1:2408` — это Cloudflare WARP IPv4-anycast. Стабильное имя — `engage.cloudflareclient.com:2408`. При необходимости переопределите в `config/settings.yml`.
 
 **Требования.** `wgcf` 2.2.22. Роль скачивает бинарник сама при `warp_enabled: true`. Персистентные учётные данные — `wgcf-account.toml` и `wgcf-profile.conf` в `/root/xray-config/`.
 
@@ -118,7 +117,7 @@ nc -zv <VPS_IP> 443   # <VPS_IP> замените на свой; должно в
 
 ## Как добавить ещё клиентов без ротации
 
-Если вы хотите добавить новый клиентский конфиг, не трогая существующие ключи — увеличьте `num_clients` в `group_vars/all.yml` и запустите playbook. Новые UUID добавятся в `reality-state.json`, новые конфиги появятся в `/root/vpn-configs/` на VPS и в `./downloaded-clients/` локально. Существующие клиенты продолжают работать.
+Если вы хотите добавить новый клиентский конфиг, не трогая существующие ключи — увеличьте `num_clients` в `config/settings.yml` и запустите playbook. Новые UUID добавятся в `reality-state.json`, новые конфиги появятся в `/root/vpn-configs/` на VPS и в `./downloaded-clients/` локально. Существующие клиенты продолжают работать.
 
 ## Лицензия
 
