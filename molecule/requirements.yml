@@ -1,0 +1,7 @@
+---
+# Galaxy collections for the molecule scenario.
+# Molecule's `dependency: name: galaxy` installs these into the scenario
+# (path wired via `dependency.options.requirements-file` in molecule.yml).
+collections:
+  - name: community.general
+    version: ">=8.0.0"

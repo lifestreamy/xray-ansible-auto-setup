@@ -1,0 +1,60 @@
+---
+# Molecule scenario for role `xray_vpn`.
+# Driver: docker.
+# Base image: geerlingguy/docker-ubuntu2204-ansible (systemd as PID 1).
+# `privileged: true` is required because the role manages systemd units
+# (`docker` service, `xray.service`) and uses `docker run` for key generation.
+# The role installs and runs its OWN dockerd inside the container
+# (docker-in-docker), so the published port 443 is reachable on the
+# container's own localhost, not on the host.
+
+dependency:
+  name: galaxy
+  options:
+    requirements-file: ../requirements.yml
+
+driver:
+  name: docker
+
+platforms:
+  - name: xray-ansible-ubuntu2204
+    image: geerlingguy/docker-ubuntu2204-ansible:latest
+    privileged: true
+    cgroupns_mode: host
+    command: /lib/systemd/systemd
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+
+provisioner:
+  name: ansible
+  inventory:
+    group_vars:
+      all:
+        # --- role-critical vars (must match production) ---
+        reality_camouflage_domain: dl.google.com
+        xray_docker_image: "teddysun/xray:26.6.27"
+        xray_config_dir: /root/xray-config
+        xray_client_configs_dir: /root/vpn-configs
+        xray_port: 443
+        xray_backup_enabled: true
+        xray_reality_rotate: false
+        # --- WARP — disabled in tests ---
+        warp_enabled: false
+        warp_ipv6: false
+        warp_endpoint: "162.159.192.1:2408"
+        warp_mtu: 1420
+        warp_wgcf_version: "2.2.22"
+        warp_wgcf_url: "https://github.com/ViRb3/wgcf/releases/download/v{{ warp_wgcf_version }}/wgcf_{{ warp_wgcf_version }}_linux_amd64"
+        # --- test-only knobs ---
+        num_clients: 1
+        xray_debug: false
+        # ufw/iptables are unreliable inside the molecule container; skip firewall.
+        xray_manage_firewall: false
+  env:
+    ANSIBLE_ROLES_PATH: ../../
+  playbooks:
+    converge: converge.yml
+    verify: verify.yml
+
+verifier:
+  name: ansible

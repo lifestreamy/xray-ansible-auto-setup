@@ -38,12 +38,13 @@
   when: warp_enabled | default(false) | bool
   tags: warp
 
-# Configure firewall
+# Configure firewall (skip if xray_manage_firewall=false; e.g. molecule container)
 - name: Allow Xray port in firewall
   community.general.ufw:
     rule: allow
     port: '{{ xray_port }}'
     proto: tcp
+  when: xray_manage_firewall | default(true) | bool
   tags: firewall
 
 # Create directories
