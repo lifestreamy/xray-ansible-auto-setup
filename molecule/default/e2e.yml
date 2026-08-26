@@ -1,0 +1,159 @@
+---
+# ---
+# Post-converge e2e: stand up a mihomo client inside the same container,
+# tunnel through the just-deployed Xray server, and assert the connection.
+# This is the in-container equivalent of the manual checks in docs/TEST-LOCAL.md.
+#
+# Structure: a flat TASK list (not a full play) so it can be imported via
+# `import_tasks: e2e.yml` from verify.yml. `hosts:` and `become:` are inherited
+# from the calling play.
+
+- name: Capture e2e start timestamp (RFC3339 UTC; used as journalctl --since anchor)
+  ansible.builtin.set_fact:
+    e2e_start_ts: "{{ ansible_date_time.iso8601 }}"
+
+- name: Ensure base packages for the e2e check (curl, gzip, ca-certificates)
+  ansible.builtin.apt:
+    name:
+      - curl
+      - gzip
+      - ca-certificates
+    state: present
+    update_cache: false
+
+- name: Download mihomo v{{ mihomo_version }} (linux-amd64)
+  ansible.builtin.get_url:
+    url: "https://github.com/MetaCubeX/mihomo/releases/download/v{{ mihomo_version }}/mihomo-linux-amd64-v{{ mihomo_version }}.gz"
+    dest: "/usr/local/bin/mihomo.gz"
+    mode: "0644"
+    timeout: 60
+    force: false
+
+- name: Decompress mihomo binary (skipped once /usr/local/bin/mihomo exists)
+  ansible.builtin.command:
+    cmd: "gunzip -f /usr/local/bin/mihomo.gz"
+  args:
+    creates: "/usr/local/bin/mihomo"
+  changed_when: false
+
+- name: Set mihomo binary executable
+  ansible.builtin.file:
+    path: "/usr/local/bin/mihomo"
+    mode: "0755"
+
+- name: Stage clash client config for e2e (workdir + copy)
+  ansible.builtin.file:
+    path: "/root/vpn-configs/e2e"
+    state: directory
+    mode: "0750"
+
+- name: Copy rendered clash_client_0.yaml into the e2e workdir
+  ansible.builtin.copy:
+    src: "/root/vpn-configs/clash_client_0.yaml"
+    dest: "/root/vpn-configs/e2e/clash_e2e.yaml"
+    remote_src: true
+    mode: "0640"
+
+- name: "Adapt clash config: server to 127.0.0.1"
+  ansible.builtin.replace:
+    path: "/root/vpn-configs/e2e/clash_e2e.yaml"
+    regexp: '^\s*server:\s*.*$'
+    replace: "  server: 127.0.0.1"
+
+- name: "Adapt clash config: disable tun (avoid TUN device inside the test container)"
+  ansible.builtin.replace:
+    path: "/root/vpn-configs/e2e/clash_e2e.yaml"
+    regexp: 'tun:\s*\n\s*enable:\s*true'
+    replace: "tun:\n  enable: false"
+
+- name: "Adapt clash config: mixed-port 7890 to 7899"
+  ansible.builtin.replace:
+    path: "/root/vpn-configs/e2e/clash_e2e.yaml"
+    regexp: '^\s*mixed-port:\s*7890\s*$'
+    replace: "  mixed-port: 7899"
+
+- name: "Adapt clash config: dns.listen to 127.0.0.1:1053"
+  ansible.builtin.replace:
+    path: "/root/vpn-configs/e2e/clash_e2e.yaml"
+    regexp: '^\s*listen:\s*0\.0\.0\.0:1053\s*$'
+    replace: "  listen: 127.0.0.1:1053"
+
+- name: "Adapt clash config: mode rule to global so all traffic goes through the proxy (no GeoIP rules needed for the e2e check)"
+  ansible.builtin.replace:
+    path: "/root/vpn-configs/e2e/clash_e2e.yaml"
+    regexp: '^\s*mode:\s*rule\s*$'
+    replace: "  mode: global"
+
+- name: Validate adapted clash config (mihomo -t)
+  # -f must be an absolute path: when nohup heredoc runs without a real cwd,
+  # mihomo treats `-f` as relative-to-cwd and falls back to its generated
+  # initial config if the file is not found. The path is fixed in this task.
+  ansible.builtin.command:
+    cmd: "/usr/local/bin/mihomo -t -f /root/vpn-configs/e2e/clash_e2e.yaml"
+  register: mihomo_test
+  changed_when: false
+  failed_when: mihomo_test.rc != 0
+
+- name: Start mihomo client in background (logs to /tmp/mihomo.log)
+  ansible.builtin.shell:
+    cmd: |
+      nohup /usr/local/bin/mihomo \
+        -f /root/vpn-configs/e2e/clash_e2e.yaml \
+        > /tmp/mihomo.log 2>&1 &
+    executable: /bin/bash
+  changed_when: false
+
+- name: Wait for mihomo mixed-port to listen
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 7899
+    timeout: 30
+    delay: 1
+
+- name: Hard-assert generate_204 via mihomo mixed-port to Xray to internet
+  # We use `command` (curl) instead of `ansible.builtin.uri` because the latter
+  # returns a dict whose status field name varies across Ansible versions and can
+  # be missing on some short-circuit paths. curl with `-w '%{http_code}'`
+  # guarantees a stable integer.
+  ansible.builtin.command:
+    cmd: >
+      curl --silent --show-error --max-time 15
+      -x http://127.0.0.1:7899
+      -o /dev/null
+      -w '%{http_code}'
+      https://www.google.com/generate_204
+  register: g204
+  until: g204.stdout | trim == '204'
+  retries: 5
+  delay: 2
+  failed_when: (g204.stdout | trim) != '204'
+  changed_when: false
+
+- name: Capture Xray journal since e2e_start_ts (informational; saved to fact for follow-up tasks)
+  ansible.builtin.command:
+    cmd: 'journalctl -u xray --since "{{ e2e_start_ts | replace(''T'', '' '') | replace(''Z'', '' UTC'') }}" --no-pager'
+  register: xray_log
+  changed_when: false
+
+- name: Show Xray journal since e2e_start_ts (informational)
+  ansible.builtin.debug:
+    msg: "xray journal since e2e_start_ts:\n{{ xray_log.stdout }}"
+
+- name: Show mihomo log (informational)
+  ansible.builtin.debug:
+    msg: |
+      mihomo log (/tmp/mihomo.log):
+      {{ lookup('file', '/tmp/mihomo.log', errors='ignore') | default('(empty)') }}
+
+- name: "Warn-only: mihomo log lines mentioning tls/reality/handshake"
+  ansible.builtin.shell:
+    cmd: grep -iE 'tls|reality|handshake' /tmp/mihomo.log || true
+  register: mihomo_log_excerpt
+  changed_when: false
+  ignore_errors: true
+
+- name: "Cleanup: kill mihomo (best-effort; container is destroyed anyway)"
+  ansible.builtin.shell:
+    cmd: pkill -f /usr/local/bin/mihomo || true
+  changed_when: false
+  ignore_errors: true

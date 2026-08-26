@@ -53,3 +53,7 @@
       register: xray_running
       changed_when: false
       failed_when: xray_running.stdout_lines | default([]) | length == 0
+
+    - name: Run in-container mihomo end-to-end handshake (only when xray_e2e_enabled is true)
+      ansible.builtin.import_tasks: e2e.yml
+      when: xray_e2e_enabled | default(false)

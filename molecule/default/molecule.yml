@@ -10,8 +10,6 @@
 
 dependency:
   name: galaxy
-  options:
-    requirements-file: ../requirements.yml
 
 driver:
   name: docker
@@ -27,6 +25,16 @@ platforms:
 
 provisioner:
   name: ansible
+  # Role resolution: `provisioner.config_options` writes `roles_path = ../..`
+  # into the subprocess ansible.cfg. From the molecule scenario's directory
+  # (`molecule/default/`) that resolves to the repo root, where Ansible then
+  # finds the `xray_vpn/` role subdirectory. This is the molecule-native
+  # way to point at the project roles dir and works for all steps including
+  # the `syntax` step (the previous `env.ANSIBLE_ROLES_PATH: ../../` had a
+  # trailing-slash path bug AND didn't propagate to the syntax subprocess).
+  config_options:
+    defaults:
+      roles_path: ../..
   inventory:
     group_vars:
       all:
@@ -36,7 +44,8 @@ provisioner:
         xray_config_dir: /root/xray-config
         xray_client_configs_dir: /root/vpn-configs
         xray_port: 443
-        xray_backup_enabled: true
+        # Backups are timestamped and therefore not idempotent; disable in tests.
+        xray_backup_enabled: false
         xray_reality_rotate: false
         # --- WARP — disabled in tests ---
         warp_enabled: false
@@ -50,10 +59,12 @@ provisioner:
         xray_debug: false
         # ufw/iptables are unreliable inside the molecule container; skip firewall.
         xray_manage_firewall: false
-  env:
-    ANSIBLE_ROLES_PATH: ../../
+        # --- e2e (mihomo client in verify) ---
+        xray_e2e_enabled: true
+        mihomo_version: "1.19.29"
   playbooks:
     converge: converge.yml
+    prepare: prepare.yml
     verify: verify.yml
 
 verifier:
