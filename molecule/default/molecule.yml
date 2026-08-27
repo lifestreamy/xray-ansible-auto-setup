@@ -1,45 +1,46 @@
 ---
 # Molecule scenario for role `xray_vpn`.
-# Driver: docker.
-# Base image: geerlingguy/docker-ubuntu2204-ansible (systemd as PID 1).
-# `privileged: true` is required because the role manages systemd units
-# (`docker` service, `xray.service`) and uses `docker run` for key generation.
-# The role installs and runs its OWN dockerd inside the container
-# (docker-in-docker), so the published port 443 is reachable on the
-# container's own localhost, not on the host.
+# Driver: default — molecule 26's name for the host-run (delegated)
+# driver: runs Ansible directly on the molecule host (no
+# managed container). The role installs Xray natively
+# (xray_runtime: native, see group_vars below) on the host, so the
+# listener is on localhost. CI runners and WSL instances with systemd
+# as PID 1 are the supported execution targets.
+#
+# What changed vs the previous Docker+DinD scenario:
+#   - No platform block (the default driver runs Ansible on the host).
+#   - No inner dockerd / vfs storage driver (the role does not
+#     install Docker for xray_runtime: native).
+#   - group_vars set xray_runtime: native so the role dispatches to
+#     tasks/runtime_native.yml.
+#   - converge.yml uses connection: local (Ansible runs on the host
+#     that molecule is invoked from).
 
 dependency:
   name: galaxy
 
 driver:
-  name: docker
-
-platforms:
-  - name: xray-ansible-ubuntu2204
-    image: geerlingguy/docker-ubuntu2204-ansible:latest
-    privileged: true
-    cgroupns_mode: host
-    command: /lib/systemd/systemd
-    volumes:
-      - /sys/fs/cgroup:/sys/fs/cgroup:rw
+  name: default
 
 provisioner:
   name: ansible
   # Role resolution: `provisioner.config_options` writes `roles_path = ../..`
   # into the subprocess ansible.cfg. From the molecule scenario's directory
   # (`molecule/default/`) that resolves to the repo root, where Ansible then
-  # finds the `xray_vpn/` role subdirectory. This is the molecule-native
-  # way to point at the project roles dir and works for all steps including
-  # the `syntax` step (the previous `env.ANSIBLE_ROLES_PATH: ../../` had a
-  # trailing-slash path bug AND didn't propagate to the syntax subprocess).
+  # finds the `xray_vpn/` role subdirectory. molecule-native; works for
+  # all steps including the `syntax` step.
   config_options:
     defaults:
       roles_path: ../..
   inventory:
     group_vars:
       all:
+        # --- runtime selector (native scenario) ---
+        xray_runtime: native
         # --- role-critical vars (must match production) ---
         reality_camouflage_domain: dl.google.com
+        xray_container_repo: "ghcr.io/xtls/xray-core"
+        xray_version: "26.6.27"
         xray_docker_image: "teddysun/xray:26.6.27"
         xray_config_dir: /root/xray-config
         xray_client_configs_dir: /root/vpn-configs
@@ -57,7 +58,7 @@ provisioner:
         # --- test-only knobs ---
         num_clients: 1
         xray_debug: false
-        # ufw/iptables are unreliable inside the molecule container; skip firewall.
+        # ufw/iptables are unreliable on the host runner; skip firewall.
         xray_manage_firewall: false
         # --- e2e (mihomo client in verify) ---
         xray_e2e_enabled: true

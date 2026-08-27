@@ -12,6 +12,32 @@
   ansible.builtin.set_fact:
     e2e_start_ts: "{{ ansible_date_time.iso8601 }}"
 
+# === Runtime-aware pre-flight: confirm Xray is actually accepting TCP 443 ===
+# For the native scenario the listener is on the host's localhost:443 (xray
+# installed natively, bound via systemd). For docker/podman the listener is
+# the container's localhost:443 (also reachable from the host in a delegated
+# scenario where the role is applied locally). Either way: wait_for 443 is
+# the universal gate before the mihomo handshake.
+
+- name: Pre-flight | assert Xray is listening on TCP 443
+  ansible.builtin.wait_for:
+    host: 127.0.0.1
+    port: 443
+    timeout: 30
+    delay: 1
+
+- name: Pre-flight | assert Xray service is active (native) / container running (docker/podman)
+  ansible.builtin.shell:
+    cmd: |
+      if [ "{{ xray_runtime }}" = "native" ]; then
+        systemctl is-active xray
+      else
+        {{ xray_runtime }} inspect xray --format "{{ '{{' }}.State.Running{{ '}}' }}"
+      fi
+  register: xray_runtime_state
+  changed_when: false
+  failed_when: xray_runtime_state.stdout | trim not in ['active', 'true']
+
 - name: Ensure base packages for the e2e check (curl, gzip, ca-certificates)
   ansible.builtin.apt:
     name:

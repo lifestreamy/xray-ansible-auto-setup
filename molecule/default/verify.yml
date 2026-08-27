@@ -1,18 +1,18 @@
 ---
-# ---
 # Post-converge verification.
 # Strategy: re-run the role's own smoke checks (warn-only by design) plus a
 # small set of hard asserts for the artifacts that MUST exist after converge.
-# The role runs docker-in-docker, so the published port 443 is reachable on
-# the container's localhost. We keep the assertions to artifacts and service
-# state here; the end-to-end handshake and egress are the manual steps in
-# docs/TEST-LOCAL.md.
+# For xray_runtime: native the listener is on the host's localhost:443, so
+# the e2e mihomo check can connect directly without docker-proxy indirection.
+# The role's smoke.yml is already runtime-aware; verify adds the
+# file-artifact asserts on top.
 
 - name: Verify
-  hosts: all
+  hosts: localhost
+  connection: local
   become: true
   tasks:
-    - name: Re-run role smoke checks (warn-only parity)
+    - name: Re-run role smoke checks (warn-only parity; runtime-aware)
       ansible.builtin.import_tasks: ../../roles/xray_vpn/tasks/smoke.yml
 
     - name: Assert Xray systemd unit exists
@@ -47,13 +47,6 @@
       register: client_yaml
       failed_when: not client_yaml.stat.exists
 
-    - name: Assert Xray container is running
-      ansible.builtin.command:
-        cmd: docker ps --filter name=xray --format "{{ '{{' }}.Names{{ '}}' }}"
-      register: xray_running
-      changed_when: false
-      failed_when: xray_running.stdout_lines | default([]) | length == 0
-
-    - name: Run in-container mihomo end-to-end handshake (only when xray_e2e_enabled is true)
+    - name: Run mihomo end-to-end handshake (only when xray_e2e_enabled is true)
       ansible.builtin.import_tasks: e2e.yml
       when: xray_e2e_enabled | default(false)

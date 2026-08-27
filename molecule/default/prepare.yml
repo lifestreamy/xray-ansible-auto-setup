@@ -1,39 +1,17 @@
 ---
-# molecule/default/prepare.yml — runs ONCE after container create, before
-# converge. Configures the inner dockerd (started by the role) to use the
-# `vfs` storage driver instead of `overlay2`.
-#
-# Why: the molecule container runs on a host whose docker already uses
-# overlay2; the role then starts its OWN dockerd inside the container. With
-# overlay2-on-overlay2 the kernel rejects whiteout-file conversion during
-# `docker pull` ("failed to convert whiteout file ... operation not permitted").
-# vfs is slower but stable and avoids the overlay-on-overlay limitation.
-#
-# This file is molecule-only — it does NOT affect production deploys.
-
-- name: Prepare | Configure inner dockerd with vfs storage driver
-  # NOTE: molecule 26 puts the docker-managed host in `all` / `ungrouped`,
-  # NOT in `instances` (which is the vagrant-style expectation). We target
-  # `all` here so the playbook matches.
-  hosts: all
+# molecule/default/prepare.yml — runs ONCE after the delegated driver
+# initialises, before converge. For the native scenario the role's
+# runtime_setup.yml installs curl / ca-certificates / unzip, so
+# nothing extra is needed here. The file is kept for symmetry with
+# the docker scenario (where the inner dockerd + vfs storage driver
+# used to be configured here) and as a hook for future per-runner
+# tweaks (e.g. enabling lingering for podman).
+- name: Prepare
+  hosts: localhost
+  connection: local
   gather_facts: false
   become: true
   tasks:
-    - name: Ensure /etc/docker exists
-      ansible.builtin.file:
-        path: /etc/docker
-        state: directory
-        owner: root
-        group: root
-        mode: "0755"
-
-    - name: Write daemon.json with vfs storage driver
-      ansible.builtin.copy:
-        dest: /etc/docker/daemon.json
-        owner: root
-        group: root
-        mode: "0644"
-        content: |
-          {
-            "storage-driver": "vfs"
-          }
+    - name: Prepare | no-op (runtime_setup.yml handles apt deps)
+      ansible.builtin.debug:
+        msg: "prepare: nothing to do; runtime_setup.yml installs apt deps during converge"

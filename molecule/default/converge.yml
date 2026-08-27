@@ -1,6 +1,7 @@
 ---
 - name: Converge
-  hosts: all
+  hosts: localhost
+  connection: local
   become: true
   roles:
     - role: xray_vpn
