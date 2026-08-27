@@ -1,0 +1,25 @@
+[Unit]
+Description=Xray VPN Service (REALITY Protocol, Docker)
+Documentation=https://xtls.github.io
+After=network.target docker.service
+Requires=docker.service
+StartLimitIntervalSec=60
+StartLimitBurst=3
+
+[Service]
+Type=simple
+User=root
+ExecStart=/usr/bin/docker run \
+  --rm \
+  --name xray \
+  -v {{ xray_config_dir }}:/etc/xray \
+  -p {{ xray_port }}:{{ xray_port }}/tcp \
+  {{ xray_container_image }} \
+  /usr/bin/xray -c /etc/xray/config.json
+
+ExecStop=/usr/bin/docker stop xray
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

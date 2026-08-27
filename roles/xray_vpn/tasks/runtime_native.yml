@@ -1,0 +1,74 @@
+---
+# Native runtime — install Xray-core as a systemd-managed host binary.
+# Downloads the official Xray-linux-64.zip release asset, unarchives it
+# under /usr/local/xray/, exposes /usr/local/bin/xray via symlink, and
+# relies on xray.service.native.j2 (rendered by main.yml) to start the
+# process. Idempotent: re-runs are no-ops if the version on disk matches
+# xray_version and the binary is already linked.
+
+- name: Set native install paths
+  ansible.builtin.set_fact:
+    xray_install_dir: /usr/local/xray
+    xray_binary: /usr/local/xray/xray
+    xray_symlink: /usr/local/bin/xray
+    xray_native_zip: "/tmp/xray-linux-64-{{ xray_version }}.zip"
+
+- name: Stat existing native install
+  ansible.builtin.stat:
+    path: "{{ xray_binary }}"
+  register: xray_binary_stat
+
+- name: Download Xray-linux-64.zip for xray_version
+  ansible.builtin.get_url:
+    url: "https://github.com/xtls/xray-core/releases/download/v{{ xray_version }}/Xray-linux-64.zip"
+    dest: "{{ xray_native_zip }}"
+    mode: '0644'
+  become: true
+  when: not xray_binary_stat.stat.exists
+
+- name: Create /usr/local/xray install directory
+  ansible.builtin.file:
+    path: "{{ xray_install_dir }}"
+    state: directory
+    mode: '0755'
+  become: true
+
+- name: Unarchive Xray-linux-64.zip into /usr/local/xray
+  ansible.builtin.unarchive:
+    src: "{{ xray_native_zip }}"
+    dest: "{{ xray_install_dir }}"
+    remote_src: true
+    creates: "{{ xray_binary }}"
+  become: true
+  when: not xray_binary_stat.stat.exists
+
+- name: Ensure /usr/local/xray/xray is executable
+  ansible.builtin.file:
+    path: "{{ xray_binary }}"
+    mode: '0755'
+  become: true
+
+- name: Symlink /usr/local/bin/xray -> /usr/local/xray/xray
+  ansible.builtin.file:
+    src: "{{ xray_binary }}"
+    dest: "{{ xray_symlink }}"
+    state: link
+    force: true
+  become: true
+
+- name: Remove downloaded zip
+  ansible.builtin.file:
+    path: "{{ xray_native_zip }}"
+    state: absent
+
+- name: Verify xray binary responds
+  ansible.builtin.command: "{{ xray_symlink }} version"
+  changed_when: false
+  register: xray_version_check
+  become: true
+  when: xray_debug | default(false) | bool
+
+- name: Debug xray version output
+  ansible.builtin.debug:
+    var: xray_version_check
+  when: xray_debug | default(false) | bool

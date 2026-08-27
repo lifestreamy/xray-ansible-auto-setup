@@ -3,16 +3,40 @@
 # Loaded via `vars_files: - config/settings.yml` in deploy.yml.
 # Personal overrides go into inventory.yml (gitignored) or via CLI flags when available.
 
+# --- Runtime selector ---
+# Which container/host runtime to deploy xray under.
+#   native — Xray binary on host, managed by systemd (default, smallest footprint)
+#   docker — Docker Engine (legacy, kept as escape hatch)
+#   podman — Podman (experimental stub, not covered by molecule)
+# Asserted at the top of roles/xray_vpn/tasks/main.yml; only the matching
+# runtime_X.yml tasks and xray.service.X.j2 unit are applied.
+xray_runtime: native
+
+# Xray core version — single source of truth for the version string.
+# Bump deliberately; do NOT track :latest (Incident 2026-07-28: 26.7.11
+# broke VLESS+REALITY+vision).
+xray_version: "26.6.27"
+
+# Container image repository used to derive xray_container_image when no
+# explicit override is given. Pairs with xray_version (tags match the core
+# release, verified 2026-08-22).
+xray_container_repo: "ghcr.io/xtls/xray-core"
+
+# Optional override for the derived container image (escape hatch).
+# Default behaviour: xray_container_image is derived from
+# "{{ xray_container_repo }}:{{ xray_version }}" at runtime.
+# Set xray_docker_image explicitly to switch to a different image
+# (e.g. teddysun/xray:tag). Kept as escape hatch until the role
+# introduces a runtime-aware default for xray_container_image.
+# Incident 2026-07-28: teddysun/xray:latest -> 26.7.11 broke VLESS+REALITY+vision.
+xray_docker_image: "teddysun/xray:26.6.27"
+# ---
+
 # Number of client configs to generate; each gets its own UUID.
-num_clients: 3  
+num_clients: 3
 
 # REALITY camouflage/SNI domain used for probe redirection (active censorship protection)
-reality_camouflage_domain: dl.google.com  
-
-# Xray Docker image (PINNED — known-good; do NOT use :latest in prod) 
-# Incident 2026-07-28: teddysun/xray:latest -> 26.7.11 broke VLESS+REALITY+vision.
-# To upgrade deliberately: bump this tag or switch to digest (sha256:...).
-xray_docker_image: "teddysun/xray:26.6.27"
+reality_camouflage_domain: dl.google.com
 
 # Paths
 xray_config_dir: /root/xray-config
