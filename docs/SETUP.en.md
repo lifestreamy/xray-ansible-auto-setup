@@ -18,7 +18,46 @@ The full glossary is in [`docs/GLOSSARY.en.md`](GLOSSARY.en.md).
 | `config/settings.yml` | All server parameters: `num_clients`, `reality_camouflage_domain`, `warp_enabled`, `xray_port`, `xray_docker_image` and others | Read on every Ansible playbook run via `vars_files` |
 | `deploy.yml` | The playbook entry point | Usually left alone |
 
-Which parameters can be passed as CLI flags — only connection parameters (`-H`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`, cleanup and verbosity). The rest of the configuration goes through `config/settings.yml`. The "CLI flags for all parameters" item — in [`docs/PLANNED.en.md`](PLANNED.en.md), planned after 0.3.
+Which parameters can be passed as CLI flags — only connection parameters (`-H`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`, cleanup and verbosity). The rest of the configuration goes through `config/settings.yml`. For the most common overrides (runtime, port, number of clients, WARP, rotation), see the `scripts/cli_deploy.py` section below.
+
+## Runtime selector
+
+`config/settings.yml` supports three deployment variants through `xray_runtime`:
+
+| `xray_runtime` | What gets installed | When to pick it |
+|---|---|---|
+| `native` (default) | Xray binary at `/usr/local/xray/xray` under systemd | Smallest footprint (~10 MB RAM); recommended for new deployments. |
+| `docker` | Docker Engine + `teddysun/xray:26.6.27` via `xray.service.docker.j2` | Legacy escape hatch. Kept for compatibility with old deploys; not covered by molecule. |
+| `podman` | Podman + `ghcr.io/xtls/xray-core:26.6.27` via `xray.service.podman.j2` | Experimental; not covered by molecule. |
+
+To switch runtime, change `xray_runtime` in `config/settings.yml` and rerun the playbook. Related variables:
+
+- `xray_version: "26.6.27"` — single source of truth for the Xray-core version. Do not use `:latest` (Incident 2026-07-28: 26.7.11 broke VLESS+REALITY+vision).
+- `xray_container_repo: "ghcr.io/xtls/xray-core"` — repository used for `docker` and `podman`.
+- `xray_docker_image` — escape hatch to override the container image; if unset, the role derives `{{ xray_container_repo }}:{{ xray_version }}` automatically.
+
+Design rationale and a runtime footprint comparison — see project history.
+
+## `cli_deploy.py` CLI flags
+
+For common overrides, `scripts/cli_deploy.py` (stdlib argparse, MVP) accepts:
+
+- `--runtime {native|docker|podman}` — overrides `xray_runtime`.
+- `--xray-port <int>` — overrides `xray_port`.
+- `--num-clients <int>` — overrides `num_clients`.
+- `--camouflage-domain <fqdn>` — overrides `reality_camouflage_domain`.
+- `--warp` / `--no-warp` — `warp_enabled`.
+- `--rotate` / `--no-rotate` — `xray_reality_rotate`.
+- `--inventory <path>` — use a real `inventory.yml` (with a remote `ansible_host`); required for remote VPS targets.
+- `--dry-run` — pass `--check` to ansible-playbook (no changes applied).
+
+Example:
+
+```bash
+python3 scripts/cli_deploy.py --runtime native --xray-port 443 --no-warp
+```
+
+The generated `inventory.yml` (gitignored) contains only the specified overrides; everything else still comes from `config/settings.yml`.
 
 ## About the project
 
@@ -53,9 +92,12 @@ Before paying for a VPS long-term, check it with `carrox-vps-check` or `ipcheck-
 
 | Variable | What it does |
 |---|---|
+| `xray_runtime` | Runtime selector: `native` (default), `docker`, `podman`. See the "Runtime selector" section above. |
+| `xray_version` | Single Xray-core version (default `"26.6.27"`). |
+| `xray_container_repo` | Container repository for `docker` / `podman` (default `ghcr.io/xtls/xray-core`). |
 | `num_clients` | How many client configs to generate (each with its own UUID). |
 | `reality_camouflage_domain` | SNI of a legitimate site for REALITY masking (default `dl.google.com`). Public parameter. |
-| `xray_docker_image` | The Xray image tag. Pinned to `teddysun/xray:26.6.27`. |
+| `xray_docker_image` | Container image override. Default is derived from `xray_container_repo:{{ xray_version }}`. Pinned to `teddysun/xray:26.6.27` for backward compatibility. |
 | `xray_config_dir` | The state directory on the VPS (`/root/xray-config`). |
 | `xray_client_configs_dir` | The generated configs directory on the VPS (`/root/vpn-configs`). |
 | `xray_port` | The inbound port (default `443`). |
@@ -93,16 +135,26 @@ WARP rotation details — in [`docs/ROTATION.en.md`](ROTATION.en.md), section §
 
 After any run (with or without rotation) do a manual check.
 
-Check that the right Xray image is running (should return `teddysun/xray:26.6.27` or the current `xray_docker_image` value):
+Check that Xray is running under the selected runtime. For `xray_runtime: native` (default):
 
 ```bash
-docker inspect xray --format '{{ .Config.Image }}'   # prints the image tag
+systemctl is-active xray                                       # should return 'active'
+/usr/local/bin/xray version | head -n 3                         # binary responds
+journalctl -u xray --no-pager -n 30 | grep -iE 'error|fail|panic'   # no obvious errors
 ```
 
-Check that the Xray journal has no REALITY handshake errors:
+For `xray_runtime: docker`:
 
 ```bash
-journalctl -u xray --no-pager -n 30 | grep -iE 'error|fail|panic'   # grep filters only problem lines
+docker inspect xray --format '{{ .Config.Image }}'             # pinned image
+docker inspect xray --format '{{ .State.Running }}'           # true
+```
+
+For `xray_runtime: podman`:
+
+```bash
+podman inspect xray --format '{{ .ImageName }}'                # pinned image
+podman inspect xray --format '{{ .State.Running }}'           # true
 ```
 
 Check that the Xray port (`xray_port`, default `443`) is listening on the VPS:

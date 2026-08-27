@@ -144,7 +144,7 @@ The end goal is the external website. It sees your VPS IP (direct) or Cloudflare
 
 Xray VLESS + REALITY needs no domain of your own or a TLS certificate. The server masks itself as a legitimate third-party site (`reality_camouflage_domain`, default `dl.google.com`). This removes the main barrier to setting up a VPN yourself: no domain purchase, no certificate issuance and renewal, no DNS setup.
 
-The server core is [Xray-core](https://github.com/XTLS/Xray-core) in a Docker container (`teddysun/xray:26.6.27`). It's stable and proven — the whole stack (VLESS + REALITY) runs on it.
+The server core is [Xray-core](https://github.com/XTLS/Xray-core). By default it is installed natively as `/usr/local/xray/xray` managed by systemd (`xray_runtime: native` in `config/settings.yml` — smallest footprint, recommended). The `docker` variant is also available (legacy escape hatch via Docker Engine), as is `podman` (experimental; not covered by molecule tests). The whole stack (VLESS + REALITY) runs on it.
 
 Three things are needed from you:
 - buy a VPS (Ubuntu 20.04+ or Debian 11+) — I can point you to trusted providers, and I'd appreciate registration via my referral link

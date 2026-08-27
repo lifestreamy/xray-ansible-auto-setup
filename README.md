@@ -144,7 +144,7 @@ flowchart LR
 
 Xray VLESS + REALITY не требует своего домена и TLS-сертификата. Сервер маскируется под чужой легитимный сайт (`reality_camouflage_domain`, по умолчанию `dl.google.com`). Это снимает главный барьер для самостоятельной настройки VPN: не нужно покупать домен, получать и продлевать сертификат, настраивать DNS.
 
-Ядро сервера — [Xray-core](https://github.com/XTLS/Xray-core) в Docker-контейнере (`teddysun/xray:26.6.27`). Оно стабильно, проверено, на нём держится весь стек: VLESS + REALITY.
+Ядро сервера — [Xray-core](https://github.com/XTLS/Xray-core). По умолчанию устанавливается нативно как `/usr/local/xray/xray` под управлением systemd (вариант `xray_runtime: native` в `config/settings.yml` — наименьший footprint, рекомендуемый). Доступны также варианты `docker` (legacy escape hatch через Docker Engine) и `podman` (experimental; не покрыт molecule-тестами). Стек: VLESS + REALITY.
 
 От вас нужно три вещи: 
 - купить VPS (Ubuntu 20.04+ или Debian 11+) — могу подсказать проверенных провайдеров, буду признателен за регистрацию по моей реферальной ссылке

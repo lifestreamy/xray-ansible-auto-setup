@@ -1,10 +1,10 @@
 # Local end-to-end test (molecule → client)
 
-> Verified: 2026-08-21 (after first green molecule run, branch alpha)
+> Verified: 2026-08-21 (after first green molecule run, branch alpha). Updated 2026-08-26: molecule uses the delegated driver and `xray_runtime: native` — Xray is installed directly on the runner, no container.
 
-This document describes the manual end-to-end check after `molecule test` passes green. The goal is to confirm that traffic from the local machine through the Xray container actually exits through the REALITY tunnel.
+This document describes the manual end-to-end check after `molecule test` passes green. The goal is to confirm that traffic from the local machine through the locally-installed Xray actually exits through the REALITY tunnel.
 
-`molecule test` only confirms that the role deployed and the artifacts are in place. The real handshake with the server, traffic routing, and DNS through the client are a separate step. They are semi-automatic because the client runs on your machine and the server runs in a container under WSL2.
+`molecule test` only confirms that the role deployed and the artifacts are in place. The real handshake with the server, traffic routing, and DNS through the client are a separate step. They are semi-automatic because the client runs on your machine and the server (under `xray_runtime: native`) runs on the same host under systemd.
 
 ## Requirements
 
@@ -29,15 +29,13 @@ If the port is busy (often occupied by the Docker Desktop proxy or another servi
 
 Clash Verge installs its own TUN driver and proxy. Running it alongside the test mihomo causes port and TUN-interface conflicts. Stop Verge for the duration of the test.
 
-## Step 2. Pull the client config from the container
+## Step 2. Pull the client config
 
-After `molecule converge`, the client config is at `/root/vpn-configs/clash_client_0.yaml` inside the container. Copy it out:
+After `molecule converge` (delegated driver) the client config lives on the runner itself at `/root/vpn-configs/clash_client_0.yaml`. There is no `docker cp` anymore — molecule runs Ansible locally and configs land in `xray_config_dir` on the same host. Copy the config to your working directory if you want to adapt it:
 
 ```bash
-docker cp xray-ansible-ubuntu2204:/root/vpn-configs/clash_client_0.yaml ./clash_client_0.yaml
+cp /root/vpn-configs/clash_client_0.yaml ./clash_client_0.yaml
 ```
-
-The container name `xray-ansible-ubuntu2204` comes from `molecule.yml` (the `platforms[0].name` field). If you renamed it, substitute accordingly.
 
 ## Step 3. Adapt the config for the test
 
@@ -57,9 +55,8 @@ It depends on where the Xray container runs.
 
 | Scenario | Use in `server` |
 |---|---|
-| Xray container in the same WSL2 as you | `127.0.0.1` |
-| Xray container in another WSL2 or remote host | that host's address (`hostname -I`) |
-| Run outside WSL2 (Docker Desktop directly) | IP from `docker network inspect bridge` |
+| Xray installed natively on the same WSL2 / Linux host | `127.0.0.1` |
+| Xray on another WSL2 / Linux host or remote VPS | that host's address (`hostname -I`) |
 
 ### 3.2. Why change the LAN rules
 
@@ -94,7 +91,7 @@ Open the mihomo log. There should be no lines like `tls: handshake failure` or `
 ### 5.2. Xray log — successful connections
 
 ```bash
-docker exec xray-ansible-ubuntu2204 journalctl -u xray --no-pager -n 30
+journalctl -u xray --no-pager -n 30
 ```
 
 Look for lines like `accepted ... vless ...`. If none, the client did not reach the server.

@@ -1,10 +1,22 @@
-> **Document:** `docs/GLOSSARY.en.md` · **Location:** `docs/` · **Version:** v0.2 · **Last updated:** 2026-08-12
+> **Document:** `docs/GLOSSARY.en.md` · **Location:** `docs/` · **Version:** v0.2 · **Last updated:** 2026-08-26
 >
 > [Main README](../README.en.md) — project overview and quick start
 
 # Glossary
 
 Project terms. If you meet an unfamiliar word in the documentation, look it up here.
+
+## Runtime selector (`xray_runtime`)
+
+A parameter in `config/settings.yml` (`xray_runtime: native | docker | podman`) that picks how the Xray server is launched. Default `native` — smallest footprint. `docker` — legacy escape hatch via Docker Engine. `podman` — experimental. Design and footprint comparison — see project history.
+
+## `xray_cli_command`
+
+A runtime-aware command used to invoke the Xray CLI / keygen. Set as a fact in `roles/xray_vpn/tasks/runtime_setup.yml`: for `native` it is `/usr/local/bin/xray`, for `docker` it is `docker run --rm <image>`, for `podman` it is `podman run --rm <image>`. The role uses it everywhere instead of a hard-coded `docker run`.
+
+## `xray_container_image`
+
+The derived or overridden container image identifier for `docker` / `podman`. By default it is derived as `{{ xray_container_repo }}:{{ xray_version }}`. Can be overridden through `xray_docker_image` (escape hatch).
 
 ## Rotation
 
