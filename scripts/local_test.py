@@ -13,6 +13,8 @@ Usage:
     python3 scripts/local_test.py
     python3 scripts/local_test.py --skip-molecule   # syntax-check only
     python3 scripts/local_test.py --venv /path/to/venv
+    python3 scripts/local_test.py --runtime native  # molecule with xray_runtime override
+    python3 scripts/local_test.py --runtime docker  # legacy escape hatch
 """
 from __future__ import annotations
 
@@ -21,6 +23,8 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+
+SUPPORTED_RUNTIMES = ("native", "docker", "podman")
 
 
 def run_in_venv(venv_dir: Path, cmd: list[str]) -> int:
@@ -53,6 +57,14 @@ def main() -> int:
         action="store_true",
         help="Run only ansible-playbook --syntax-check, skip molecule test",
     )
+    parser.add_argument(
+        "--runtime",
+        choices=SUPPORTED_RUNTIMES,
+        default=None,
+        help="xray_runtime passed to molecule as --extra-vars (native|docker|podman). "
+             "When omitted, the value from molecule/default/molecule.yml group_vars "
+             "(currently 'native') is used.",
+    )
     args = parser.parse_args()
 
     venv_dir = Path(args.venv).expanduser()
@@ -79,7 +91,10 @@ def main() -> int:
         return rc
 
     if not args.skip_molecule:
-        rc = run_in_venv(venv_dir, [str(venv_bin / "molecule"), "test"])
+        mol_cmd = [str(venv_bin / "molecule"), "test"]
+        if args.runtime is not None:
+            mol_cmd += ["--", "-e", f"xray_runtime={args.runtime}"]
+        rc = run_in_venv(venv_dir, mol_cmd)
         if rc != 0:
             print(f"[local-test] molecule test exited with rc={rc}", file=sys.stderr)
             return rc
