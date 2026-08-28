@@ -4,6 +4,9 @@ One builder serves both execution modes:
 - local:  `ansible_connection=local` (the playbook runs on the current host);
 - remote: generated *on the server* with `ansible_connection=local` and the
   bootstrap venv's interpreter (inventory.yml is never uploaded — ADR-008).
+
+The generated file uses its own gitignored name so the user's personal
+`inventory.yml` is never touched or overwritten.
 """
 
 from __future__ import annotations
@@ -13,7 +16,7 @@ from typing import Any
 
 import yaml
 
-INVENTORY_FILE = "inventory.yml"
+INVENTORY_FILE = ".xrayvpn-inventory.yml"
 
 
 def build_inventory(

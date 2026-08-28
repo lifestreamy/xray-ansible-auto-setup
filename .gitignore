@@ -9,6 +9,7 @@ __pycache__/
 downloaded-configs/
 downloaded-clients/
 inventory.yml
+.xrayvpn-inventory.yml
 
 # VS Code
 .vscode/

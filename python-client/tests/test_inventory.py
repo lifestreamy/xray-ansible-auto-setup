@@ -28,5 +28,5 @@ def test_server_inventory_interpreter() -> None:
 
 def test_write_inventory_file(tmp_path) -> None:
     path = write_inventory(tmp_path, build_inventory({}, connection="local"))
-    assert path.name == "inventory.yml"
+    assert path.name == ".xrayvpn-inventory.yml"
     assert "hosts" in path.read_text(encoding="utf-8")
