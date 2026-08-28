@@ -2,9 +2,19 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
+
+
+def extra_var_args(overrides: dict[str, Any]) -> list[str]:
+    """Render overrides as a single JSON `-e` argument.
+
+    Per-key `-e k=v` passes strings ("false" is truthy in Jinja templates);
+    JSON keeps real types (bools stay false).
+    """
+    return ["-e", json.dumps(overrides, sort_keys=True)]
 
 
 @dataclass

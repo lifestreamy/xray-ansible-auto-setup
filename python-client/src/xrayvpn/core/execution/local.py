@@ -11,16 +11,10 @@ from __future__ import annotations
 import subprocess
 
 from xrayvpn.core import wsl
-from xrayvpn.core.execution.base import DeployRequest
+from xrayvpn.core.execution.base import DeployRequest, extra_var_args
 from xrayvpn.core.inventory import INVENTORY_FILE
 
 DEFAULT_WSL_VENV = "~/xray-venv"
-
-
-def fmt_override_value(value: object) -> str:
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    return str(value)
 
 
 class LocalExecutor:
@@ -54,8 +48,7 @@ class LocalExecutor:
             cmd.append("-vvv")
         if request.debug:
             cmd += ["-e", "xray_debug=true"]
-        for key, value in request.overrides.items():
-            cmd += ["-e", f"{key}={fmt_override_value(value)}"]
+        cmd += extra_var_args(request.overrides)
         if request.dry_run:
             cmd.append("--check")
         return cmd
@@ -74,8 +67,7 @@ class LocalExecutor:
             cmd.append("-vvv")
         if request.debug:
             cmd += ["-e", "xray_debug=true"]
-        for key, value in request.overrides.items():
-            cmd += ["-e", f"{key}={fmt_override_value(value)}"]
+        cmd += extra_var_args(request.overrides)
         if request.dry_run:
             cmd.append("--check")
         quoted = " ".join(wsl.quote(part) for part in cmd)
@@ -104,20 +96,24 @@ class LocalExecutor:
         clients = request.resolved_clients_dir()
         clients.mkdir(parents=True, exist_ok=True)
         source = "/root/vpn-configs"
+        wsl_home_path = None
         if wsl.is_windows():
-            dst = wsl.to_wsl_path(clients)
-            script = (
-                f"mkdir -p {wsl.quote(dst)} && "
-                f"sudo -n cp {source}/*.json {source}/*.yaml {wsl.quote(dst)}/ 2>/dev/null || true"
+            wsl_home_path = wsl.to_wsl_path(clients)
+        # Glob must expand inside sudo (the WSL user cannot read /root/vpn-configs).
+        if wsl_home_path is not None:
+            step = (
+                f"sudo -n bash -c 'mkdir -p {wsl_home_path} && "
+                f"cp {source}/*.json {source}/*.yaml {wsl_home_path}/ 2>/dev/null || true'"
             )
-            print(f"[local] wsl bash -lc {wsl.quote(script)}")
-            wsl.run_script(script, distro=self.wsl_distro)
+            print(f"[local] wsl bash -lc {wsl.quote(step)}")
+            wsl.run_script(step, distro=self.wsl_distro)
         else:
-            dst = str(clients)
-            script = (
-                f"sudo -n cp {source}/*.json {source}/*.yaml {wsl.quote(dst)}/ 2>/dev/null || true"
+            step = (
+                f"sudo -n bash -c 'mkdir -p {wsl.quote(str(clients))} && "
+                f"cp {source}/*.json {source}/*.yaml "
+                f"{wsl.quote(str(clients))}/ 2>/dev/null || true'"
             )
-            subprocess.call(["bash", "-lc", script])
+            subprocess.call(["bash", "-lc", step])
 
     def cleanup(self, request: DeployRequest) -> None:
         """Nothing to clean for local execution."""

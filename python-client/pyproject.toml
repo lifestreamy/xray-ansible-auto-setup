@@ -5,6 +5,7 @@ description = "Python client for provisioning Xray VLESS + REALITY VPN servers (
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fabric>=3.2.3",
     "inquirerpy>=0.3.4",
     "pyyaml>=6.0.3",
     "rich>=15.0.0",
