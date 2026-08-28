@@ -91,7 +91,7 @@ EOF
 # Extract value from inventory.yml
 get_inventory_value() {
     local key="$1"
-    local file="${2:-$SCRIPT_DIR/inventory.yml}"
+    local file="${2:-$REPO_ROOT/inventory.yml}"
     grep "^${key}:" "$file" 2>/dev/null | head -1 | sed "s/.*${key}\s*:\s*//" | tr -d '\r\n' | xargs
 }
 
@@ -229,6 +229,7 @@ if [[ "$ANSIBLE_VERBOSE_LEVEL" -ne 0 ]]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 if [[ "$USE_INVENTORY" -eq 1 ]]; then
     echo "Mode: Using inventory.yml for parameters"
@@ -327,7 +328,7 @@ install_if_missing "ansible"
 install_if_missing "sshpass"
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
-    echo "[dry-run] Would rsync project from: $SCRIPT_DIR/ to: $WORK_DIR/"
+    echo "[dry-run] Would rsync project from: $REPO_ROOT/ to: $WORK_DIR/"
     echo "[dry-run] Would change directory to: $WORK_DIR"
 else
     rsync -a \
@@ -338,7 +339,7 @@ else
         --exclude='downloaded-configs/' \
         --exclude='.llm_context/' \
         --exclude='.kilo/' \
-        "$SCRIPT_DIR/" "$WORK_DIR/"
+        "$REPO_ROOT/" "$WORK_DIR/"
 
     cd "$WORK_DIR"
 fi
@@ -353,7 +354,7 @@ else
     if [[ "$DRY_RUN" -eq 1 ]]; then
         echo "[dry-run] Preparing to run Ansible with provided parameters..."
         echo "[dry-run] Would backup inventory.yml:"
-        echo "          from $SCRIPT_DIR/inventory.yml to $WORK_DIR/inventory.yml.backup"
+        echo "          from $REPO_ROOT/inventory.yml to $WORK_DIR/inventory.yml.backup"
         echo "[dry-run] Would fill inventory.yml with:"
         echo "          ansible_host: $HOST"
         echo "          ansible_user: $USER_NAME"
@@ -362,7 +363,7 @@ else
         [[ -n "$PASS" ]] && echo "          ansible_ssh_pass: (hidden)"
     else
         echo "Preparing to run Ansible with provided parameters..."
-        cp "$SCRIPT_DIR/inventory.yml" "$WORK_DIR/inventory.yml.backup"
+        cp "$REPO_ROOT/inventory.yml" "$WORK_DIR/inventory.yml.backup"
         sed -i "s|ansible_host:.*|ansible_host: $HOST|" "$WORK_DIR/inventory.yml"
         sed -i "s|ansible_user:.*|ansible_user: $USER_NAME|" "$WORK_DIR/inventory.yml"
         sed -i "s|ansible_port:.*|ansible_port: $PORT|" "$WORK_DIR/inventory.yml"
@@ -414,7 +415,7 @@ fi
 if [[ -n "$CLIENTS_DIR" ]]; then
     TARGET_DIR="$CLIENTS_DIR"
 else
-    TARGET_DIR="$SCRIPT_DIR/downloaded-clients"
+    TARGET_DIR="$REPO_ROOT/downloaded-clients"
 fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
@@ -466,7 +467,7 @@ if [[ "$CLEANUP_MODE" != "no-cleanup" && "$USE_INVENTORY" -eq 0 ]]; then
         echo "[dry-run] Would restore inventory.yml from inventory.yml.backup file"
     else
         if [[ -f "$WORK_DIR/inventory.yml.backup" ]]; then
-            cp "$WORK_DIR/inventory.yml.backup" "$SCRIPT_DIR/inventory.yml"
+            cp "$WORK_DIR/inventory.yml.backup" "$REPO_ROOT/inventory.yml"
             echo "[OK] Restored inventory.yml to template state"
             rm -f "$WORK_DIR/inventory.yml.backup"
         fi

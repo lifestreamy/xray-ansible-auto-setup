@@ -234,7 +234,8 @@ switch ($CleanupMode) {
 Write-LogVerbose "CleanupMode '$CleanupMode' mapped to bash flag '$cleanupFlag'."
 
 $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$bashScriptPath = Join-Path $scriptDir 'provision-vpn.sh'
+$repoRoot = Split-Path -Parent $scriptDir
+$bashScriptPath = Join-Path $scriptDir '..\bash\provision-vpn.sh'
 
 Write-LogVerbose "Script directory (Windows): $scriptDir"
 Write-LogVerbose "Bash script path (Windows): $bashScriptPath"
@@ -269,7 +270,7 @@ if ($ClientsDir) {
     Write-LogVerbose "ClientsDir (Windows): $ClientsDir"
     Write-LogVerbose "ClientsDir (WSL): $wslClientsDir"
 } else {
-    $defaultClientsDir = Join-Path $scriptDir 'downloaded-clients'
+    $defaultClientsDir = Join-Path $repoRoot 'downloaded-clients'
     if (-not (Test-Path $defaultClientsDir)) {
         New-Item -ItemType Directory -Path $defaultClientsDir | Out-Null
         Write-LogVerbose "Created default clients directory: $defaultClientsDir"

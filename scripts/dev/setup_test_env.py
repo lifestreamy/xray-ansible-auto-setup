@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
-"""scripts/setup_test_env.py — bootstrap local test environment (WSL Ubuntu).
+"""scripts/dev/setup_test_env.py — bootstrap local test environment (WSL Ubuntu).
 
 Idempotent. Bootstraps a WSL Ubuntu (or any Debian-family Linux) for running
 ansible-playbook + molecule locally. Intended for developers on a fresh box
 and as a reference for CI (the same commands run in GitHub Actions runners).
 
 Usage:
-    python3 scripts/setup_test_env.py
+    python3 scripts/dev/setup_test_env.py
 
 After it finishes:
     source ~/xray-venv/bin/activate
     cd <repo-root>
-    python3 scripts/local_test.py
+    python3 scripts/test/local_test.py
 """
 from __future__ import annotations
 

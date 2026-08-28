@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""scripts/local_test.py — runs the project's local verification.
+"""scripts/test/local_test.py — runs the project's local verification.
 
 Looks up an existing venv (does NOT create one) at the path given by
 --venv (default: $HOME/xray-venv), then runs:
@@ -7,14 +7,14 @@ Looks up an existing venv (does NOT create one) at the path given by
     molecule test
 
 Exits non-zero on the first failure. Exit code 2 means the venv was not
-found — bootstrap it with `python3 scripts/setup_test_env.py` first.
+found — bootstrap it with `python3 scripts/dev/setup_test_env.py` first.
 
 Usage:
-    python3 scripts/local_test.py
-    python3 scripts/local_test.py --skip-molecule   # syntax-check only
-    python3 scripts/local_test.py --venv /path/to/venv
-    python3 scripts/local_test.py --runtime native  # molecule with xray_runtime override
-    python3 scripts/local_test.py --runtime docker  # legacy escape hatch
+    python3 scripts/test/local_test.py
+    python3 scripts/test/local_test.py --skip-molecule   # syntax-check only
+    python3 scripts/test/local_test.py --venv /path/to/venv
+    python3 scripts/test/local_test.py --runtime native  # molecule with xray_runtime override
+    python3 scripts/test/local_test.py --runtime docker  # legacy escape hatch
 """
 from __future__ import annotations
 
@@ -75,7 +75,8 @@ def main() -> int:
         )
         return 2
 
-    repo_root = Path(__file__).resolve().parent.parent
+    # scripts/test/local_test.py -> repo root (three levels up).
+    repo_root = Path(__file__).resolve().parents[2]
     os.chdir(repo_root)
 
     venv_bin = venv_dir / "bin"
