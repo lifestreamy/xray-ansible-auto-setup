@@ -39,3 +39,46 @@ def write_inventory(repo_root: Path, content: str) -> Path:
     path = repo_root / INVENTORY_FILE
     path.write_text(content, encoding="utf-8")
     return path
+
+
+CONNECTION_KEYS = (
+    "ansible_host",
+    "ansible_user",
+    "ansible_port",
+    "ansible_ssh_private_key_file",
+    "ansible_ssh_pass",
+)
+
+
+def parse_user_inventory(repo_root: Path) -> tuple[dict[str, str], dict[str, Any]]:
+    """Read the user's personal inventory.yml (read-only; never written).
+
+    Returns (connection params, extra vars). Connection keys are the
+    ansible_* connection fields; every other host/all var is treated as a
+    playbook extra var.
+    """
+    path = repo_root / "inventory.yml"
+    if not path.is_file():
+        raise RuntimeError(f"inventory file not found: {path}")
+    with path.open("r", encoding="utf-8") as handle:
+        data = yaml.safe_load(handle) or {}
+    if not isinstance(data, dict):
+        raise TypeError(f"inventory file must contain a YAML mapping: {path}")
+
+    connection: dict[str, str] = {}
+    extra_vars: dict[str, Any] = {}
+    all_section = data.get("all", {})
+    if isinstance(all_section, dict):
+        raw_vars = all_section.get("vars", {})
+        if isinstance(raw_vars, dict):
+            extra_vars.update(raw_vars)
+        hosts = all_section.get("hosts", {})
+        for host_vars in hosts.values():
+            if not isinstance(host_vars, dict):
+                continue
+            for key, value in host_vars.items():
+                if key in CONNECTION_KEYS and key not in connection:
+                    connection[key] = str(value)
+                elif not key.startswith("ansible_"):
+                    extra_vars[key] = value
+    return connection, extra_vars
