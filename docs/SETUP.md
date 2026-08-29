@@ -18,7 +18,7 @@
 | `config/settings.yml` | Все параметры сервера: `num_clients`, `reality_camouflage_domain`, `warp_enabled`, `xray_port`, `xray_docker_image` и остальные | Читается при каждом запуске Ansible playbook через `vars_files` |
 | `deploy.yml` | Точка входа playbook | Обычно не трогается |
 
-Какие параметры можно передать как CLI-флаги скрипта — только параметры подключения (`-H`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`, cleanup и verbosity). Остальная конфигурация — через `config/settings.yml`. Для набора самых частых параметров (runtime, порт, число клиентов, WARP, ротация) есть лёгкая CLI-обёртка `scripts/cli_deploy.py` — см. раздел «CLI-флаги `cli_deploy.py`» ниже.
+Какие параметры можно передать как CLI-флаги — подключение (`--host`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`, cleanup, verbosity) и частые override'ы (runtime, порт, число клиентов, WARP, ротация, firewall) — через основной клиент `xrayvpn` (см. раздел «CLI-флаги `xrayvpn deploy`» ниже; как запускать — в главном README). Остальная конфигурация — через `config/settings.yml`.
 
 ## Runtime selector
 
@@ -38,26 +38,29 @@
 
 Подробности дизайна и footprint-сравнение рантаймов — см. историю проекта.
 
-## CLI-флаги `cli_deploy.py`
+## CLI-флаги `xrayvpn deploy`
 
-Для частых override'ов есть `scripts/cli_deploy.py` (stdlib argparse, MVP). Принимает:
+Основной клиент — `python-client/` (команда `xrayvpn deploy`). Принимает:
 
-- `--runtime {native|docker|podman}` — переопределяет `xray_runtime`.
-- `--xray-port <int>` — переопределяет `xray_port`.
-- `--num-clients <int>` — переопределяет `num_clients`.
-- `--camouflage-domain <fqdn>` — переопределяет `reality_camouflage_domain`.
-- `--warp` / `--no-warp` — `warp_enabled`.
-- `--rotate` / `--no-rotate` — `xray_reality_rotate`.
-- `--inventory <path>` — использовать существующий `inventory.yml` с реальным `ansible_host` (нужно для remote VPS, когда Ansible подключается по SSH).
-- `--dry-run` — `ansible-playbook --check` (без применения изменений).
+- `--execution {local|remote}` — режим исполнения (по умолчанию `local`; без флага — интерактивный выбор).
+- Параметры подключения (remote): `--host/-H`, `--user/-u` (root), `--port/-p` (22), `--pkey` / `--pass` (взаимоисключающие; если ни один не задан — скрытый запрос пароля), `--use-inventory` (параметры и vars из личного `inventory.yml`).
+- `--clients-dir <path>` — куда сохранять клиентские конфиги (по умолчанию `downloaded-clients/`).
+- `--cleanup` (по умолчанию) / `--full-cleanup` / `--no-cleanup` — удаление временных данных на сервере после запуска. `--cleanup` оставляет venv-кэш для следующего запуска, `--full-cleanup` удаляет и его.
+- Override'ы: `--runtime {native|docker|podman}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-firewall/--no-firewall`.
+- `--dry-run` — local: `ansible-playbook --check`; remote: план команд без подключения.
+- `--debug` / `--verbose` — Ansible `-vvv` / `-vvvv` + `xray_debug=true`.
 
-Пример:
+Примеры:
 
 ```bash
-python3 scripts/cli_deploy.py --runtime native --xray-port 443 --no-warp
+uv run --project python-client xrayvpn deploy --execution local --no-warp
+uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 --pkey ~/.ssh/id_rsa --runtime native
+uv run --project python-client xrayvpn deploy --execution remote --use-inventory --no-warp
 ```
 
-Сгенерированный `inventory.yml` (gitignored) содержит только указанные override'ы; остальное по-прежнему берётся из `config/settings.yml`.
+Сгенерированный локальный inventory `.xrayvpn-inventory.yml` (gitignored) содержит только переданные override'ы; остальное по-прежнему берётся из `config/settings.yml`. В удалённом режиме inventory собирается на самом сервере, а личный `inventory.yml` на него не загружается никогда.
+
+Альтернативные shell-клиенты (`shell-clients/`) принимают только параметры подключения плюс cleanup и verbosity — подробности в их `--help`.
 
 ## Про проект
 

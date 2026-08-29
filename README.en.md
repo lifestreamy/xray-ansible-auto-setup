@@ -70,39 +70,51 @@ IP and password are enough — everything else configures itself. If you need to
 
 More about each file — in [`docs/SETUP.en.md`](docs/SETUP.en.md), the "Configuration files" section.
 
-### Linux / WSL (Bash)
+### Python client (recommended) — all platforms
 
-On Windows you need WSL with an Ubuntu/Debian image installed — how to check and set it up is in [`docs/SETUP.en.md`](docs/SETUP.en.md). If Ubuntu is installed in WSL, its icon will be visible in the Start menu.
+The `xrayvpn` Python client works identically on Windows, Linux and macOS; remote mode does not need WSL.
 
-If you're already on Linux, you hardly need an explanation of how to use a terminal. On Windows — search (Win + S) for powershell or terminal.
+```bash
+# Remote mode (VPS). Just the IP — the password is prompted with hidden input.
+uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4
+
+# With an SSH key.
+uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 --pkey ~/.ssh/id_rsa
+
+# Inventory mode: params from a pre-filled inventory.yml.
+uv run --project python-client xrayvpn deploy --execution remote --use-inventory
+
+# Local mode (Linux/WSL): deploy Xray on the current machine.
+uv run --project python-client xrayvpn deploy --execution local --no-warp
+```
+
+If `uv` is not installed — see [`python-client/README.md`](python-client/README.md) (Python 3.12+ is enough).
+
+### Linux / WSL (Bash client)
+
+An alternative Bash client — supported, but no longer developed:
 
 ```bash
 # Host only. The password will be requested interactively (hidden input).
-./provision-vpn.sh -H 1.2.3.4
+./shell-clients/bash/provision-vpn.sh -H 1.2.3.4
 
 # With an SSH key.
-./provision-vpn.sh -H 1.2.3.4 --pkey ~/.ssh/id_rsa
+./shell-clients/bash/provision-vpn.sh -H 1.2.3.4 --pkey ~/.ssh/id_rsa
 
 # Inventory mode: a pre-filled inventory.yml is used.
-./provision-vpn.sh --use-inventory
+./shell-clients/bash/provision-vpn.sh --use-inventory
 ```
 
-### Windows (PowerShell)
+### Windows (PowerShell client)
 
-How to open a command line: Start → type "PowerShell" → Enter. Go to the project folder:
-
-```powershell
-cd C:\path\to\project
-```
-
-(replace `C:\path\to\project` with the real path where you unpacked the files)
+An alternative PowerShell client (requires WSL):
 
 ```powershell
 # Host only. The password will be requested interactively.
-.\Provision-VPN.ps1 -HostName 1.2.3.4
+.\shell-clients\powershell\Provision-VPN.ps1 -HostName 1.2.3.4
 
 # With an SSH key (Windows path; the wrapper converts it to a WSL path).
-.\Provision-VPN.ps1 -HostName 1.2.3.4 -PKey C:\Users\You\.ssh\id_rsa
+.\shell-clients\powershell\Provision-VPN.ps1 -HostName 1.2.3.4 -PKey C:\Users\You\.ssh\id_rsa
 ```
 
 ## Who this is for
@@ -151,7 +163,7 @@ Three things are needed from you:
 - download the project files
 - run the script for your platform — commands are in the [Quick start](#quick-start) section above.
 
-> To get the files: the **Code → Download ZIP** button on the repository page, or the source archive in the **Releases** section (on the right). Then the script installs Python 3, Ansible and `sshpass` on your local machine, deploys Xray on the VPS, generates client configs and downloads them to you. No Ansible, SSH or Xray knowledge required. BUT basic command-line skills are needed to run scripts with parameters.
+> To get the files: the **Code → Download ZIP** button on the repository page, or the source archive in the **Releases** section (on the right). Then the client deploys Xray on the VPS (in remote mode the Ansible environment is bootstrapped right on the server — nothing needs to be installed locally), generates client configs and downloads them to you. No Ansible, SSH or Xray knowledge required. BUT basic command-line skills are needed to run the client with parameters.
 
 WARP outbound via Cloudflare is enabled with one line (`warp_enabled: true` in `config/settings.yml`). With it, sites see Cloudflare IP instead of your VPS IP.
 
@@ -159,8 +171,9 @@ Before paying for a VPS long-term, check it with [`carrox-vps-check`](https://gi
 
 ## Where it runs
 
-- Linux: via the `provision-vpn.sh` bash wrapper, or directly with `ansible-playbook` (then client configs are not downloaded automatically).
-- Windows: the `Provision-VPN.ps1` PowerShell wrapper + WSL2.
+- Anywhere with Python 3.12+: the main `xrayvpn` client (`python-client/`) — remote mode works on Windows, Linux and macOS over SSH; local mode on Windows uses a WSL bridge.
+- Linux: the alternative Bash client `shell-clients/bash/provision-vpn.sh`.
+- Windows: the alternative PowerShell client `shell-clients/powershell/Provision-VPN.ps1` + WSL2.
 
 ## Requirements
 
@@ -168,10 +181,8 @@ Before paying for a VPS long-term, check it with [`carrox-vps-check`](https://gi
 
 **Local machine:**
 
-- Linux: Ubuntu/Debian (or any distro with `apt`), SSH access to the VPS.
-- Windows: WSL2 with Ubuntu/Debian, PowerShell 5.1+.
-
-The wrapper installs Python 3, Ansible and `sshpass` if they're missing. On Windows only WSL is needed.
+- Python 3.12+ for the main `xrayvpn` client (install/run via `uv`, see [`python-client/README.md`](python-client/README.md)); SSH access to the VPS by key or password (uses the built-in `paramiko` — no `sshpass` needed).
+- For the alternative shell clients: Linux/WSL with `apt` (the Bash client installs Python 3, Ansible and `sshpass` itself); on Windows — WSL2 with Ubuntu/Debian.
 
 ## Configuration
 
@@ -191,6 +202,13 @@ Fill in `ansible_host`, `ansible_user`, `ansible_port` and one of the two: `ansi
 CLI mode (`-H` without `--use-inventory`) doesn't use `inventory.yml` — the script builds its own inventory in a temp folder for the duration of the run.
 
 These are ways to pass connection parameters. The rest of the configuration (number of clients, WARP, port, camouflage domain) is set in `config/settings.yml` — more in [`docs/SETUP.en.md`](docs/SETUP.en.md), the "Configuration files" section.
+
+## Repository layout
+
+- `python-client/` — the main client (Python, `xrayvpn` CLI): local and remote modes.
+- `shell-clients/` — alternative shell clients: Bash and PowerShell (supported, but no longer developed).
+- `scripts/` — developer tooling: test environment setup and local tests.
+- `config/`, `roles/`, `deploy.yml` — the Ansible project (configuration, role, playbook entry point).
 
 ## Clients
 

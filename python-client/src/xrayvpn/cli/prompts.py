@@ -22,7 +22,7 @@ def select(title: str, choices: list[str], default: str | None = None) -> str | 
         return inquirer.select(
             message=title, choices=choices, default=default or choices[0]
         ).execute()
-    except Exception:  # noqa: BLE001 — degrade to non-interactive default
+    except Exception as exc:  # noqa - intentional: prompts degrade to defaults
         return default
 
 
@@ -35,5 +35,5 @@ def text(title: str, default: str | None = None) -> str | None:
 
         result = inquirer.text(message=title, default=default or "").execute()
         return result or default
-    except Exception:  # noqa: BLE001 — degrade to non-interactive default
+    except Exception as exc:  # noqa - intentional: prompts degrade to defaults
         return default

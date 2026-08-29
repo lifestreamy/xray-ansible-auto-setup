@@ -70,39 +70,51 @@
 
 Подробнее про каждый файл — в [`docs/SETUP.md`](docs/SETUP.md), раздел «Файлы конфигурации».
 
-### Linux / WSL (Bash)
+### Python-клиент (рекомендуется) — все платформы
 
-На Windows должен быть доступен WSL с созданным образом Ubuntu/Debian — как проверить и настроить, в [`docs/SETUP.md`](docs/SETUP.md). Если Ubuntu в WSL установлен, в меню «Пуск» будет видна иконка.
+Python-клиент `xrayvpn` работает одинаково на Windows, Linux и macOS; для удалённого режима WSL не нужен.
 
-Если вы уже на Linux, то вам вряд ли нужно объяснять, как пользоваться терминалом. На Windows — найдите в поиске (Win + S) powershell или terminal.
+```bash
+# Удалённый режим (VPS). Достаточно IP — пароль спросит скрыто.
+uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4
+
+# С SSH-ключом.
+uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 --pkey ~/.ssh/id_rsa
+
+# Режим inventory: параметры из предзаполненного inventory.yml.
+uv run --project python-client xrayvpn deploy --execution remote --use-inventory
+
+# Локальный режим (Linux/WSL): развернуть Xray на текущей машине.
+uv run --project python-client xrayvpn deploy --execution local --no-warp
+```
+
+Если `uv` не установлен — см. [`python-client/README.md`](python-client/README.md) (достаточно Python 3.12+).
+
+### Linux / WSL (Bash-клиент)
+
+Альтернативный клиент на Bash — поддерживается, но больше не развивается:
 
 ```bash
 # Только хост. Пароль спросит интерактивно (скрытый ввод).
-./provision-vpn.sh -H 1.2.3.4
+./shell-clients/bash/provision-vpn.sh -H 1.2.3.4
 
 # С SSH-ключом.
-./provision-vpn.sh -H 1.2.3.4 --pkey ~/.ssh/id_rsa
+./shell-clients/bash/provision-vpn.sh -H 1.2.3.4 --pkey ~/.ssh/id_rsa
 
 # Режим inventory: используется предзаполненный inventory.yml.
-./provision-vpn.sh --use-inventory
+./shell-clients/bash/provision-vpn.sh --use-inventory
 ```
 
-### Windows (PowerShell)
+### Windows (PowerShell-клиент)
 
-Как открыть командную строку: Пуск → наберите «PowerShell» → Enter. Перейдите в папку проекта:
-
-```powershell
-cd C:\путь\к\проекту
-```
-
-(вместо `C:\путь\к\проекту` подставьте реальный путь, куда распаковали файлы)
+Альтернативный клиент на PowerShell (для работы ему нужен WSL):
 
 ```powershell
 # Только хост. Пароль спросит интерактивно.
-.\Provision-VPN.ps1 -HostName 1.2.3.4
+.\shell-clients\powershell\Provision-VPN.ps1 -HostName 1.2.3.4
 
 # С SSH-ключом (Windows-путь; обёртка сама переведёт в WSL-путь).
-.\Provision-VPN.ps1 -HostName 1.2.3.4 -PKey C:\Users\You\.ssh\id_rsa
+.\shell-clients\powershell\Provision-VPN.ps1 -HostName 1.2.3.4 -PKey C:\Users\You\.ssh\id_rsa
 ```
 
 ## Для кого это
@@ -151,7 +163,7 @@ Xray VLESS + REALITY не требует своего домена и TLS-сер
 - скачать файлы проекта 
 - запустить скрипт для вашей платформы — команды в разделе [«Быстрый старт»](#быстрый-старт) выше. 
 
-> Получить файлы можно так: кнопка **Code → Download ZIP** на странице репозитория, либо архив исходников в разделе **Releases** (справа). Дальше скрипт сам установит Python 3, Ansible и `sshpass` на вашу локальную машину, развернёт Xray на VPS, сгенерирует клиентские конфиги и скачает их к вам. Знание Ansible, SSH или Xray не требуется. НО потребуется базовое умение пользоваться командной строкой для запуска скриптов с параметрами.
+> Получить файлы можно так: кнопка **Code → Download ZIP** на странице репозитория, либо архив исходников в разделе **Releases** (справа). Дальше клиент развернёт Xray на VPS (в удалённом режиме окружение для Ansible создаётся прямо на сервере, ничего устанавливать локально не нужно), сгенерирует клиентские конфиги и скачает их к вам. Знание Ansible, SSH или Xray не требуется. НО потребуется базовое умение пользоваться командной строкой для запуска клиента с параметрами.
 
 WARP outbound через Cloudflare включается одной строкой (`warp_enabled: true` в `config/settings.yml`). С ним сайты видят IP Cloudflare вместо IP вашего VPS.
 
@@ -159,8 +171,9 @@ WARP outbound через Cloudflare включается одной строко
 
 ## Где запускается
 
-- Linux: через bash-обёртку `provision-vpn.sh`, либо напрямую `ansible-playbook` (тогда клиентские конфиги не скачиваются автоматически).
-- Windows: PowerShell-обёртка `Provision-VPN.ps1` + WSL2.
+- Везде, где есть Python 3.12+: основной клиент `xrayvpn` (`python-client/`) — удалённый режим по SSH работает на Windows, Linux и macOS; локальный режим на Windows использует WSL-мост.
+- Linux: альтернативный bash-клиент `shell-clients/bash/provision-vpn.sh`.
+- Windows: альтернативный PowerShell-клиент `shell-clients/powershell/Provision-VPN.ps1` + WSL2.
 
 ## Требования
 
@@ -168,10 +181,8 @@ WARP outbound через Cloudflare включается одной строко
 
 **Локальная машина:**
 
-- Linux: Ubuntu/Debian (или любой дистрибутив с `apt`), SSH-доступ к VPS.
-- Windows: WSL2 с Ubuntu/Debian, PowerShell 5.1+.
-
-Обёртка сама доустанавливает Python 3, Ansible и `sshpass`, если их нет. На Windows нужен только WSL.
+- Python 3.12+ для основного клиента `xrayvpn` (установка/запуск — через `uv`, см. [`python-client/README.md`](python-client/README.md)); SSH-доступ к VPS по ключу или паролю (используется встроенный `paramiko` — `sshpass` не нужен).
+- Для альтернативных shell-клиентов: Linux/WSL с `apt` (bash-клиент сам доустановит Python 3, Ansible и `sshpass`); на Windows — WSL2 с Ubuntu/Debian.
 
 ## Конфигурация
 
@@ -191,6 +202,13 @@ cp inventory.yml.example inventory.yml
 CLI-режим (`-H` без `--use-inventory`) файл `inventory.yml` не использует — скрипт сам соберёт нужный inventory во временной папке на время запуска.
 
 Это — способы передать параметры подключения. Остальная конфигурация (число клиентов, WARP, порт, домен маскировки) задаётся в `config/settings.yml` — подробнее в [`docs/SETUP.md`](docs/SETUP.md), раздел «Файлы конфигурации».
+
+## Структура репозитория
+
+- `python-client/` — основной клиент (Python, CLI `xrayvpn`): локальный и удалённый режимы.
+- `shell-clients/` — альтернативные shell-клиенты: Bash и PowerShell (поддерживаются, но не развиваются).
+- `scripts/` — инструменты разработчика: настройка тестового окружения и локальные тесты.
+- `config/`, `roles/`, `deploy.yml` — Ansible-проект (конфигурация, роль, точка входа playbook).
 
 ## Клиенты
 
