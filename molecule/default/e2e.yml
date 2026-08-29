@@ -19,6 +19,18 @@
 # scenario where the role is applied locally). Either way: wait_for 443 is
 # the universal gate before the mihomo handshake.
 
+- name: Pre-flight | ensure Xray service is started (native)
+  ansible.builtin.shell:
+    cmd: |
+      if [ "{{ xray_runtime }}" = "native" ]; then
+        systemctl reset-failed xray 2>/dev/null || true
+        systemctl start xray
+      else
+        {{ xray_runtime }} start xray
+      fi
+  changed_when: false
+  when: xray_e2e_enabled | default(false) | bool
+
 - name: Pre-flight | assert Xray is listening on TCP 443
   ansible.builtin.wait_for:
     host: 127.0.0.1

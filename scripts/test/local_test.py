@@ -62,8 +62,13 @@ def main() -> int:
         choices=SUPPORTED_RUNTIMES,
         default=None,
         help="xray_runtime passed to molecule as --extra-vars (native|docker|podman). "
-             "When omitted, the value from molecule/default/molecule.yml group_vars "
-             "(currently 'native') is used.",
+             "When omitted, the value from config/settings.yml is used.",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        help="Pass --debug to molecule (verbose ansible output; persisted logs "
+             "under ~/.cache/molecule/.../logs for post-mortem).",
     )
     args = parser.parse_args()
 
@@ -92,7 +97,10 @@ def main() -> int:
         return rc
 
     if not args.skip_molecule:
-        mol_cmd = [str(venv_bin / "molecule"), "test"]
+        mol_cmd = [str(venv_bin / "molecule")]
+        if args.debug:
+            mol_cmd.append("--debug")
+        mol_cmd.append("test")
         if args.runtime is not None:
             mol_cmd += ["--", "-e", f"xray_runtime={args.runtime}"]
         rc = run_in_venv(venv_dir, mol_cmd)

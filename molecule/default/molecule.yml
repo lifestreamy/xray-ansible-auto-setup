@@ -32,37 +32,10 @@ provisioner:
   config_options:
     defaults:
       roles_path: ../..
-  inventory:
-    group_vars:
-      all:
-        # --- runtime selector (native scenario) ---
-        xray_runtime: native
-        # --- role-critical vars (must match production) ---
-        reality_camouflage_domain: dl.google.com
-        xray_container_repo: "ghcr.io/xtls/xray-core"
-        xray_version: "26.6.27"
-        xray_docker_image: "teddysun/xray:26.6.27"
-        xray_config_dir: /root/xray-config
-        xray_client_configs_dir: /root/vpn-configs
-        xray_port: 443
-        # Backups are timestamped and therefore not idempotent; disable in tests.
-        xray_backup_enabled: false
-        xray_reality_rotate: false
-        # --- WARP — disabled in tests ---
-        warp_enabled: false
-        warp_ipv6: false
-        warp_endpoint: "162.159.192.1:2408"
-        warp_mtu: 1420
-        warp_wgcf_version: "2.2.22"
-        warp_wgcf_url: "https://github.com/ViRb3/wgcf/releases/download/v{{ warp_wgcf_version }}/wgcf_{{ warp_wgcf_version }}_linux_amd64"
-        # --- test-only knobs ---
-        num_clients: 1
-        xray_debug: false
-        # ufw/iptables are unreliable on the host runner; skip firewall.
-        xray_manage_firewall: false
-        # --- e2e (mihomo client in verify) ---
-        xray_e2e_enabled: true
-        mihomo_version: "1.19.29"
+  # Scenario test variables live in the plays (converge.yml / verify.yml):
+  # molecule 26.8 with the default driver ignores
+  # provisioner.inventory.group_vars in the generated inventory, so play-level
+  # vars are the single source of truth for the test knobs.
   playbooks:
     converge: converge.yml
     prepare: prepare.yml

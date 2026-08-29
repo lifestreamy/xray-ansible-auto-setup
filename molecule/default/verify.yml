@@ -11,6 +11,12 @@
   hosts: localhost
   connection: local
   become: true
+  vars_files:
+    - ../../config/settings.yml
+  vars:
+    # Scenario knobs for the e2e step (see converge.yml for the rest).
+    xray_e2e_enabled: true
+    mihomo_version: "1.19.29"
   tasks:
     - name: Re-run role smoke checks (warn-only parity; runtime-aware)
       ansible.builtin.import_tasks: ../../roles/xray_vpn/tasks/smoke.yml

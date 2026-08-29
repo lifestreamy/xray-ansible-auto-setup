@@ -3,5 +3,16 @@
   hosts: localhost
   connection: local
   become: true
+  vars_files:
+    - ../../config/settings.yml
   roles:
     - role: xray_vpn
+      # Test-only overrides. Role params outrank vars_files (play vars do
+      # NOT: vars_files sit above play vars in the current precedence list).
+      # molecule 26.8 default driver also ignores provisioner.inventory.group_vars.
+      num_clients: 1
+      warp_enabled: false
+      xray_backup_enabled: false
+      xray_reality_rotate: false
+      xray_manage_firewall: false
+      xray_debug: false
