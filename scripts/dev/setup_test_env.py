@@ -68,10 +68,10 @@ def main() -> int:
 
     print()
     print("[setup] Done.")
-    print(f"[setup] Next steps:")
+    print("[setup] Next steps:")
     print(f"[setup]   source {VENV_DIR}/bin/activate")
-    print(f"[setup]   cd <repo-root>")
-    print(f"[setup]   python3 scripts/local_test.py")
+    print("[setup]   cd <repo-root>")
+    print("[setup]   python3 scripts/local_test.py")
     return 0
 
 
