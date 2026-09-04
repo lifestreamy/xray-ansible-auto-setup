@@ -12,8 +12,8 @@ User=root
 ExecStart=/usr/bin/docker run \
   --rm \
   --name xray \
+  --network host \
   -v {{ xray_config_dir }}:/etc/xray \
-  -p {{ xray_port }}:{{ xray_port }}/tcp \
   {{ xray_container_image }} \
   /usr/bin/xray -c /etc/xray/config.json
 
