@@ -1,0 +1,161 @@
+---
+# Molecule CI for the xray_vpn role and the deploy playbook.
+#
+# Trigger policy (project CI rule): pull requests only — `main` is
+# protected; the dev line is validated via manual workflow_dispatch.
+#
+# Jobs:
+#   syntax — cheap gate: install pinned toolchain + run ansible-playbook
+#     --syntax-check (the inventory.yml.example parse warnings are known
+#     and harmless; rc 0 is what matters).
+#   distro — matrix legs per supported VPS distro (container scenario,
+#     molecule/distro): ubuntu2204, ubuntu2404, debian12. Container
+#     firewall task stays disabled there (ufw/iptables unreliable in
+#     containers).
+#   native — full host run (default scenario) on ubuntu-24.04 with
+#     xray_manage_firewall enabled: this is where the ufw install/allow
+#     path and the real end-to-end handshake are exercised.
+#
+# Failure artifacts: molecule logs (~/.cache/molecule) uploaded for 7
+# days; names include the matrix leg.
+
+name: molecule
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  ANSIBLE_CORE_VERSION: "2.21.3"
+
+jobs:
+  syntax:
+    name: syntax-check
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: molecule/requirements.yml
+
+      - name: Install ansible-core
+        run: |
+          python -m pip install --upgrade pip
+          pip install "ansible-core==${ANSIBLE_CORE_VERSION}"
+
+      - name: Cache ansible collections
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.ansible/collections
+          key: ansible-collections-${{ hashFiles('molecule/requirements.yml') }}
+          restore-keys: ansible-collections-
+
+      - name: Install collections
+        run: ansible-galaxy collection install -r molecule/requirements.yml
+
+      - name: Syntax check
+        run: ansible-playbook --syntax-check -i inventory.yml.example deploy.yml
+
+  distro:
+    name: molecule (${{ matrix.distro }})
+    needs: syntax
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - distro: ubuntu2204
+            image: geerlingguy/docker-ubuntu2204-ansible
+          - distro: ubuntu2404
+            image: geerlingguy/docker-ubuntu2404-ansible
+          - distro: debian12
+            image: geerlingguy/docker-debian12-ansible
+    env:
+      MOLECULE_IMAGE: ${{ matrix.image }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: molecule/requirements.yml
+
+      - name: Install molecule toolchain
+        run: |
+          python -m pip install --upgrade pip
+          pip install "ansible-core==${ANSIBLE_CORE_VERSION}" molecule "molecule-plugins[docker]"
+
+      - name: Cache ansible collections
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.ansible/collections
+          key: ansible-collections-${{ hashFiles('molecule/requirements.yml') }}
+          restore-keys: ansible-collections-
+
+      - name: Molecule test (distro container scenario)
+        run: molecule test -s distro
+
+      - name: Upload molecule logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: molecule-logs-distro-${{ matrix.distro }}-${{ github.run_id }}
+          path: ~/.cache/molecule/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  native:
+    name: molecule (native + firewall)
+    needs: syntax
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Setup Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+          cache: "pip"
+          cache-dependency-path: molecule/requirements.yml
+
+      - name: Install molecule toolchain
+        run: |
+          python -m pip install --upgrade pip
+          pip install "ansible-core==${ANSIBLE_CORE_VERSION}" molecule "molecule-plugins[docker]"
+
+      - name: Cache ansible collections
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.ansible/collections
+          key: ansible-collections-${{ hashFiles('molecule/requirements.yml') }}
+          restore-keys: ansible-collections-
+
+      # Full host run with the firewall tasks enabled — the distro legs keep
+      # them disabled (containers), so this job is the firewall coverage.
+      - name: Molecule test (host scenario, managed firewall)
+        run: molecule test -- -e xray_manage_firewall=true
+
+      - name: Upload molecule logs
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: molecule-logs-native-${{ github.run_id }}
+          path: ~/.cache/molecule/
+          retention-days: 7
+          if-no-files-found: ignore

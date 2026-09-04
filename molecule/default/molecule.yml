@@ -18,6 +18,11 @@
 
 dependency:
   name: galaxy
+  options:
+    # Shared test-harness requirements (role itself stays dependency-free —
+    # see molecule/requirements.yml header). Path is project-directory-relative;
+    # molecule's default lookup would not find a file outside the scenario dir.
+    requirements-file: molecule/requirements.yml
 
 driver:
   name: default
