@@ -17,6 +17,7 @@ See `README.md` (RU) / `README.en.md` (EN) for the full description.
 - `docs/TEST-VPS.md` — validating a fresh VPS before running the playbook.
 - `docs/ROTATION.md` — credential/certificate rotation procedures.
 - `docs/CLIENT-STATUS.md` — current operational status of the deployed server.
+- `docs/RELEASE.md` — release policy: versioning statuses, tagging, pre-release acceptance records.
 - `docs/PLANNED.md` — planned roadmap and upcoming changes.
 - `docs/GLOSSARY.md` — domain-specific terms used in this project.
 
