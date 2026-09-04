@@ -18,7 +18,7 @@ The full glossary is in [`docs/GLOSSARY.en.md`](GLOSSARY.en.md).
 | `config/settings.yml` | All server parameters: `num_clients`, `reality_camouflage_domain`, `warp_enabled`, `xray_port`, `xray_docker_image` and others | Read on every Ansible playbook run via `vars_files` |
 | `deploy.yml` | The playbook entry point | Usually left alone |
 
-Which parameters can be passed as CLI flags — connection (`--host`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`/`--inventory`, cleanup, verbosity) and common overrides (runtime, port, number of clients, WARP, rotation, firewall) — through the main `xrayvpn` client (see the "`xrayvpn deploy` CLI flags" section below; how to run it — in the main README). The rest of the configuration goes through `config/settings.yml`.
+Which parameters can be passed as CLI flags — connection (`--host`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`/`--inventory`, cleanup, verbosity) and common overrides (runtime, port, number of clients, WARP, rotation, firewall) — through the main `xrayvpn` client (see the "`xrayvpn deploy` CLI flags" section below; all run options — in the README Quick start). The rest of the configuration goes through `config/settings.yml`.
 
 ## Runtime selector
 
@@ -65,7 +65,7 @@ The alternative shell clients (`shell-clients/`) accept only connection paramete
 
 ## About the project
 
-This is a utility that uses Ansible to deploy an Xray VLESS + REALITY VPN server on a remote VPS. It generates client configs for Clash Verge / FlClash (Mihomo Meta YAML) and Amnezia VPN (JSON). Clash Verge and FlClash are the main recommended and tested clients. Amnezia works but isn't recommended because of instability. Platform wrappers are PowerShell and Bash scripts (PowerShell invokes Bash).
+This is a utility that uses Ansible to deploy an Xray VLESS + REALITY VPN server on a remote VPS. It generates client configs for Clash Verge / FlClash (Mihomo Meta YAML) and Amnezia VPN (JSON). Clash Verge and FlClash are the main recommended and tested clients. Amnezia works but isn't recommended because of instability. Platform wrappers: PowerShell and Bash. The PowerShell wrapper runs the Bash client through WSL.
 
 ## What you need before you start
 

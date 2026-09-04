@@ -8,7 +8,7 @@ This document fixes how the project ships releases: versioning, release statuses
 
 ## Purpose and scope
 
-The project is maintained by one person; there is no external tester base. The only honest "verified" signal is automated runs (local tests and CI on GitHub Actions) plus the author's personal acceptance on a production server. There is no "alpha → beta → stable by external feedback" ladder: a release status is defined by the concrete criteria below, not by expectations of tests this project will never have.
+The project is maintained by one person; there is no external tester base. The only honest "verified" signal is automated runs (local tests and CI on GitHub Actions) plus the author's personal acceptance on a production server. There is no "alpha → beta → stable by external feedback" ladder. A release status is defined by the concrete criteria below, not by expectations of tests this project will never have.
 
 ## Versioning
 
@@ -21,11 +21,11 @@ Every release is pinned by an annotated git tag on a commit of the `staging` dev
 
 | Status | Tag | Meaning |
 |---|---|---|
-| experimental | `vX.Y_experimental` (patches: `vX.Y.Z_experimental`) | shipped right after test acceptance; used in production and accumulates trust |
+| experimental | `vX.Y_experimental` (patches: `vX.Y.Z_experimental`) | shipped right after test acceptance; used in real production |
 | stable | `vX.Y_stable` — a second tag on the same commit | all promotion criteria below are met |
 
 - Promoting does not change the commit: only the status changes — a new tag, the CHANGELOG status line, and the GitHub Release flag.
-- If the next release ships before `vX.Y` meets the stable criteria, the older release stays experimental forever — that is a normal outcome, not a debt.
+- If the next release ships before `vX.Y` meets the stable criteria, the older release stays experimental forever — that is a normal outcome.
 - Historical note: the `v0.2_release` tag predates this policy and used the old naming; it is not renamed.
 
 ### Criteria for experimental → stable (all three required)
@@ -43,7 +43,7 @@ A release `vX.Y` is shipped strictly in this order:
 3. Wait for a green GitHub Actions run on the top commit: matrix jobs per distribution plus the firewall job. On failures — fix in separate commits and re-run until green.
 4. Fixation: a separate commit adds a record of the passed runs to the "Release acceptance" section below — links, matrix, dates. Such a commit touches nothing else (on first use — plus the README navigation line).
 5. Only then the annotated tag `vX.Y_experimental` is created on the same commit and pushed next.
-6. A GitHub Release is created: title — the tag name; body — the corresponding `CHANGELOG` section plus a link to the acceptance record below; experimental releases are marked pre-release, a stable promotion is marked latest. Release assets — public files only, never configs containing keys.
+6. A GitHub Release is created: title — the tag name; body — the corresponding `CHANGELOG` section plus a link to the acceptance record below; experimental releases are marked pre-release, a stable promotion is marked latest. Release assets are public files only. Configs containing keys never go into a release.
 
 Tagging an unverified commit (without a green CI and without a fixation record) is prohibited by this policy.
 

@@ -14,7 +14,7 @@
 
 ## Что переопределять
 
-Персональные значения под конкретный VPS (например, `num_clients` или `reality_camouflage_domain`) задаются в `inventory.yml` (напоминаю создать самим по образу inventory.yml.example, он не коммитится, в `.gitignore`). Либо через CLI-флаги, когда появятся.
+Персональные значения под конкретный VPS (например, `num_clients` или `reality_camouflage_domain`) задаются в `inventory.yml` (создайте сами из `inventory.yml.example`; файл не коммитится, в `.gitignore`). Либо через CLI-флаги клиента `xrayvpn` — см. `docs/SETUP.md`.
 
 Для локального тестирования через Ansible molecule значения лежат в `molecule/default/molecule.yml` — блок `provisioner.inventory.group_vars.all`.
 

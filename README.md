@@ -7,7 +7,7 @@
 
 # Xray Reality VPN Server — развёртывание
 
-> Личный VPN-сервер на своём VPS (облачном сервере) — в минимальном варианте достаточно передать в параметрах только IP и пароль root пользователя. Автоматическая настройка VLESS Xray Reality VPN + Cloudflare Warp outbound (опционально) через Ansible. Генерирует и загружает в директорию проекта готовые .json/.yaml конфиги для Amnezia / Clash Verge / FlClash — подключайтесь сразу. Благодаря персональному развёртыванию ваши данные в безопасности.
+> Личный VPN-сервер на своём VPS (облачном сервере) — в минимальном варианте достаточно передать в параметрах только IP и пароль root пользователя. Автоматическая настройка VLESS Xray Reality VPN + Cloudflare Warp outbound (опционально) через Ansible. Генерирует и загружает в директорию проекта готовые .json/.yaml конфиги для Amnezia / Clash Verge / FlClash.
 
 ## Содержание
 
@@ -90,9 +90,13 @@ uv run --project python-client xrayvpn deploy --execution local --no-warp
 
 Если `uv` не установлен — см. [`python-client/README.md`](python-client/README.md) (достаточно Python 3.12+).
 
-### Linux / WSL (Bash-клиент)
+### Linux / WSL (Bash)
 
-Альтернативный клиент на Bash — поддерживается, но больше не развивается:
+Альтернативный клиент на Bash — поддерживается, но больше не развивается.
+
+На Windows должен быть доступен WSL с созданным образом Ubuntu/Debian — как проверить и настроить, в [`docs/SETUP.md`](docs/SETUP.md). Если Ubuntu в WSL установлен, в меню «Пуск» будет видна иконка.
+
+Если вы уже на Linux, то вам вряд ли нужно объяснять, как пользоваться терминалом. На Windows — найдите в поиске (Win + S) powershell или terminal.
 
 ```bash
 # Только хост. Пароль спросит интерактивно (скрытый ввод).
@@ -105,9 +109,15 @@ uv run --project python-client xrayvpn deploy --execution local --no-warp
 ./shell-clients/bash/provision-vpn.sh --use-inventory
 ```
 
-### Windows (PowerShell-клиент)
+### Windows (PowerShell)
 
-Альтернативный клиент на PowerShell (для работы ему нужен WSL):
+Как открыть командную строку: Пуск → наберите «PowerShell» → Enter. Перейдите в папку проекта:
+
+```powershell
+cd C:\путь\к\проекту
+```
+
+(вместо `C:\путь\к\проекту` подставьте реальный путь, куда распаковали файлы)
 
 ```powershell
 # Только хост. Пароль спросит интерактивно.
@@ -116,6 +126,24 @@ uv run --project python-client xrayvpn deploy --execution local --no-warp
 # С SSH-ключом (Windows-путь; обёртка сама переведёт в WSL-путь).
 .\shell-clients\powershell\Provision-VPN.ps1 -HostName 1.2.3.4 -PKey C:\Users\You\.ssh\id_rsa
 ```
+
+### Напрямую через Ansible (без клиента)
+
+Если клиенты не нужны — playbook можно запустить напрямую. Понадобится ansible-core 2.14+ и коллекция `community.general`:
+
+```bash
+# Debian 12+ / Ubuntu 24.04: подойдёт apt. На Ubuntu 22.04 из apt идёт 2.12 — слишком стар, ставьте через pip.
+pip install ansible-core
+ansible-galaxy collection install community.general
+```
+
+Подготовьте `inventory.yml` из шаблона (команды — в разделе «Конфигурация» ниже) и запустите:
+
+```bash
+ansible-playbook -i inventory.yml deploy.yml
+```
+
+В этом режиме клиентские конфиги не скачиваются автоматически — они остаются на VPS в `/root/vpn-configs`.
 
 ## Для кого это
 
@@ -139,7 +167,7 @@ flowchart LR
 
 Конечная цель — внешний сайт. Сайт видит IP вашего VPS (напрямую) или IP Cloudflare (через WARP).
 
-> 💡 В моих планах — мультиплатформенный клиент с простым интерфейсом, чтобы развёртывание и управление были ещё проще. Полный список планов — в [docs/PLANNED.md](docs/PLANNED.md).
+> В моих планах — мультиплатформенный клиент с простым интерфейсом, чтобы развёртывание и управление были ещё проще. Полный список планов — в [docs/PLANNED.md](docs/PLANNED.md).
 
 <details>
   <summary>Подробности для технарей</summary>
@@ -156,14 +184,14 @@ flowchart LR
 
 Xray VLESS + REALITY не требует своего домена и TLS-сертификата. Сервер маскируется под чужой легитимный сайт (`reality_camouflage_domain`, по умолчанию `dl.google.com`). Это снимает главный барьер для самостоятельной настройки VPN: не нужно покупать домен, получать и продлевать сертификат, настраивать DNS.
 
-Ядро сервера — [Xray-core](https://github.com/XTLS/Xray-core). По умолчанию устанавливается нативно как `/usr/local/xray/xray` под управлением systemd (вариант `xray_runtime: native` в `config/settings.yml` — наименьший footprint, рекомендуемый). Доступны также варианты `docker` (legacy escape hatch через Docker Engine) и `podman` (experimental; не покрыт molecule-тестами). Стек: VLESS + REALITY.
+Ядро сервера — [Xray-core](https://github.com/XTLS/Xray-core). По умолчанию устанавливается нативно как `/usr/local/xray/xray` под управлением systemd (вариант `xray_runtime: native` в `config/settings.yml` — наименьший footprint, рекомендуемый). Доступны также варианты `docker` (легаси-путь через Docker Engine) и `podman` (experimental; не покрыт molecule-тестами). Стек: VLESS + REALITY.
 
 От вас нужно три вещи: 
 - купить VPS (Ubuntu 20.04+ или Debian 11+) — могу подсказать проверенных провайдеров, буду признателен за регистрацию по моей реферальной ссылке
 - скачать файлы проекта 
-- запустить скрипт для вашей платформы — команды в разделе [«Быстрый старт»](#быстрый-старт) выше. 
+- запустить клиент или playbook — команды в разделе [«Быстрый старт»](#быстрый-старт) выше. 
 
-> Получить файлы можно так: кнопка **Code → Download ZIP** на странице репозитория, либо архив исходников в разделе **Releases** (справа). Дальше клиент развернёт Xray на VPS (в удалённом режиме окружение для Ansible создаётся прямо на сервере, ничего устанавливать локально не нужно), сгенерирует клиентские конфиги и скачает их к вам. Знание Ansible, SSH или Xray не требуется. НО потребуется базовое умение пользоваться командной строкой для запуска клиента с параметрами.
+> Получить файлы можно так: кнопка **Code → Download ZIP** на странице репозитория, либо архив исходников в разделе **Releases** (справа). Дальше клиент развернёт Xray на VPS, сгенерирует клиентские конфиги и скачает их к вам. В удалённом режиме окружение для Ansible создаётся прямо на сервере — локально ничего ставить не нужно. Знание Ansible, SSH или Xray не требуется. НО потребуется базовое умение пользоваться командной строкой для запуска клиента с параметрами.
 
 WARP outbound через Cloudflare включается одной строкой (`warp_enabled: true` в `config/settings.yml`). С ним сайты видят IP Cloudflare вместо IP вашего VPS.
 
@@ -172,7 +200,7 @@ WARP outbound через Cloudflare включается одной строко
 ## Где запускается
 
 - Везде, где есть Python 3.12+: основной клиент `xrayvpn` (`python-client/`) — удалённый режим по SSH работает на Windows, Linux и macOS; локальный режим на Windows использует WSL-мост.
-- Linux: альтернативный bash-клиент `shell-clients/bash/provision-vpn.sh`.
+- Linux: альтернативный bash-клиент `shell-clients/bash/provision-vpn.sh`, либо напрямую `ansible-playbook` (тогда клиентские конфиги не скачиваются автоматически).
 - Windows: альтернативный PowerShell-клиент `shell-clients/powershell/Provision-VPN.ps1` + WSL2.
 
 ## Требования
@@ -182,14 +210,16 @@ WARP outbound через Cloudflare включается одной строко
 **Локальная машина:**
 
 - Python 3.12+ для основного клиента `xrayvpn` (установка/запуск — через `uv`, см. [`python-client/README.md`](python-client/README.md)); SSH-доступ к VPS по ключу или паролю (используется встроенный `paramiko` — `sshpass` не нужен).
-- Для альтернативных shell-клиентов: Linux/WSL с `apt` (bash-клиент сам доустановит Python 3, Ansible и `sshpass`); на Windows — WSL2 с Ubuntu/Debian.
+- Для альтернативных shell-клиентов: Linux/WSL с `apt`; на Windows — WSL2 с Ubuntu/Debian.
+
+Обёртка сама доустановит Python 3, Ansible и `sshpass`, если их нет. На Windows нужен только WSL.
 
 ## Конфигурация
 
 Два способа:
 
 - **CLI-параметры** — `--pkey` или `--pass` (взаимоисключающие). Если ни один не задан — пароль спросит скрыто.
-- **Inventory-файл** — `inventory.yml` + флаг `--use-inventory` (`-UseInventory` в PowerShell). Shell-клиенты умеют и произвольный путь: `--inventory PATH` (`-Inventory <path>`); в `xrayvpn` `--use-inventory` доступен в remote-режиме (`--execution remote`), а `--inventory <path>` — в local-режиме.
+- **Inventory-файл** — `inventory.yml` + `--use-inventory` (`-UseInventory` в PowerShell). Shell-клиенты умеют и произвольный путь: `--inventory PATH` (`-Inventory <path>`). Подробности режимов — в [`docs/SETUP.md`](docs/SETUP.md), раздел «CLI-флаги `xrayvpn deploy`».
 
 Для режима `--use-inventory` нужен файл `inventory.yml` в корне проекта. В репозитории лежит шаблон `inventory.yml.example` — скопируйте его и заполните своими данными:
 

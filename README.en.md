@@ -7,7 +7,7 @@
 
 # Xray Reality VPN Server — deployment
 
-> A personal VPN server on your own VPS (cloud server) — the minimal case needs only the IP and root password passed as parameters. Automated setup of VLESS Xray Reality VPN + Cloudflare WARP outbound (optional) via Ansible. Generates and downloads ready .json/.yaml configs for Amnezia / Clash Verge / FlClash into the project directory — connect right away. With personal deployment, your data is safe.
+> A personal VPN server on your own VPS (cloud server) — the minimal case needs only the IP and root password passed as parameters. Automated setup of VLESS Xray Reality VPN + Cloudflare WARP outbound (optional) via Ansible. Generates and downloads ready .json/.yaml configs for Amnezia / Clash Verge / FlClash into the project directory.
 
 ## Table of contents
 
@@ -90,9 +90,13 @@ uv run --project python-client xrayvpn deploy --execution local --no-warp
 
 If `uv` is not installed — see [`python-client/README.md`](python-client/README.md) (Python 3.12+ is enough).
 
-### Linux / WSL (Bash client)
+### Linux / WSL (Bash)
 
-An alternative Bash client — supported, but no longer developed:
+An alternative Bash client — supported, but no longer developed.
+
+On Windows, WSL with an Ubuntu/Debian image must be available — how to check and set it up, see [`docs/SETUP.en.md`](docs/SETUP.en.md). If Ubuntu is installed in WSL, you'll see the icon in the Start menu.
+
+If you're already on Linux, you hardly need an explanation of how to use a terminal. On Windows — find powershell or terminal via search (Win + S).
 
 ```bash
 # Host only. The password will be requested interactively (hidden input).
@@ -105,9 +109,15 @@ An alternative Bash client — supported, but no longer developed:
 ./shell-clients/bash/provision-vpn.sh --use-inventory
 ```
 
-### Windows (PowerShell client)
+### Windows (PowerShell)
 
-An alternative PowerShell client (requires WSL):
+How to open a command line: Start → type "PowerShell" → Enter. Go to the project folder:
+
+```powershell
+cd C:\path\to\project
+```
+
+(replace `C:\path\to\project` with the real path where you unpacked the files)
 
 ```powershell
 # Host only. The password will be requested interactively.
@@ -116,6 +126,24 @@ An alternative PowerShell client (requires WSL):
 # With an SSH key (Windows path; the wrapper converts it to a WSL path).
 .\shell-clients\powershell\Provision-VPN.ps1 -HostName 1.2.3.4 -PKey C:\Users\You\.ssh\id_rsa
 ```
+
+### Directly with Ansible (no client)
+
+If you don't need a client — run the playbook directly. You need ansible-core 2.14+ and the `community.general` collection:
+
+```bash
+# Debian 12+ / Ubuntu 24.04: apt works too. On Ubuntu 22.04 apt ships 2.12 — too old, use pip.
+pip install ansible-core
+ansible-galaxy collection install community.general
+```
+
+Prepare `inventory.yml` from the template (commands — in the "Configuration" section below) and run:
+
+```bash
+ansible-playbook -i inventory.yml deploy.yml
+```
+
+In this mode client configs are not downloaded automatically — they stay on the VPS in `/root/vpn-configs`.
 
 ## Who this is for
 
@@ -139,7 +167,7 @@ flowchart LR
 
 The end goal is the external website. It sees your VPS IP (direct) or Cloudflare IP (via WARP).
 
-> 💡 I'm planning my own cross-platform client with a simple interface to make deployment and management even easier. The full list of plans is in [docs/PLANNED.en.md](docs/PLANNED.en.md).
+> I'm planning my own cross-platform client with a simple interface to make deployment and management even easier. The full list of plans is in [docs/PLANNED.en.md](docs/PLANNED.en.md).
 
 <details>
   <summary>Tech stack details</summary>
@@ -161,9 +189,9 @@ The server core is [Xray-core](https://github.com/XTLS/Xray-core). By default it
 Three things are needed from you:
 - buy a VPS (Ubuntu 20.04+ or Debian 11+) — I can point you to trusted providers, and I'd appreciate registration via my referral link
 - download the project files
-- run the script for your platform — commands are in the [Quick start](#quick-start) section above.
+- run a client or the playbook — commands are in the [Quick start](#quick-start) section above.
 
-> To get the files: the **Code → Download ZIP** button on the repository page, or the source archive in the **Releases** section (on the right). Then the client deploys Xray on the VPS (in remote mode the Ansible environment is bootstrapped right on the server — nothing needs to be installed locally), generates client configs and downloads them to you. No Ansible, SSH or Xray knowledge required. BUT basic command-line skills are needed to run the client with parameters.
+> To get the files: the **Code → Download ZIP** button on the repository page, or the source archive in the **Releases** section (on the right). Then the client deploys Xray on the VPS, generates client configs and downloads them to you. In remote mode the Ansible environment is bootstrapped right on the server — nothing needs to be installed locally. No Ansible, SSH or Xray knowledge required. BUT basic command-line skills are needed to run the client with parameters.
 
 WARP outbound via Cloudflare is enabled with one line (`warp_enabled: true` in `config/settings.yml`). With it, sites see Cloudflare IP instead of your VPS IP.
 
@@ -172,7 +200,7 @@ Before paying for a VPS long-term, check it with [`carrox-vps-check`](https://gi
 ## Where it runs
 
 - Anywhere with Python 3.12+: the main `xrayvpn` client (`python-client/`) — remote mode works on Windows, Linux and macOS over SSH; local mode on Windows uses a WSL bridge.
-- Linux: the alternative Bash client `shell-clients/bash/provision-vpn.sh`.
+- Linux: the alternative Bash client `shell-clients/bash/provision-vpn.sh`, or run `ansible-playbook` directly (client configs are then not downloaded automatically).
 - Windows: the alternative PowerShell client `shell-clients/powershell/Provision-VPN.ps1` + WSL2.
 
 ## Requirements
@@ -182,14 +210,16 @@ Before paying for a VPS long-term, check it with [`carrox-vps-check`](https://gi
 **Local machine:**
 
 - Python 3.12+ for the main `xrayvpn` client (install/run via `uv`, see [`python-client/README.md`](python-client/README.md)); SSH access to the VPS by key or password (uses the built-in `paramiko` — no `sshpass` needed).
-- For the alternative shell clients: Linux/WSL with `apt` (the Bash client installs Python 3, Ansible and `sshpass` itself); on Windows — WSL2 with Ubuntu/Debian.
+- For the alternative shell clients: Linux/WSL with `apt`; on Windows — WSL2 with Ubuntu/Debian.
+
+The wrapper installs Python 3, Ansible and `sshpass` itself if they are missing. On Windows only WSL is needed.
 
 ## Configuration
 
 Two ways:
 
 - **CLI parameters** — `--pkey` or `--pass` (mutually exclusive). If neither is set, the password is requested with hidden input.
-- **Inventory file** — `inventory.yml` + the `--use-inventory` flag (`-UseInventory` in PowerShell). The shell clients also accept an explicit path: `--inventory PATH` (`-Inventory <path>`); in `xrayvpn`, `--use-inventory` is available in remote mode (`--execution remote`) and `--inventory <path>` in local mode.
+- **Inventory file** — `inventory.yml` + `--use-inventory` (`-UseInventory` in PowerShell). The shell clients also accept an explicit path: `--inventory PATH` (`-Inventory <path>`). Mode details — in [`docs/SETUP.en.md`](docs/SETUP.en.md), the "`xrayvpn deploy` CLI flags" section.
 
 For `--use-inventory` mode you need an `inventory.yml` file in the project root. The repository has an `inventory.yml.example` template — copy it and fill in your data:
 

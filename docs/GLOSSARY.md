@@ -8,15 +8,15 @@
 
 ## Runtime selector (`xray_runtime`)
 
-Параметр в `config/settings.yml` (`xray_runtime: native | docker | podman`), выбирает способ запуска Xray-сервера. По умолчанию `native` — наименьший footprint. `docker` — legacy escape hatch через Docker Engine. `podman` — experimental. Подробности и сравнение footprint — см. историю проекта.
+Параметр в `config/settings.yml` (`xray_runtime: native | docker | podman`), выбирает способ запуска Xray-сервера. По умолчанию `native` — наименьший footprint. `docker` — легаси-путь через Docker Engine. `podman` — experimental. Подробности и сравнение footprint — см. историю проекта.
 
 ## `xray_cli_command`
 
-Runtime-aware команда для вызова Xray CLI/keygen. Set_fact в `roles/xray_vpn/tasks/runtime_setup.yml`: для `native` это `/usr/local/bin/xray`, для `docker` — `docker run --rm <image>`, для `podman` — `podman run --rm <image>`. Используется во всей роли вместо прямого `docker run`.
+Команда для вызова Xray CLI и keygen. Зависит от рантайма: для `native` это `/usr/local/bin/xray`, для `docker` — `docker run --rm <image>`, для `podman` — `podman run --rm <image>`. Роль задаёт её сама в `roles/xray_vpn/tasks/runtime_setup.yml` — в задачах использовать её, а не прямой `docker run`.
 
 ## `xray_container_image`
 
-Производный/override идентификатор контейнерного образа для `docker`/`podman`. По умолчанию derived как `{{ xray_container_repo }}:{{ xray_version }}`. Можно переопределить через `xray_docker_image` (escape hatch).
+Идентификатор контейнерного образа для `docker`/`podman`. По умолчанию собирается из `{{ xray_container_repo }}:{{ xray_version }}`; можно задать явно через `xray_docker_image`.
 
 ## Ротация
 
@@ -54,7 +54,7 @@ Runtime-aware команда для вызова Xray CLI/keygen. Set_fact в `r
 
 Дополнительный исходящий туннель через Cloudflare. Скрывает IP вашего VPS от посещаемых сайтов — вместо IP VPS они видят IP Cloudflare WARP. Опционален. Включается в `config/settings.yml` через `warp_enabled: true`.
 
-Учётные данные WARP — `wgcf-account.toml` и `wgcf-profile.conf` в `/root/xray-config/`. Они ротируются отдельно от REALITY (через удаление файлов и rerun playbook).
+Учётные данные WARP — `wgcf-account.toml` и `wgcf-profile.conf` в `/root/xray-config/`. Они ротируются отдельно от REALITY (через удаление файлов и повторный запуск playbook).
 
 ## `xray_docker_image`
 
