@@ -27,6 +27,15 @@
       register: xray_unit
       failed_when: not xray_unit.stat.exists
 
+    # Hard boot-persistence assert (fatal here, unlike the role's warn-only
+    # smoke): the unit must be enabled for multi-user.target.
+    - name: Assert xray.service is enabled at boot
+      ansible.builtin.command:
+        cmd: systemctl is-enabled xray
+      register: xray_enabled_state
+      changed_when: false
+      failed_when: xray_enabled_state.stdout | trim != 'enabled'
+
     - name: Assert Xray config file exists
       ansible.builtin.stat:
         path: "{{ xray_config_dir }}/config.json"

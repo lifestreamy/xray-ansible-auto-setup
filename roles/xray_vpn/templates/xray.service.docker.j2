@@ -21,5 +21,6 @@ ExecStop=/usr/bin/docker stop xray
 Restart=always
 RestartSec=10
 
+# Enabled at deploy by the Ansible role; after a manual cp of this unit run `systemctl enable xray`.
 [Install]
 WantedBy=multi-user.target

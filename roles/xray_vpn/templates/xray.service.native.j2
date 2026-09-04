@@ -27,5 +27,6 @@ ProtectHome=read-only
 ReadWritePaths={{ xray_config_dir }} {{ xray_client_configs_dir }}
 PrivateTmp=true
 
+# Enabled at deploy by the Ansible role; after a manual cp of this unit run `systemctl enable xray`.
 [Install]
 WantedBy=multi-user.target

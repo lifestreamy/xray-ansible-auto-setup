@@ -124,6 +124,19 @@
     - Restart xray
   tags: service
 
+# Enable the unit for boot (all runtimes) and start it if not running.
+# No daemon_reload here on purpose: unit-file changes already notify the
+# "Reload systemd" / "Restart xray" handlers below; re-passing the flag on
+# every converge churns systemd state. `state: started` is the idempotent
+# first-deploy safety net (handler restarts only fire when files change).
+- name: Enable and start xray service at boot
+  ansible.builtin.systemd:
+    name: xray
+    state: started
+    enabled: true
+  become: true
+  tags: service
+
 # Export client configs
 - name: Generate client configs
   ansible.builtin.template:
