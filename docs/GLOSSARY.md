@@ -8,7 +8,7 @@
 
 ## Runtime selector (`xray_runtime`)
 
-Параметр в `config/settings.yml` (`xray_runtime: native | docker | podman`), выбирает способ запуска Xray-сервера. По умолчанию `native` — наименьший footprint. `docker` — легаси-путь через Docker Engine. `podman` — experimental. Подробности и сравнение footprint — см. историю проекта.
+Параметр в `config/settings.yml` (`xray_runtime: native | docker | podman`), выбирает способ запуска Xray-сервера. По умолчанию `native` — наименьший footprint. `docker` — легаси-путь через Docker Engine. `podman` — experimental.
 
 ## `xray_cli_command`
 
@@ -16,7 +16,7 @@
 
 ## `xray_container_image`
 
-Идентификатор контейнерного образа для `docker`/`podman`. По умолчанию собирается из `{{ xray_container_repo }}:{{ xray_version }}`; можно задать явно через `xray_docker_image`.
+Образ контейнера для `docker` и `podman`. Роль вычисляет его сама (пин или сборка из репозитория и версии); как задать и какой сейчас пин — таблица переменных в `docs/SETUP.md`.
 
 ## Ротация
 
@@ -55,10 +55,6 @@
 Дополнительный исходящий туннель через Cloudflare. Скрывает IP вашего VPS от посещаемых сайтов — вместо IP VPS они видят IP Cloudflare WARP. Опционален. Включается в `config/settings.yml` через `warp_enabled: true`.
 
 Учётные данные WARP — `wgcf-account.toml` и `wgcf-profile.conf` в `/root/xray-config/`. Они ротируются отдельно от REALITY (через удаление файлов и повторный запуск playbook).
-
-## `xray_docker_image`
-
-Тег Docker-образа Xray. Закреплён на `teddysun/xray:26.6.27`. Использовать `:latest` нельзя — автообновление на 26.7.11 в июле 2026 сломало VLESS+REALITY. Для осознанного обновления меняйте на новый тег или sha256-дигест.
 
 ## `reality_camouflage_domain`
 

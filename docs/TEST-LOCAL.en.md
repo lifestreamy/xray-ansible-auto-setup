@@ -31,7 +31,7 @@ Clash Verge installs its own TUN driver and proxy. Running it alongside the test
 
 ## Step 2. Pull the client config
 
-After `molecule converge` (delegated driver) the client config lives on the runner itself at `/root/vpn-configs/clash_client_0.yaml`. There is no `docker cp` anymore — molecule runs Ansible locally and configs land in `xray_config_dir` on the same host. Copy the config to your working directory if you want to adapt it:
+After `molecule converge` (delegated driver) the client config is on the runner: `/root/vpn-configs/clash_client_0.yaml`. Copy it to your working directory:
 
 ```bash
 cp /root/vpn-configs/clash_client_0.yaml ./clash_client_0.yaml
@@ -51,7 +51,7 @@ Open `clash_client_0.yaml` and patch the block so the client does not try to ins
 
 ### 3.1. Which address to use in `server`
 
-It depends on where the Xray container runs.
+It depends on where Xray runs.
 
 | Scenario | Use in `server` |
 |---|---|
@@ -134,7 +134,7 @@ ICMP is not tunnelled through Xray, so `ping` does not work here. Use TCP instea
 
 When all 7 checks are green, the manual end-to-end test passes.
 
-Record the result in this file (or in the project history):
+Record the result in this file:
 
 ```
 - 2026-08-21 — end-to-end test passed (molecule + mihomo, WSL2, Ubuntu 22.04).

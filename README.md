@@ -60,6 +60,13 @@
 
 Минимальный случай — только IP VPS. Пароль будет скрыто запрошен интерактивно.
 
+Запустить можно тремя клиентами или вообще без них:
+
+- `xrayvpn` (Python) — [`python-client/`](python-client/README.md) — Windows, Linux и macOS; рекомендуется;
+- Bash — [`shell-clients/bash/provision-vpn.sh`](shell-clients/bash/provision-vpn.sh) — Linux / WSL (поддерживается, но не развивается);
+- PowerShell — [`shell-clients/powershell/Provision-VPN.ps1`](shell-clients/powershell/Provision-VPN.ps1) — Windows + WSL;
+- напрямую Ansible — `ansible-playbook -i inventory.yml deploy.yml`, без клиента.
+
 ### Про конфигурацию
 
 Минимально достаточно IP и пароля — всё остальное настроится само. Если нужно что-то поменять (число клиентов, WARP, порт, домен маскировки), дополнительная конфигурация производится через такие файлы:
@@ -70,46 +77,36 @@
 
 Подробнее про каждый файл — в [`docs/SETUP.md`](docs/SETUP.md), раздел «Файлы конфигурации».
 
-### Python-клиент (рекомендуется) — все платформы
+<details>
+<summary>xrayvpn (Python) — команды</summary>
 
 Python-клиент `xrayvpn` работает одинаково на Windows, Linux и macOS; для удалённого режима WSL не нужен.
 
 ```bash
 # Удалённый режим (VPS). Достаточно IP — пароль спросит скрыто.
 uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4
-
-# С SSH-ключом.
-uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 --pkey ~/.ssh/id_rsa
-
-# Режим inventory: параметры из предзаполненного inventory.yml.
 uv run --project python-client xrayvpn deploy --execution remote --use-inventory
-
-# Локальный режим (Linux/WSL): развернуть Xray на текущей машине.
-uv run --project python-client xrayvpn deploy --execution local --no-warp
 ```
 
-Если `uv` не установлен — см. [`python-client/README.md`](python-client/README.md) (достаточно Python 3.12+).
+Остальное (`--pkey`, локальный режим, установка `uv`) — в [`python-client/README.md`](python-client/README.md).
 
-### Linux / WSL (Bash)
+</details>
 
-Альтернативный клиент на Bash — поддерживается, но больше не развивается.
+<details>
+<summary>Bash — команды</summary>
 
-На Windows должен быть доступен WSL с созданным образом Ubuntu/Debian — как проверить и настроить, в [`docs/SETUP.md`](docs/SETUP.md). Если Ubuntu в WSL установлен, в меню «Пуск» будет видна иконка.
-
-Если вы уже на Linux, то вам вряд ли нужно объяснять, как пользоваться терминалом. На Windows — найдите в поиске (Win + S) powershell или terminal.
+На Windows должен быть доступен WSL с созданным образом Ubuntu/Debian — как проверить и настроить, в [`docs/SETUP.md`](docs/SETUP.md). Если Ubuntu в WSL установлен, в меню «Пуск» будет видна иконка. Если вы уже на Linux, то вам вряд ли нужно объяснять, как пользоваться терминалом. На Windows — найдите в поиске (Win + S) powershell или terminal.
 
 ```bash
-# Только хост. Пароль спросит интерактивно (скрытый ввод).
 ./shell-clients/bash/provision-vpn.sh -H 1.2.3.4
-
-# С SSH-ключом.
 ./shell-clients/bash/provision-vpn.sh -H 1.2.3.4 --pkey ~/.ssh/id_rsa
-
-# Режим inventory: используется предзаполненный inventory.yml.
 ./shell-clients/bash/provision-vpn.sh --use-inventory
 ```
 
-### Windows (PowerShell)
+</details>
+
+<details>
+<summary>PowerShell — команды</summary>
 
 Как открыть командную строку: Пуск → наберите «PowerShell» → Enter. Перейдите в папку проекта:
 
@@ -120,30 +117,27 @@ cd C:\путь\к\проекту
 (вместо `C:\путь\к\проекту` подставьте реальный путь, куда распаковали файлы)
 
 ```powershell
-# Только хост. Пароль спросит интерактивно.
 .\shell-clients\powershell\Provision-VPN.ps1 -HostName 1.2.3.4
-
-# С SSH-ключом (Windows-путь; обёртка сама переведёт в WSL-путь).
 .\shell-clients\powershell\Provision-VPN.ps1 -HostName 1.2.3.4 -PKey C:\Users\You\.ssh\id_rsa
 ```
 
-### Напрямую через Ansible (без клиента)
+</details>
 
-Если клиенты не нужны — playbook можно запустить напрямую. Понадобится ansible-core 2.14+ и коллекция `community.general`:
+<details>
+<summary>Напрямую Ansible — команды</summary>
+
+Нужны ansible-core 2.14+ и коллекция `community.general`. Подготовьте `inventory.yml` из шаблона (команды — в разделе «Конфигурация» ниже):
 
 ```bash
-# Debian 12+ / Ubuntu 24.04: подойдёт apt. На Ubuntu 22.04 из apt идёт 2.12 — слишком стар, ставьте через pip.
+# Debian 12+ / Ubuntu 24.04: подойдёт apt. На Ubuntu 22.04 apt даёт 2.12 — только pip.
 pip install ansible-core
 ansible-galaxy collection install community.general
-```
-
-Подготовьте `inventory.yml` из шаблона (команды — в разделе «Конфигурация» ниже) и запустите:
-
-```bash
 ansible-playbook -i inventory.yml deploy.yml
 ```
 
-В этом режиме клиентские конфиги не скачиваются автоматически — они остаются на VPS в `/root/vpn-configs`.
+В этом режиме клиентские конфиги не скачиваются — они остаются на VPS в `/root/vpn-configs`.
+
+</details>
 
 ## Для кого это
 
@@ -199,9 +193,7 @@ WARP outbound через Cloudflare включается одной строко
 
 ## Где запускается
 
-- Везде, где есть Python 3.12+: основной клиент `xrayvpn` (`python-client/`) — удалённый режим по SSH работает на Windows, Linux и macOS; локальный режим на Windows использует WSL-мост.
-- Linux: альтернативный bash-клиент `shell-clients/bash/provision-vpn.sh`, либо напрямую `ansible-playbook` (тогда клиентские конфиги не скачиваются автоматически).
-- Windows: альтернативный PowerShell-клиент `shell-clients/powershell/Provision-VPN.ps1` + WSL2.
+Пути запуска и требования по платформам — в «Быстром старте» выше.
 
 ## Требования
 

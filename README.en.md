@@ -60,6 +60,13 @@ But if I missed something, something broke for you, it doesn't start at all, or 
 
 The minimal case — just the VPS IP. The password will be requested interactively with hidden input.
 
+You can run it with one of three clients, or with none:
+
+- `xrayvpn` (Python) — [`python-client/`](python-client/README.md) — Windows, Linux and macOS; recommended;
+- Bash — [`shell-clients/bash/provision-vpn.sh`](shell-clients/bash/provision-vpn.sh) — Linux / WSL (supported, not developed further);
+- PowerShell — [`shell-clients/powershell/Provision-VPN.ps1`](shell-clients/powershell/Provision-VPN.ps1) — Windows + WSL;
+- Ansible directly — `ansible-playbook -i inventory.yml deploy.yml`, no client.
+
 ### About configuration
 
 IP and password are enough — everything else configures itself. If you need to change something (number of clients, WARP, port, camouflage domain), additional configuration is done through these files:
@@ -70,46 +77,36 @@ IP and password are enough — everything else configures itself. If you need to
 
 More about each file — in [`docs/SETUP.en.md`](docs/SETUP.en.md), the "Configuration files" section.
 
-### Python client (recommended) — all platforms
+<details>
+<summary>xrayvpn (Python) — commands</summary>
 
 The `xrayvpn` Python client works identically on Windows, Linux and macOS; remote mode does not need WSL.
 
 ```bash
 # Remote mode (VPS). Just the IP — the password is prompted with hidden input.
 uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4
-
-# With an SSH key.
-uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 --pkey ~/.ssh/id_rsa
-
-# Inventory mode: params from a pre-filled inventory.yml.
 uv run --project python-client xrayvpn deploy --execution remote --use-inventory
-
-# Local mode (Linux/WSL): deploy Xray on the current machine.
-uv run --project python-client xrayvpn deploy --execution local --no-warp
 ```
 
-If `uv` is not installed — see [`python-client/README.md`](python-client/README.md) (Python 3.12+ is enough).
+The rest (`--pkey`, local mode, installing `uv`) — in [`python-client/README.md`](python-client/README.md).
 
-### Linux / WSL (Bash)
+</details>
 
-An alternative Bash client — supported, but no longer developed.
+<details>
+<summary>Bash — commands</summary>
 
-On Windows, WSL with an Ubuntu/Debian image must be available — how to check and set it up, see [`docs/SETUP.en.md`](docs/SETUP.en.md). If Ubuntu is installed in WSL, you'll see the icon in the Start menu.
-
-If you're already on Linux, you hardly need an explanation of how to use a terminal. On Windows — find powershell or terminal via search (Win + S).
+On Windows, WSL with an Ubuntu/Debian image must be available — how to check and set it up, see [`docs/SETUP.en.md`](docs/SETUP.en.md). If Ubuntu is installed in WSL, you'll see the icon in the Start menu. If you're already on Linux, you hardly need an explanation of how to use a terminal. On Windows — find powershell or terminal via search (Win + S).
 
 ```bash
-# Host only. The password will be requested interactively (hidden input).
 ./shell-clients/bash/provision-vpn.sh -H 1.2.3.4
-
-# With an SSH key.
 ./shell-clients/bash/provision-vpn.sh -H 1.2.3.4 --pkey ~/.ssh/id_rsa
-
-# Inventory mode: a pre-filled inventory.yml is used.
 ./shell-clients/bash/provision-vpn.sh --use-inventory
 ```
 
-### Windows (PowerShell)
+</details>
+
+<details>
+<summary>PowerShell — commands</summary>
 
 How to open a command line: Start → type "PowerShell" → Enter. Go to the project folder:
 
@@ -120,30 +117,27 @@ cd C:\path\to\project
 (replace `C:\path\to\project` with the real path where you unpacked the files)
 
 ```powershell
-# Host only. The password will be requested interactively.
 .\shell-clients\powershell\Provision-VPN.ps1 -HostName 1.2.3.4
-
-# With an SSH key (Windows path; the wrapper converts it to a WSL path).
 .\shell-clients\powershell\Provision-VPN.ps1 -HostName 1.2.3.4 -PKey C:\Users\You\.ssh\id_rsa
 ```
 
-### Directly with Ansible (no client)
+</details>
 
-If you don't need a client — run the playbook directly. You need ansible-core 2.14+ and the `community.general` collection:
+<details>
+<summary>Ansible directly — commands</summary>
+
+You need ansible-core 2.14+ and the `community.general` collection. Prepare `inventory.yml` from the template (commands — in the "Configuration" section below):
 
 ```bash
-# Debian 12+ / Ubuntu 24.04: apt works too. On Ubuntu 22.04 apt ships 2.12 — too old, use pip.
+# Debian 12+ / Ubuntu 24.04: apt works too. On Ubuntu 22.04 apt ships 2.12 — use pip.
 pip install ansible-core
 ansible-galaxy collection install community.general
-```
-
-Prepare `inventory.yml` from the template (commands — in the "Configuration" section below) and run:
-
-```bash
 ansible-playbook -i inventory.yml deploy.yml
 ```
 
-In this mode client configs are not downloaded automatically — they stay on the VPS in `/root/vpn-configs`.
+In this mode client configs are not downloaded — they stay on the VPS in `/root/vpn-configs`.
+
+</details>
 
 ## Who this is for
 
@@ -199,9 +193,7 @@ Before paying for a VPS long-term, check it with [`carrox-vps-check`](https://gi
 
 ## Where it runs
 
-- Anywhere with Python 3.12+: the main `xrayvpn` client (`python-client/`) — remote mode works on Windows, Linux and macOS over SSH; local mode on Windows uses a WSL bridge.
-- Linux: the alternative Bash client `shell-clients/bash/provision-vpn.sh`, or run `ansible-playbook` directly (client configs are then not downloaded automatically).
-- Windows: the alternative PowerShell client `shell-clients/powershell/Provision-VPN.ps1` + WSL2.
+Run paths and platform requirements — in the "Quick start" above.
 
 ## Requirements
 

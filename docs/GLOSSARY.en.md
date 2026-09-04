@@ -8,7 +8,7 @@ Project terms. If you meet an unfamiliar word in the documentation, look it up h
 
 ## Runtime selector (`xray_runtime`)
 
-A parameter in `config/settings.yml` (`xray_runtime: native | docker | podman`) that picks how the Xray server is launched. Default `native` — smallest footprint. `docker` — legacy escape hatch via Docker Engine. `podman` — experimental. Design and footprint comparison — see project history.
+A parameter in `config/settings.yml` (`xray_runtime: native | docker | podman`) that picks how the Xray server is launched. Default `native` — smallest footprint. `docker` — legacy escape hatch via Docker Engine. `podman` — experimental.
 
 ## `xray_cli_command`
 
@@ -16,7 +16,7 @@ A runtime-aware command used to invoke the Xray CLI / keygen. Set as a fact in `
 
 ## `xray_container_image`
 
-The derived or overridden container image identifier for `docker` / `podman`. By default it is derived as `{{ xray_container_repo }}:{{ xray_version }}`. Can be overridden through `xray_docker_image` (escape hatch).
+The container image for `docker` and `podman`. The role computes it itself (pin or assembly from repository and version); how to set it and the current pin — the variables table in `docs/SETUP.en.md`.
 
 ## Rotation
 
@@ -55,10 +55,6 @@ How many client configs to generate. Increasing adds new UUIDs to `reality-state
 An extra outgoing tunnel through Cloudflare. Hides your VPS IP from visited sites — instead of your VPS IP they see the Cloudflare WARP IP. Optional. Enabled in `config/settings.yml` via `warp_enabled: true`.
 
 WARP credentials are `wgcf-account.toml` and `wgcf-profile.conf` in `/root/xray-config/`. They rotate separately from REALITY (by deleting the files and re-running the playbook).
-
-## `xray_docker_image`
-
-The Xray Docker image tag. Pinned to `teddysun/xray:26.6.27`. Don't use `:latest` — an auto-update to 26.7.11 in July 2026 broke VLESS+REALITY. To upgrade deliberately, switch to a new tag or a sha256 digest.
 
 ## `reality_camouflage_domain`
 

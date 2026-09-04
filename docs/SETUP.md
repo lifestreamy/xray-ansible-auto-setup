@@ -20,6 +20,33 @@
 
 Какие параметры можно передать как CLI-флаги — подключение (`--host`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`/`--inventory`, cleanup, verbosity) и частые override'ы (runtime, порт, число клиентов, WARP, ротация, firewall) — через основной клиент `xrayvpn` (см. раздел «CLI-флаги `xrayvpn deploy`» ниже; все способы запуска — в быстром старте README). Остальная конфигурация — через `config/settings.yml`.
 
+## Переменные `config/settings.yml`
+
+<details>
+  <summary>Все переменные (для технарей)</summary>
+
+| Переменная | Что делает |
+|---|---|
+| `xray_runtime` | Runtime selector: `native` (по умолчанию), `docker`, `podman`. См. раздел «Runtime selector» ниже. |
+| `xray_version` | Единая версия Xray-core (по умолчанию `"26.6.27"`). |
+| `xray_container_repo` | Репозиторий для `docker` / `podman` (по умолчанию `ghcr.io/xtls/xray-core`). |
+| `num_clients` | Сколько клиентских конфигов сгенерировать (каждый со своим UUID). |
+| `reality_camouflage_domain` | SNI легитимного сайта для маскировки REALITY (по умолчанию `dl.google.com`). Публичный параметр. |
+| `xray_docker_image` | Явный пин образа контейнера (docker и podman). Если не задан, образ собирается из `xray_container_repo:xray_version`. Сейчас задан `teddysun/xray:26.6.27`. |
+| `xray_config_dir` | Каталог состояния на VPS (`/root/xray-config`). |
+| `xray_client_configs_dir` | Каталог сгенерированных конфигов на VPS (`/root/vpn-configs`). |
+| `xray_port` | Порт inbound (по умолчанию `443`). |
+| `warp_enabled` | Включить WARP outbound (`true` / `false`). |
+| `warp_ipv6` | IPv6 в WireGuard (`false` — IPv4-only по умолчанию). |
+| `warp_endpoint` | Cloudflare WARP endpoint (`162.159.192.1:2408`). |
+| `warp_mtu` | MTU WireGuard (`1420`). |
+| `warp_wgcf_version` | Версия wgcf (`2.2.22`). |
+| `warp_wgcf_url` | URL для скачивания wgcf. |
+| `xray_backup_enabled` | Резервные копии с меткой времени перед перезаписью (`true`). |
+| `xray_reality_rotate` | Полная ротация REALITY. По умолчанию `false`. Подробности — в [`docs/ROTATION.md`](ROTATION.md). |
+
+</details>
+
 ## Runtime selector
 
 `config/settings.yml` поддерживает три варианта развёртывания через переменную `xray_runtime`:
@@ -28,15 +55,13 @@
 |---|---|---|
 | `native` (по умолчанию) | Xray-бинарь `/usr/local/xray/xray` под управлением systemd | Наименьший footprint (~10 МБ RAM); рекомендуемый вариант для новых развёртываний. |
 | `docker` | Docker Engine + `teddysun/xray:26.6.27` через `xray.service.docker.j2` | Легаси-путь. Оставлен для совместимости со старыми развёртываниями; не покрыт molecule-тестами. |
-| `podman` | Podman + `ghcr.io/xtls/xray-core:26.6.27` через `xray.service.podman.j2` | Experimental; не покрыт molecule-тестами. |
+| `podman` | Podman + образ `xray_container_image` (см. `xray_docker_image`) через `xray.service.podman.j2` | Experimental; не покрыт molecule-тестами. |
 
 Изменить runtime можно в `config/settings.yml` (`xray_runtime: native` → `docker` или `podman`) и перезапустить playbook. Дополнительные переменные:
 
 - `xray_version: "26.6.27"` — единственный источник версии Xray-core. Не используйте `:latest` (Инцидент 2026-07-28: 26.7.11 сломал VLESS+REALITY+vision).
 - `xray_container_repo: "ghcr.io/xtls/xray-core"` — репозиторий для `docker` и `podman`.
-- `xray_docker_image` — переменная, чтобы явно задать образ контейнера. Если она не задана, образ собирается из `{{ xray_container_repo }}:{{ xray_version }}`.
-
-Подробности дизайна и footprint-сравнение рантаймов — см. историю проекта.
+- `xray_docker_image` — явный пин образа контейнера; сейчас `teddysun/xray:26.6.27`. Механизм — таблица переменных ниже.
 
 ## CLI-флаги `xrayvpn deploy`
 
@@ -69,107 +94,28 @@ uv run --project python-client xrayvpn deploy --execution remote --use-inventory
 
 ## Что нужно знать перед началом
 
-**VPS:**
+**VPS:** свежий Ubuntu 20.04+ или Debian 11+, root или sudo, публичный IP.
 
-- Свежий Ubuntu 20.04+ или Debian 11+.
-- Root или sudo.
-- Публичный IP.
-
-**Локальная машина:**
-
-Linux:
-
-- Ubuntu/Debian (или любой дистрибутив с `apt`).
-- SSH-доступ к VPS.
-
-Windows:
-
-- WSL2 с Ubuntu/Debian (заранее установлен).
-- PowerShell 5.1+ (встроен в Windows 10/11).
-
-Перед оплатой VPS на длительный срок — проверьте его через `carrox-vps-check` или `ipcheck-plus`. Подробности в [`docs/TEST-VPS.md`](TEST-VPS.md).
-
-## Переменные `config/settings.yml`
-
-<details>
-  <summary>Все переменные (для технарей)</summary>
-
-| Переменная | Что делает |
-|---|---|
-| `xray_runtime` | Runtime selector: `native` (по умолчанию), `docker`, `podman`. См. раздел «Runtime selector» выше. |
-| `xray_version` | Единая версия Xray-core (по умолчанию `"26.6.27"`). |
-| `xray_container_repo` | Репозиторий для `docker` / `podman` (по умолчанию `ghcr.io/xtls/xray-core`). |
-| `num_clients` | Сколько клиентских конфигов сгенерировать (каждый со своим UUID). |
-| `reality_camouflage_domain` | SNI легитимного сайта для маскировки REALITY (по умолчанию `dl.google.com`). Публичный параметр. |
-| `xray_docker_image` | Явное указание образа контейнера. По умолчанию образ собирается из `xray_container_repo:{{ xray_version }}`. Для обратной совместимости закреплён на `teddysun/xray:26.6.27`. |
-| `xray_config_dir` | Каталог состояния на VPS (`/root/xray-config`). |
-| `xray_client_configs_dir` | Каталог сгенерированных конфигов на VPS (`/root/vpn-configs`). |
-| `xray_port` | Порт inbound (по умолчанию `443`). |
-| `warp_enabled` | Включить WARP outbound (`true` / `false`). |
-| `warp_ipv6` | IPv6 в WireGuard (`false` — IPv4-only по умолчанию). |
-| `warp_endpoint` | Cloudflare WARP endpoint (`162.159.192.1:2408`). |
-| `warp_mtu` | MTU WireGuard (`1420`). |
-| `warp_wgcf_version` | Версия wgcf (`2.2.22`). |
-| `warp_wgcf_url` | URL для скачивания wgcf. |
-| `xray_backup_enabled` | Резервные копии с меткой времени перед перезаписью (`true`). |
-| `xray_reality_rotate` | Полная ротация REALITY. По умолчанию `false`. Подробности — в [`docs/ROTATION.md`](ROTATION.md). |
-
-</details>
+**Локальная машина:** на Windows — WSL2 с Ubuntu/Debian и PowerShell 5.1+. Перед оплатой VPS на длительный срок проверяйте его — [`docs/TEST-VPS.md`](TEST-VPS.md). Требования по платформам — в README, раздел «Требования».
 
 ## WARP подробно
 
-`warp_enabled: true` добавляет в Xray дополнительный исходящий туннель через Cloudflare WARP. Это нужно, чтобы скрыть IP вашего VPS от посещаемых сайтов — они будут видеть IP Cloudflare вместо вашего.
+`warp_enabled: true` добавляет исходящий туннель через Cloudflare WARP: сайты видят IP Cloudflare вместо IP вашего VPS.
 
-**IPv4-only по умолчанию.** Параметр `warp_ipv6: false` исключает IPv6-адрес из WireGuard-интерфейса. Это для совместимости с VPS без IPv6-маршрута. В этом режиме `allowedIPs` и `domainStrategy` остаются, но фактический туннель идёт только по IPv4. Если у вас есть рабочий IPv6 — поменяйте на `true`.
+- **IPv4-only по умолчанию** (`warp_ipv6: false`); при рабочем IPv6 — `true`.
+- **Endpoint:** `162.159.192.1:2408` (стабильное имя — `engage.cloudflareclient.com:2408`); переопределяется в `config/settings.yml`.
+- **Учётные данные:** `wgcf` 2.2.22, роль скачивает его сама; `wgcf-account.toml` и `wgcf-profile.conf` — в `/root/xray-config/`.
 
-**Endpoint.** По умолчанию `162.159.192.1:2408` — это Cloudflare WARP IPv4-anycast. Стабильное имя — `engage.cloudflareclient.com:2408`. При необходимости переопределите в `config/settings.yml`.
-
-**Требования.** `wgcf` 2.2.22. Роль скачивает бинарник сама при `warp_enabled: true`. Персистентные учётные данные — `wgcf-account.toml` и `wgcf-profile.conf` в `/root/xray-config/`.
-
-**Проверка egress.** Проверяйте снаружи VPS, через реальный VPN-клиент, не через `curl` из контейнера Xray. С устройства, на котором запущен VPN-клиент:
-
-```bash
-curl -4 https://ifconfig.io   # должен вернуть IP Cloudflare (или IP VPS, если WARP выключен)
-curl -4 https://cloudflare.com/cdn-cgi/trace   # альтернатива, ищите colo= и ip=
-```
-
-Подробности о ротации WARP — в [`docs/ROTATION.md`](ROTATION.md), раздел §4.
+Проверка egress — снаружи VPS, через реальный VPN-клиент: `curl -4 https://ifconfig.io` должен вернуть IP Cloudflare. Ротация WARP — в [`docs/ROTATION.md`](ROTATION.md), §4.
 
 ## Проверка после развёртывания
 
-После любого прогона (без ротации и с ротацией) выполните ручную проверку.
-
-Проверьте, что Xray запущен под выбранным runtime. Для `xray_runtime: native` (по умолчанию):
-
 ```bash
-systemctl is-active xray                                       # должно вернуть 'active'
-/usr/local/bin/xray version | head -n 3                         # бинарь отвечает
-journalctl -u xray --no-pager -n 30 | grep -iE 'error|fail|panic'   # без явных ошибок
+systemctl is-active xray                      # должно вернуть 'active'
+nc -zv <VPS_IP> 443                           # порт слушает; <VPS_IP> — на свой
 ```
 
-Для `xray_runtime: docker`:
-
-```bash
-docker inspect xray --format '{{ .Config.Image }}'             # закреплённый образ
-docker inspect xray --format '{{ .State.Running }}'           # true
-```
-
-Для `xray_runtime: podman`:
-
-```bash
-podman inspect xray --format '{{ .ImageName }}'                # закреплённый образ
-podman inspect xray --format '{{ .State.Running }}'           # true
-```
-
-Проверьте, что Xray-порт (`xray_port`, по умолчанию `443`) слушает на VPS:
-
-```bash
-nc -zv <VPS_IP> 443   # <VPS_IP> замените на свой; должно вернуть succeeded
-```
-
-Подключитесь хотя бы одним реальным клиентом (Clash Verge / FlClash / Amnezia) и проверьте, что трафик идёт через него.
-
-Встроенные проверки роли покрывают только закреплённый образ, слушающий порт и очевидные ошибки журнала. Они не заменяют ручную проверку выше.
+Затем подключитесь хотя бы одним реальным клиентом (Clash Verge / FlClash / Amnezia) и проверьте, что трафик идёт через него. Встроенные проверки роли этого не заменяют.
 
 ## Как добавить ещё клиентов без ротации
 
