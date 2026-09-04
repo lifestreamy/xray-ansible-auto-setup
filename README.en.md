@@ -189,12 +189,18 @@ Before paying for a VPS long-term, check it with [`carrox-vps-check`](https://gi
 Two ways:
 
 - **CLI parameters** — `--pkey` or `--pass` (mutually exclusive). If neither is set, the password is requested with hidden input.
-- **Inventory file** — `inventory.yml` + `--use-inventory`.
+- **Inventory file** — `inventory.yml` + the `--use-inventory` flag (`-UseInventory` in PowerShell). The shell clients also accept an explicit path: `--inventory PATH` (`-Inventory <path>`); in `xrayvpn`, `--use-inventory` is available in remote mode (`--execution remote`) and `--inventory <path>` in local mode.
 
 For `--use-inventory` mode you need an `inventory.yml` file in the project root. The repository has an `inventory.yml.example` template — copy it and fill in your data:
 
 ```bash
 cp inventory.yml.example inventory.yml
+```
+
+Windows PowerShell equivalent:
+
+```powershell
+Copy-Item inventory.yml.example inventory.yml
 ```
 
 Fill in `ansible_host`, `ansible_user`, `ansible_port` and one of the two: `ansible_ssh_private_key_file` or `ansible_ssh_pass`. The `inventory.yml` file is in `.gitignore` — your personal data won't reach git.

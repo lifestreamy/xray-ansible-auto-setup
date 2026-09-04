@@ -24,7 +24,8 @@ See `README.md` (RU) / `README.en.md` (EN) for the full description.
 
 - `deploy.yml` — top-level Ansible playbook.
 - `inventory.yml.example` — template for the inventory (real `inventory.yml` is gitignored).
-- `provision-vpn.sh` / `Provision-VPN.ps1` — convenience wrappers around the playbook.
+- `shell-clients/bash/provision-vpn.sh` / `shell-clients/powershell/Provision-VPN.ps1` — convenience wrappers around the playbook.
+- `python-client/` — the primary client (Python CLI `xrayvpn`), local and remote execution modes.
 - `group_vars/` — Ansible group variables.
 - `roles/` — Ansible roles (the actual logic lives here).
 

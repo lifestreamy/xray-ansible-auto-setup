@@ -34,6 +34,7 @@ from xrayvpn.core.execution.remote import (
 from xrayvpn.core.inventory import (
     build_inventory,
     parse_user_inventory,
+    validate_connection,
     write_inventory,
 )
 from xrayvpn.core.transport.remote import FabricRemote
@@ -242,6 +243,21 @@ def deploy(
 
     mode = _resolve_execution(execution)
 
+    if use_inventory and mode == "local":
+        typer.echo(
+            "error: --use-inventory applies to --execution remote only; "
+            "local mode generates its own inventory",
+            err=True,
+        )
+        raise typer.Exit(2)
+    if inventory is not None and mode == "remote":
+        typer.echo(
+            "error: --inventory applies to --execution local only; "
+            "remote mode reads the personal inventory.yml via --use-inventory",
+            err=True,
+        )
+        raise typer.Exit(2)
+
     repo_root = find_repo_root()
     settings = load_settings(repo_root)
     overrides = _collect_overrides(locals())
@@ -318,6 +334,28 @@ def _run_remote(
         except (RuntimeError, TypeError) as exc:
             typer.echo(f"error: {exc}", err=True)
             raise typer.Exit(2) from exc
+        problems = validate_connection(connection)
+        if problems:
+            typer.echo(
+                f"error: {repo_root / 'inventory.yml'} is not ready for remote deploy:",
+                err=True,
+            )
+            for problem in problems:
+                typer.echo(f"  - {problem}", err=True)
+            typer.echo(
+                "  fill the keys under all.hosts.<host> as in inventory.yml.example",
+                err=True,
+            )
+            raise typer.Exit(2)
+        if not (
+            connection.get("ansible_ssh_private_key_file")
+            or connection.get("ansible_ssh_pass")
+        ):
+            typer.echo(
+                "note: no auth key in inventory.yml; the SSH password will be "
+                "requested at run time (or set ansible_ssh_private_key_file)",
+                err=True,
+            )
         extra_vars = merge_overrides(user_vars, overrides)
         resolved_host = connection.get("ansible_host")
         resolved_user = connection.get("ansible_user", "root")

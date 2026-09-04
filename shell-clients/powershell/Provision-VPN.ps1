@@ -24,17 +24,26 @@ If you want to be interactively prompted for an SSH password with
 hidden input, specify neither -Pass nor -PKey.
 
 +--------------------------------------------------------------+
-| Release: v2026-08-03                                         |
+| Release: v2026-09-04                                         |
 | Author:  Tim Korelov                                         |
 | Contact: https://github.com/lifestreamy                      |
 | License: AGPL-3.0 + commercial-use restriction                |
 +--------------------------------------------------------------+
 
 .PARAMETER UseInventory
-Use values from inventory.yml instead of CLI parameters.
-When specified, connection/auth parameters are ignored.
-Mutual exclusion between ansible_ssh_private_key_file and ansible_ssh_pass
-is validated by the underlying bash script.
+Use values from inventory.yml in the project root instead of CLI parameters.
+When specified, connection/auth parameters are ignored. If inventory.yml does
+not exist, create it first:
+  Copy-Item inventory.yml.example inventory.yml
+and fill in ansible_host, ansible_user, ansible_port and ONE auth method
+(ansible_ssh_private_key_file or ansible_ssh_pass).
+Mutual exclusion between key and password is validated by the underlying
+bash script.
+
+.PARAMETER Inventory
+Path to an explicit inventory file to use instead of CLI parameters
+(same mode as -UseInventory, but any location on disk).
+Mutually exclusive with -UseInventory when the default file makes sense.
 
 .PARAMETER HostName
 VPS IP or hostname to connect to (required in CLI mode).
@@ -103,6 +112,10 @@ Defaults to Default.
 # Uses pre-filled inventory.yml, removes packages after run
 
 .EXAMPLE
+.\Provision-VPN.ps1 -Inventory C:\Keys\my-vps-inventory.yml
+# Uses an explicit inventory file (any location), same mode as -UseInventory
+
+.EXAMPLE
 .\Provision-VPN.ps1 -HostName 1.2.3.4 -User root -DryRun -LogLevel Verbose
 # dry run with full verbose output, no system changes
 #>
@@ -111,6 +124,10 @@ Defaults to Default.
 param(
     [Parameter()]
     [switch]$UseInventory,
+
+    [Parameter()]
+    [Alias('I')]
+    [string]$Inventory,
 
     [Parameter()]
     [Alias('H')]
@@ -147,7 +164,7 @@ param(
 
 $boxWidth = 60
 $title = "Xray VPN Provisioning Wrapper (Clash Verge / FlClash / Amnezia)"
-$version = 'v2026-08-03'
+$version = 'v2026-09-04'
 $license = 'AGPL-3.0 + commercial-use restriction'
 $author = 'Tim Korelov'
 $contact = 'https://github.com/lifestreamy'
@@ -190,11 +207,36 @@ if ($DryRun) {
     Write-LogVerbose "[DryRun] Local Windows paths are converted to WSL /mnt/<drive>/... paths in-process."
 }
 
+if ($UseInventory -and $Inventory) {
+    throw "Parameters -UseInventory and -Inventory are mutually exclusive; use only one."
+}
+$inventoryMode = [bool]($UseInventory -or $Inventory)
+
+$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptDir)
+$bashScriptPath = Join-Path $scriptDir '..\bash\provision-vpn.sh'
+
 if ($UseInventory) {
-    Write-LogDefault "Mode: Using inventory.yml for parameters"
+    $personalInventory = Join-Path $repoRoot 'inventory.yml'
+    if (-not (Test-Path -LiteralPath $personalInventory)) {
+        throw "Inventory file not found: $personalInventory`n" +
+              "Create it from the template and fill in your values:`n" +
+              "  Copy-Item '$(Join-Path $repoRoot 'inventory.yml.example')' '$personalInventory'`n" +
+              "(ansible_host, ansible_user, ansible_port and ONE auth method)`n" +
+              "Or point to your own file with -Inventory <path>."
+    }
+}
+if ($Inventory -and -not (Test-Path -LiteralPath $Inventory)) {
+    throw "Inventory file not found: $Inventory`n" +
+          "Create one from the template: Copy-Item '$(Join-Path $repoRoot 'inventory.yml.example')' '<your-inventory.yml>'`n" +
+          "or pass an existing path to -Inventory."
+}
+
+if ($inventoryMode) {
+    Write-LogDefault "Mode: Using inventory file for parameters$(if ($Inventory) { ": $Inventory" } else { " (inventory.yml)" })"
     Write-LogVerbose "Inventory mode active; CLI connection/auth parameters will be ignored."
     if ($HostName -or $User -ne 'root' -or $Port -ne 22 -or $PKey -or $Pass) {
-        Write-Host "Warning: -UseInventory specified; ignoring CLI connection/auth parameters (-HostName, -User, -Port, -PKey, -Pass)." -ForegroundColor Yellow
+        Write-Host "Warning: inventory mode; ignoring CLI connection/auth parameters (-HostName, -User, -Port, -PKey, -Pass)." -ForegroundColor Yellow
     }
 } else {
     Write-LogDefault "Mode: Using CLI parameters"
@@ -204,7 +246,7 @@ if ($UseInventory) {
     }
 }
 
-if (-not $UseInventory) {
+if (-not $inventoryMode) {
     if ($PKey -and $Pass) {
         throw "Parameters -PKey and -Pass are mutually exclusive; use only one."
     }
@@ -233,10 +275,6 @@ switch ($CleanupMode) {
 
 Write-LogVerbose "CleanupMode '$CleanupMode' mapped to bash flag '$cleanupFlag'."
 
-$scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent $scriptDir
-$bashScriptPath = Join-Path $scriptDir '..\bash\provision-vpn.sh'
-
 Write-LogVerbose "Script directory (Windows): $scriptDir"
 Write-LogVerbose "Bash script path (Windows): $bashScriptPath"
 
@@ -254,7 +292,12 @@ switch ($LogLevel) {
     }
 }
 
-if ($UseInventory) {
+if ($Inventory) {
+    $wslInventoryPath = Convert-ToWslPath $Inventory
+    $wslArgs += @('--inventory', $wslInventoryPath)
+    Write-LogVerbose "Inventory (Windows): $Inventory"
+    Write-LogVerbose "Inventory (WSL): $wslInventoryPath"
+} elseif ($UseInventory) {
     $wslArgs += '--use-inventory'
 } else {
     $wslArgs += @(
@@ -282,7 +325,7 @@ if ($ClientsDir) {
     Write-LogVerbose "Using default ClientsDir (WSL): $wslDefaultClientsDir"
 }
 
-if (-not $UseInventory) {
+if (-not $inventoryMode) {
     if ($PKey) {
         $wslPKey = Convert-ToWslPath $PKey
         $wslArgs += @('--pkey', $wslPKey)

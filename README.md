@@ -189,12 +189,18 @@ WARP outbound через Cloudflare включается одной строко
 Два способа:
 
 - **CLI-параметры** — `--pkey` или `--pass` (взаимоисключающие). Если ни один не задан — пароль спросит скрыто.
-- **Inventory-файл** — `inventory.yml` + `--use-inventory`.
+- **Inventory-файл** — `inventory.yml` + флаг `--use-inventory` (`-UseInventory` в PowerShell). Shell-клиенты умеют и произвольный путь: `--inventory PATH` (`-Inventory <path>`); в `xrayvpn` `--use-inventory` доступен в remote-режиме (`--execution remote`), а `--inventory <path>` — в local-режиме.
 
 Для режима `--use-inventory` нужен файл `inventory.yml` в корне проекта. В репозитории лежит шаблон `inventory.yml.example` — скопируйте его и заполните своими данными:
 
 ```bash
 cp inventory.yml.example inventory.yml
+```
+
+Windows PowerShell — аналог команды:
+
+```powershell
+Copy-Item inventory.yml.example inventory.yml
 ```
 
 Заполните `ansible_host`, `ansible_user`, `ansible_port` и один из двух: `ansible_ssh_private_key_file` или `ansible_ssh_pass`. Файл `inventory.yml` в `.gitignore` — личные данные в git не уйдут.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-VERSION="v2026-08-03" # YYYY-MM-DD
+VERSION="v2026-09-04" # YYYY-MM-DD
 LICENSE="AGPL-3.0 + commercial-use restriction"
 AUTHOR="Tim Korelov"
 CONTACT_URL="https://github.com/lifestreamy"
@@ -30,11 +30,20 @@ This script:
 
 Parameter modes:
   --use-inventory
-      Use values from `inventory.yml` instead of CLI parameters.
-      Validates that `inventory.yml` has all required fields.
+      Use values from `inventory.yml` in the project root instead of CLI parameters.
+      Validates that the inventory file has all required fields.
       Ignores any CLI connection/auth parameters provided.
+      If `inventory.yml` does not exist, create it:
+        cp inventory.yml.example inventory.yml
+      and fill in ansible_host, ansible_user, ansible_port and ONE auth method
+      (ansible_ssh_private_key_file or ansible_ssh_pass).
+  -I, --inventory PATH
+      Same as --use-inventory but with an explicit inventory file path
+      (anywhere on disk). Overrides --use-inventory's default location.
   (Default) CLI mode
-      parameters required via flags.
+       parameters required via flags.
+      No inventory.yml is needed: the working inventory is generated from
+      CLI parameters and never touches your personal inventory.yml.
 
 Connection options (CLI mode):
   -H, --host VALUE     VPS IP / hostname (required in CLI mode).
@@ -85,17 +94,18 @@ Examples:
 
   # Inventory mode
   provision-vpn.sh --use-inventory --full-cleanup --clients-dir ~/vpn-configs
+  provision-vpn.sh --inventory ~/secrets/vps-inventory.yml   # same, explicit file
 EOF
 }
 
-# Extract value from inventory.yml
+# Extract value from an inventory file (keys are indented under all.hosts.<host>)
 get_inventory_value() {
     local key="$1"
-    local file="${2:-$REPO_ROOT/inventory.yml}"
-    grep "^${key}:" "$file" 2>/dev/null | head -1 | sed "s/.*${key}\s*:\s*//" | tr -d '\r\n' | xargs
+    local file="${2:-$INVENTORY_FILE}"
+    { grep -E "^[[:space:]]*${key}[[:space:]]*:" "$file" 2>/dev/null || true; } | head -1 | sed "s/.*${key}[[:space:]]*:[[:space:]]*//" | tr -d '\r\n' | xargs
 }
 
-# Validate inventory.yml has all required fields
+# Validate the inventory file has all required fields
 validate_inventory() {
     local inv_host=$(get_inventory_value "ansible_host")
     local inv_user=$(get_inventory_value "ansible_user")
@@ -111,25 +121,52 @@ validate_inventory() {
     [[ -z "$inv_key" && -z "$inv_pass" ]] && missing+=("auth (ansible_ssh_private_key_file or ansible_ssh_pass)")
 
     if [[ ${#missing[@]} -gt 0 ]]; then
-        echo "Error: inventory.yml missing required fields:" >&2
+        echo "Error: $INVENTORY_FILE is missing required fields:" >&2
         for field in "${missing[@]}"; do
             echo "  - $field" >&2
         done
+        echo "Fill them under all.hosts.<host> as in the template:" >&2
+        echo "  $REPO_ROOT/inventory.yml.example" >&2
+        echo "Or pass another inventory file: --inventory PATH" >&2
+        return 1
+    fi
+
+    if [[ ! "$inv_port" =~ ^[0-9]+$ ]]; then
+        echo "Error: $INVENTORY_FILE has non-numeric ansible_port: '"$inv_port"'" >&2
+        echo "Expected an integer, e.g. 22" >&2
         return 1
     fi
 
     if [[ -n "$inv_key" && -n "$inv_pass" ]]; then
-        echo "Error: You have both private key and password defined in inventory.yml." >&2
-        echo "Leave only one in the config (ansible_ssh_private_key_file OR ansible_ssh_pass)." >&2
+        echo "Error: $INVENTORY_FILE defines both a private key and a password." >&2
+        echo "Leave only one (ansible_ssh_private_key_file OR ansible_ssh_pass)." >&2
         return 1
     fi
 
     return 0
 }
 
+# Emit the error for a missing inventory file (with OS-neutral + cp hints)
+missing_inventory_message() {
+    echo "Error: inventory file not found: $INVENTORY_FILE" >&2
+    echo "Create it from the template and fill in your values:" >&2
+    echo "  cp \"$REPO_ROOT/inventory.yml.example\" \"$REPO_ROOT/inventory.yml\"" >&2
+    echo "or point to your own file: --inventory PATH" >&2
+}
+
+# YAML-quote a value for the generated inventory (escape backslash and dquote)
+yaml_quote() {
+    local raw="$1"
+    local esc="${raw//\\/\\\\}"
+    esc="${esc//\"/\\\"}"
+    printf '"%s"' "$esc"
+}
+
 CLEANUP_MODE="cleanup"
 DRY_RUN=0
 USE_INVENTORY=0
+INVENTORY_FILE=""
+CLI_CONN_FLAG=0
 ANSIBLE_VERBOSE_LEVEL=0
 ANSIBLE_VERBOSITY_LABEL="default"
 Xray_DEBUG=0
@@ -166,6 +203,11 @@ while [[ $# -gt 0 ]]; do
             USE_INVENTORY=1
             shift
             ;;
+        -I|--inventory)
+            USE_INVENTORY=1
+            INVENTORY_FILE="$2"
+            shift 2
+            ;;
         --debug)
             if [[ "$ANSIBLE_VERBOSE_LEVEL" -ne 0 ]]; then
                 echo "Error: --debug and --verbose are mutually exclusive; use only one." >&2
@@ -192,22 +234,27 @@ while [[ $# -gt 0 ]]; do
             ;;
         -H|--host)
             HOST="$2"
+            CLI_CONN_FLAG=1
             shift 2
             ;;
         -u|--user)
             USER_NAME="$2"
+            CLI_CONN_FLAG=1
             shift 2
             ;;
         -p|--port)
             PORT="$2"
+            CLI_CONN_FLAG=1
             shift 2
             ;;
         --pkey)
             PKEY="$2"
+            CLI_CONN_FLAG=1
             shift 2
             ;;
         --pass)
             PASS="$2"
+            CLI_CONN_FLAG=1
             shift 2
             ;;
         --clients-dir)
@@ -232,25 +279,31 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 if [[ "$USE_INVENTORY" -eq 1 ]]; then
-    echo "Mode: Using inventory.yml for parameters"
+    : "${INVENTORY_FILE:=$REPO_ROOT/inventory.yml}"
+    echo "Mode: Using inventory file for parameters: $INVENTORY_FILE"
 
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        echo "[dry-run] Would validate inventory.yml has all required fields"
+        echo "[dry-run] Would check that $INVENTORY_FILE exists and has all required fields"
     else
+        if [[ ! -f "$INVENTORY_FILE" ]]; then
+            missing_inventory_message
+            exit 1
+        fi
+        INVENTORY_FILE="$(realpath "$INVENTORY_FILE")"
         if ! validate_inventory; then
             exit 1
         fi
-        echo "[OK] inventory.yml validation passed (all fields present, pkey and pass are mutually exclusive)"
+        echo "[OK] Inventory validation passed (all fields present, pkey and pass are mutually exclusive)"
     fi
 
-    if [[ -n "$HOST" || -n "$PKEY" || -n "$PASS" || -n "$PORT" || -n "$USER_NAME" ]]; then
-        echo "Warning: --use-inventory specified; ignoring CLI connection/auth parameters" >&2
-        HOST=""
-        PKEY=""
-        PASS=""
-        PORT=""
-        USER_NAME=""
+    if [[ "$CLI_CONN_FLAG" -eq 1 ]]; then
+        echo "Warning: inventory mode; ignoring CLI connection/auth parameters" >&2
     fi
+    HOST=""
+    PKEY=""
+    PASS=""
+    PORT=""
+    USER_NAME=""
 
     HOST=$(get_inventory_value "ansible_host")
     PKEY=$(get_inventory_value "ansible_ssh_private_key_file")
@@ -346,16 +399,23 @@ fi
 
 if [[ "$USE_INVENTORY" -eq 1 ]]; then
     if [[ "$DRY_RUN" -eq 1 ]]; then
-        echo "[dry-run] Would use inventory.yml as-is (no modifications or backup)"
+        echo "[dry-run] Would use $INVENTORY_FILE as-is (no modifications or backup)"
     else
-        echo "Using existing inventory.yml values..."
+        echo "Using existing inventory values from: $INVENTORY_FILE"
     fi
 else
+    CLI_INVENTORY="$WORK_DIR/inventory.yml"
+    EXTRA_IGNORED=""
+    if [[ -f "$REPO_ROOT/inventory.yml" ]]; then
+        EXTRA_IGNORED=$( { grep -E '^[[:space:]]*[A-Za-z0-9_]+:[[:space:]]*[^[:space:]]' "$REPO_ROOT/inventory.yml" || true; } | grep -Ev '^[[:space:]]*(ansible_host|ansible_user|ansible_port|ansible_ssh_private_key_file|ansible_ssh_pass):' | sed 's/^[[:space:]]*//; s/:.*//' | sort -u | tr '\n' ' ')
+    fi
+    if [[ -n "$EXTRA_IGNORED" ]]; then
+        echo "Warning: CLI mode ignores non-connection keys in your inventory.yml: ${EXTRA_IGNORED}" >&2
+        echo "         Put them in config/settings.yml or run with --use-inventory instead." >&2
+    fi
     if [[ "$DRY_RUN" -eq 1 ]]; then
         echo "[dry-run] Preparing to run Ansible with provided parameters..."
-        echo "[dry-run] Would backup inventory.yml:"
-        echo "          from $REPO_ROOT/inventory.yml to $WORK_DIR/inventory.yml.backup"
-        echo "[dry-run] Would fill inventory.yml with:"
+        echo "[dry-run] Would generate working inventory at: $CLI_INVENTORY"
         echo "          ansible_host: $HOST"
         echo "          ansible_user: $USER_NAME"
         echo "          ansible_port: $PORT"
@@ -363,23 +423,27 @@ else
         [[ -n "$PASS" ]] && echo "          ansible_ssh_pass: (hidden)"
     else
         echo "Preparing to run Ansible with provided parameters..."
-        cp "$REPO_ROOT/inventory.yml" "$WORK_DIR/inventory.yml.backup"
-        sed -i "s|ansible_host:.*|ansible_host: $HOST|" "$WORK_DIR/inventory.yml"
-        sed -i "s|ansible_user:.*|ansible_user: $USER_NAME|" "$WORK_DIR/inventory.yml"
-        sed -i "s|ansible_port:.*|ansible_port: $PORT|" "$WORK_DIR/inventory.yml"
-
         if [[ -n "$PKEY" ]]; then
             SAFE_PKEY="$WORK_DIR/safe_private_key"
             cp "$PKEY" "$SAFE_PKEY"
             chmod 600 "$SAFE_PKEY"
-
-            sed -i "s|ansible_ssh_private_key_file:.*|ansible_ssh_private_key_file: $SAFE_PKEY|" "$WORK_DIR/inventory.yml"
-            sed -i '/ansible_ssh_pass:/d' "$WORK_DIR/inventory.yml"
             PKEY="$SAFE_PKEY"
-        elif [[ -n "$PASS" ]]; then
-            sed -i "s|ansible_ssh_pass:.*|ansible_ssh_pass: $PASS|" "$WORK_DIR/inventory.yml"
-            sed -i '/ansible_ssh_private_key_file:/d' "$WORK_DIR/inventory.yml"
         fi
+        {
+            echo "all:"
+            echo "  hosts:"
+            echo "    vpn:"
+            echo "      ansible_host: $(yaml_quote "$HOST")"
+            echo "      ansible_user: $(yaml_quote "$USER_NAME")"
+            echo "      ansible_port: $(yaml_quote "$PORT")"
+            if [[ -n "$PKEY" ]]; then
+                echo "      ansible_ssh_private_key_file: $(yaml_quote "$PKEY")"
+            elif [[ -n "$PASS" ]]; then
+                echo "      ansible_ssh_pass: $(yaml_quote "$PASS")"
+            fi
+        } > "$CLI_INVENTORY"
+        chmod 600 "$CLI_INVENTORY"
+        echo "Generated working inventory: $CLI_INVENTORY (personal inventory.yml untouched)"
     fi
 fi
 
@@ -394,7 +458,11 @@ fi
 if [[ "$Xray_DEBUG" -eq 1 ]]; then
     ANSIBLE_CMD+=(-e "xray_debug=true")
 fi
-ANSIBLE_CMD+=(-i "$WORK_DIR/inventory.yml" deploy.yml)
+if [[ "$USE_INVENTORY" -eq 1 ]]; then
+    ANSIBLE_CMD+=(-i "$INVENTORY_FILE" deploy.yml)
+else
+    ANSIBLE_CMD+=(-i "$WORK_DIR/inventory.yml" deploy.yml)
+fi
 
 if [[ "$DRY_RUN" -eq 1 ]]; then
     echo "[dry-run] Would run: ${ANSIBLE_CMD[*]}"
@@ -458,26 +526,6 @@ else
             echo "Client configs saved to: $TARGET_DIR"
         else
             echo "Warning: no client configs were downloaded. Check VPS connection or auth."
-        fi
-    fi
-fi
-
-if [[ "$CLEANUP_MODE" != "no-cleanup" && "$USE_INVENTORY" -eq 0 ]]; then
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        echo "[dry-run] Would restore inventory.yml from inventory.yml.backup file"
-    else
-        if [[ -f "$WORK_DIR/inventory.yml.backup" ]]; then
-            cp "$WORK_DIR/inventory.yml.backup" "$REPO_ROOT/inventory.yml"
-            echo "[OK] Restored inventory.yml to template state"
-            rm -f "$WORK_DIR/inventory.yml.backup"
-        fi
-    fi
-elif [[ "$CLEANUP_MODE" == "no-cleanup" ]]; then
-    if [[ "$DRY_RUN" -eq 1 ]]; then
-        echo "[dry-run] [no-cleanup] Would leave workspace as is"
-    else
-        if [[ "$USE_INVENTORY" -eq 0 ]]; then
-            echo "[no-cleanup] Keeping inventory.yml.backup for reference"
         fi
     fi
 fi

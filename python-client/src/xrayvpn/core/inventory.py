@@ -49,6 +49,32 @@ CONNECTION_KEYS = (
     "ansible_ssh_pass",
 )
 
+REQUIRED_CONNECTION_KEYS = ("ansible_host", "ansible_user", "ansible_port")
+
+
+def validate_connection(connection: dict[str, str]) -> list[str]:
+    """Return human-readable problems with parsed connection params (empty = OK).
+
+    Missing auth is NOT a problem here: the CLI falls back to a hidden password
+    prompt (parity with the pre-validation flow).
+    """
+    problems = [
+        f"{key} is not set"
+        for key in REQUIRED_CONNECTION_KEYS
+        if not connection.get(key)
+    ]
+    port = connection.get("ansible_port")
+    if port and not port.isdigit():
+        problems.append(f"ansible_port must be numeric, got: {port!r}")
+    has_key = bool(connection.get("ansible_ssh_private_key_file"))
+    has_pass = bool(connection.get("ansible_ssh_pass"))
+    if has_key and has_pass:
+        problems.append(
+            "both ansible_ssh_private_key_file and ansible_ssh_pass are set; "
+            "leave only one"
+        )
+    return problems
+
 
 def parse_user_inventory(repo_root: Path) -> tuple[dict[str, str], dict[str, Any]]:
     """Read the user's personal inventory.yml (read-only; never written).
@@ -59,7 +85,14 @@ def parse_user_inventory(repo_root: Path) -> tuple[dict[str, str], dict[str, Any
     """
     path = repo_root / "inventory.yml"
     if not path.is_file():
-        raise RuntimeError(f"inventory file not found: {path}")
+        example = repo_root / "inventory.yml.example"
+        raise RuntimeError(
+            f"inventory file not found: {path}\n"
+            "create it from the template and fill in ansible_host, ansible_user, "
+            "ansible_port and ONE auth method:\n"
+            f"  cp {example} {path}\n"
+            f"  (Windows PowerShell: Copy-Item {example.name} {path.name})"
+        )
     with path.open("r", encoding="utf-8") as handle:
         data = yaml.safe_load(handle) or {}
     if not isinstance(data, dict):
@@ -77,8 +110,10 @@ def parse_user_inventory(repo_root: Path) -> tuple[dict[str, str], dict[str, Any
             if not isinstance(host_vars, dict):
                 continue
             for key, value in host_vars.items():
-                if key in CONNECTION_KEYS and key not in connection:
-                    connection[key] = str(value)
+                if key in CONNECTION_KEYS:
+                    # empty YAML scalars (None) stay unset — never str(None)="None"
+                    if value is not None and key not in connection:
+                        connection[key] = str(value)
                 elif not key.startswith("ansible_"):
                     extra_vars[key] = value
     return connection, extra_vars

@@ -14,11 +14,11 @@
 
 | Файл | Что настраивает | Как влияет |
 |---|---|---|
-| `inventory.yml` (создаётся из `inventory.yml.example`) | Подключение к VPS: хост, пользователь, порт, ключ или пароль | Только для `--use-inventory`; CLI-режим собирает свой inventory сам |
+| `inventory.yml` (создаётся из `inventory.yml.example`: `cp` / `Copy-Item`) | Подключение к VPS: хост, пользователь, порт, ключ или пароль | Только для inventory-режима (`--use-inventory` или `--inventory PATH`); CLI-режим собирает свой inventory сам и `inventory.yml` не требует |
 | `config/settings.yml` | Все параметры сервера: `num_clients`, `reality_camouflage_domain`, `warp_enabled`, `xray_port`, `xray_docker_image` и остальные | Читается при каждом запуске Ansible playbook через `vars_files` |
 | `deploy.yml` | Точка входа playbook | Обычно не трогается |
 
-Какие параметры можно передать как CLI-флаги — подключение (`--host`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`, cleanup, verbosity) и частые override'ы (runtime, порт, число клиентов, WARP, ротация, firewall) — через основной клиент `xrayvpn` (см. раздел «CLI-флаги `xrayvpn deploy`» ниже; как запускать — в главном README). Остальная конфигурация — через `config/settings.yml`.
+Какие параметры можно передать как CLI-флаги — подключение (`--host`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`/`--inventory`, cleanup, verbosity) и частые override'ы (runtime, порт, число клиентов, WARP, ротация, firewall) — через основной клиент `xrayvpn` (см. раздел «CLI-флаги `xrayvpn deploy`» ниже; как запускать — в главном README). Остальная конфигурация — через `config/settings.yml`.
 
 ## Runtime selector
 
@@ -44,6 +44,7 @@
 
 - `--execution {local|remote}` — режим исполнения (по умолчанию `local`; без флага — интерактивный выбор).
 - Параметры подключения (remote): `--host/-H`, `--user/-u` (root), `--port/-p` (22), `--pkey` / `--pass` (взаимоисключающие; если ни один не задан — скрытый запрос пароля), `--use-inventory` (параметры и vars из личного `inventory.yml`).
+- `--inventory <path>` — готовый inventory-файл вместо генерируемого (только local-режим; в remote используйте `--use-inventory`).
 - `--clients-dir <path>` — куда сохранять клиентские конфиги (по умолчанию `downloaded-clients/`).
 - `--cleanup` (по умолчанию) / `--full-cleanup` / `--no-cleanup` — удаление временных данных на сервере после запуска. `--cleanup` оставляет venv-кэш для следующего запуска, `--full-cleanup` удаляет и его.
 - Override'ы: `--runtime {native|docker|podman}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-firewall/--no-firewall`.
