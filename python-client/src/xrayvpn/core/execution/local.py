@@ -9,12 +9,18 @@ the shell-script fetch step).
 from __future__ import annotations
 
 import subprocess
+from pathlib import Path
 
 from xrayvpn.core import wsl
 from xrayvpn.core.execution.base import DeployRequest, extra_var_args
 from xrayvpn.core.inventory import INVENTORY_FILE
 
 DEFAULT_WSL_VENV = "~/xray-venv"
+
+VENV_HINT = (
+    "Bootstrap the dev venv: python3 scripts/dev/setup_test_env.py "
+    "— or deploy with --execution remote."
+)
 
 
 class LocalExecutor:
@@ -29,7 +35,8 @@ class LocalExecutor:
 
     # --- command construction (pure, unit-testable) ---
 
-    def _ansible_playbook(self, wsl_home: str | None = None) -> str:
+    def venv_binary(self, wsl_home: str | None = None) -> str:
+        """Path to the ansible-playbook binary the executor will invoke."""
         venv = self.wsl_venv
         if wsl_home and venv.startswith("~"):
             venv = wsl_home + venv[1:]
@@ -41,7 +48,7 @@ class LocalExecutor:
         )
 
     def build_command(self, request: DeployRequest) -> list[str]:
-        cmd = [self._ansible_playbook(), "deploy.yml", "-i", self._inventory(request)]
+        cmd = [self.venv_binary(), "deploy.yml", "-i", self._inventory(request)]
         if request.verbosity >= 4:
             cmd.append("-vvvv")
         elif request.verbosity == 3:
@@ -56,7 +63,7 @@ class LocalExecutor:
     def build_wsl_script(self, request: DeployRequest, wsl_home: str) -> str:
         repo = wsl.to_wsl_path(request.repo_root)
         cmd = [
-            self._ansible_playbook(wsl_home=wsl_home),
+            self.venv_binary(wsl_home=wsl_home),
             "deploy.yml",
             "-i",
             wsl.to_wsl_path(self._inventory(request)),
@@ -77,6 +84,11 @@ class LocalExecutor:
 
     def deploy(self, request: DeployRequest) -> int:
         if not wsl.is_windows():
+            binary = Path(self.venv_binary()).expanduser()
+            if not binary.exists():
+                raise RuntimeError(
+                    f"ansible-playbook not found at {binary} ({VENV_HINT})"
+                )
             cmd = self.build_command(request)
             print(f"[local] {' '.join(cmd)}")
             return subprocess.call(cmd, cwd=request.repo_root)
@@ -87,6 +99,11 @@ class LocalExecutor:
                 "install WSL (wsl --install) or use --execution remote"
             )
         home = wsl.wsl_home(self.wsl_distro)
+        binary = self.venv_binary(wsl_home=home)
+        if not wsl.path_exists(binary, distro=self.wsl_distro):
+            raise RuntimeError(
+                f"ansible-playbook not found in WSL at {binary} ({VENV_HINT})"
+            )
         script = self.build_wsl_script(request, home)
         print(f"[local] wsl bash -lc {wsl.quote(script)}")
         return wsl.run_script(script, distro=self.wsl_distro)

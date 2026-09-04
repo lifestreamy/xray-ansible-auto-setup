@@ -23,6 +23,8 @@ def test_bootstrap_commands_content() -> None:
     commands = bootstrap_commands()
     assert "python3 -V" in commands
     assert any("python3 -m venv" in c and SERVER_VENV in c for c in commands)
+    # bare Debian/Ubuntu lack python3-venv → the venv line must carry the apt fallback
+    assert any("apt-get install -y python3-venv" in c for c in commands)
     assert any(f"ansible-core=={ANSIBLE_CORE_PIN}" in c for c in commands)
     assert any("community.general" in c and SERVER_COLLECTIONS in c for c in commands)
     assert any(c.startswith(f"mkdir -p {SERVER_STAGING}") for c in commands)

@@ -296,7 +296,11 @@ def deploy(
         write_inventory(repo_root, content)
 
     executor = LocalExecutor(wsl_distro=wsl_distro or None, wsl_venv=wsl_venv)
-    rc = executor.deploy(request)
+    try:
+        rc = executor.deploy(request)
+    except RuntimeError as exc:
+        typer.echo(f"error: {exc}", err=True)
+        raise typer.Exit(2) from exc
     if rc != 0:
         raise typer.Exit(rc)
     if not dry_run:

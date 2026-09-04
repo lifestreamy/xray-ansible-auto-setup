@@ -31,11 +31,19 @@ def bootstrap_commands() -> list[str]:
     """Idempotent server preparation (venv cached between runs).
 
     Privileged steps run through `sudo -n` (no-op when the SSH user is root;
-    passwordless sudo is required otherwise).
+    passwordless sudo is required otherwise). The venv line carries an
+    apt fallback: Debian/Ubuntu minimal images lack `python3-venv`, so a bare
+    `python3 -m venv` fails on ensurepip — retry after installing the package
+    (inside `bash -c` we are already root, no extra sudo).
     """
     return [
         "python3 -V",
-        f"sudo -n [ -x {SERVER_VENV}/bin/python ] || sudo -n python3 -m venv {SERVER_VENV}",
+        (
+            f"sudo -n [ -x {SERVER_VENV}/bin/python ] || "
+            f"sudo -n bash -c 'python3 -m venv {SERVER_VENV} || "
+            f"{{ apt-get update -y && apt-get install -y python3-venv && "
+            f"python3 -m venv {SERVER_VENV}; }}'"
+        ),
         f"sudo -n {SERVER_VENV}/bin/pip install -q ansible-core=={ANSIBLE_CORE_PIN}",
         (
             f"sudo -n [ -d {SERVER_COLLECTIONS}/ansible_collections/community/general ] || "

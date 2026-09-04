@@ -57,6 +57,19 @@ def quote(text: str) -> str:
     return shlex.quote(text)
 
 
+def path_exists(path: str, *, distro: str | None = None) -> bool:
+    """`test -x` inside WSL — args passed directly (no shell, no quoting risk)."""
+    cmd = ["wsl.exe"]
+    if distro:
+        cmd += ["-d", distro]
+    cmd += ["test", "-x", path]
+    try:
+        result = subprocess.run(cmd, capture_output=True, timeout=30, check=False)
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return result.returncode == 0
+
+
 def run_script(script: str, *, distro: str | None = None) -> int:
     """Run a `bash -lc` script inside WSL (default distro or an explicit one)."""
     cmd = ["wsl.exe"]

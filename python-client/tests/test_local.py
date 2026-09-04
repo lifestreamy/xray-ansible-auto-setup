@@ -1,9 +1,12 @@
-"""Tests for core/execution/local.py: command and WSL-script construction."""
+"""Tests for core/execution/local.py: command and WSL-script construction, venv preflight."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from xrayvpn.core import wsl
 from xrayvpn.core.execution.base import DeployRequest
 from xrayvpn.core.execution.local import LocalExecutor
 
@@ -59,3 +62,45 @@ def test_build_wsl_script_absolute_venv(tmp_path: Path) -> None:
     executor = LocalExecutor(wsl_venv="/opt/venv")
     script = executor.build_wsl_script(_request(tmp_path), wsl_home="/home/tim")
     assert "/opt/venv/bin/ansible-playbook" in script
+
+
+def test_venv_binary_resolution() -> None:
+    assert LocalExecutor().venv_binary() == "~/xray-venv/bin/ansible-playbook"
+    assert (
+        LocalExecutor().venv_binary(wsl_home="/home/tim")
+        == "/home/tim/xray-venv/bin/ansible-playbook"
+    )
+    assert LocalExecutor(wsl_venv="/opt/venv").venv_binary() == "/opt/venv/bin/ansible-playbook"
+
+
+def test_deploy_linux_missing_venv_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(wsl, "is_windows", lambda: False)
+    executor = LocalExecutor(wsl_venv=str(tmp_path / "novenv"))
+    with pytest.raises(RuntimeError, match="setup_test_env"):
+        executor.deploy(_request(tmp_path))
+
+
+def test_deploy_wsl_missing_venv_raises(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(wsl, "is_windows", lambda: True)
+    monkeypatch.setattr(wsl, "wsl_available", lambda: True)
+    monkeypatch.setattr(wsl, "wsl_home", lambda distro=None: "/home/tim")
+    monkeypatch.setattr(wsl, "path_exists", lambda path, *, distro=None: False)
+    executor = LocalExecutor()
+    with pytest.raises(RuntimeError, match="not found in WSL"):
+        executor.deploy(_request(tmp_path))
+
+
+def test_deploy_wsl_happy_path_runs_script(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[str] = []
+    monkeypatch.setattr(wsl, "is_windows", lambda: True)
+    monkeypatch.setattr(wsl, "wsl_available", lambda: True)
+    monkeypatch.setattr(wsl, "wsl_home", lambda distro=None: "/home/tim")
+    monkeypatch.setattr(wsl, "path_exists", lambda path, *, distro=None: True)
+    monkeypatch.setattr(
+        wsl, "run_script", lambda script, *, distro=None: calls.append(script) or 0
+    )
+    executor = LocalExecutor()
+    assert executor.deploy(_request(tmp_path)) == 0
+    assert any("/home/tim/xray-venv/bin/ansible-playbook" in s for s in calls)

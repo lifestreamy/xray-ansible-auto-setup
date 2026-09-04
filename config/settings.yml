@@ -61,4 +61,4 @@ xray_reality_rotate: false  # Set true to force REALITY key + UUID regeneration 
 
 # Role behavior 
 # Overrideable in inventory.yml (gitignored); for tests — in the molecule scenario.
-xray_manage_firewall: true  # Run ufw task; set false in molecule (ufw unreliable in container)
+xray_manage_firewall: true  # Ufw rule task (ufw is auto-installed if missing); false in the molecule scenario (host firewall is out of test scope)
