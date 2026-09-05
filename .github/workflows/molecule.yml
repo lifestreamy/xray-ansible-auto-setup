@@ -5,7 +5,7 @@
 # protected; the dev line is validated via manual workflow_dispatch.
 #
 # Jobs:
-#   syntax — cheap gate: install pinned toolchain + run ansible-playbook
+#   syntax — cheap check: install pinned toolchain + run ansible-playbook
 #     --syntax-check (the inventory.yml.example parse warnings are known
 #     and harmless; rc 0 is what matters).
 #   distro — matrix legs per supported VPS distro (container scenario,
@@ -15,6 +15,11 @@
 #   native — full host run (default scenario) on ubuntu-24.04 with
 #     xray_manage_firewall enabled: this is where the ufw install/allow
 #     path and the real end-to-end handshake are exercised.
+#   gate — always-on change classifier: on a docs-only pull request the
+#     heavy legs below skip via `if:` (a conditionally skipped job reports
+#     "skipped", which counts as success for future required checks);
+#     workflow_dispatch always runs everything. Python-client CI lives in
+#     the sibling workflow file python-client.yml (same gate block there).
 #
 # Failure artifacts: molecule logs (~/.cache/molecule) uploaded for 7
 # days; names include the matrix leg.
@@ -36,8 +41,38 @@ env:
   ANSIBLE_CORE_VERSION: "2.21.3"
 
 jobs:
+  gate:
+    name: classify changes (molecule)
+    runs-on: ubuntu-24.04
+    outputs:
+      docs_only: ${{ steps.filter.outputs.docs_only }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+
+      - name: Docs-only check
+        id: filter
+        run: |
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          non_docs=$(git diff --name-only \
+            "${{ github.event.pull_request.base.sha }}" \
+            "${{ github.event.pull_request.head.sha }}" \
+            | grep -vE '\.md$|^docs/|^LICENSE' || true)
+          if [ -z "$non_docs" ]; then
+            echo "docs_only=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs_only=false" >> "$GITHUB_OUTPUT"
+          fi
+
   syntax:
     name: syntax-check
+    needs: gate
+    if: needs.gate.outputs.docs_only == 'false'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -70,7 +105,8 @@ jobs:
 
   distro:
     name: molecule (${{ matrix.distro }})
-    needs: syntax
+    needs: [gate, syntax]
+    if: needs.gate.outputs.docs_only == 'false' && needs.syntax.result == 'success'
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
@@ -121,7 +157,8 @@ jobs:
 
   native:
     name: molecule (native + firewall)
-    needs: syntax
+    needs: [gate, syntax]
+    if: needs.gate.outputs.docs_only == 'false' && needs.syntax.result == 'success'
     runs-on: ubuntu-24.04
     steps:
       - name: Checkout
@@ -159,3 +196,4 @@ jobs:
           path: ~/.cache/molecule/
           retention-days: 7
           if-no-files-found: ignore
+

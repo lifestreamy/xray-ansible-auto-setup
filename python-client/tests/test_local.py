@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -46,6 +47,10 @@ def test_build_command_verbosity_and_check(tmp_path: Path) -> None:
     assert "--check" in cmd
 
 
+@pytest.mark.skipif(
+    sys.platform != "win32",
+    reason="WSL bridge exists only for Windows hosts (Linux runs natively)",
+)
 def test_build_wsl_script_resolves_home_and_mnt_path(tmp_path: Path) -> None:
     executor = LocalExecutor()
     script = executor.build_wsl_script(
