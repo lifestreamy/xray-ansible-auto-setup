@@ -1,4 +1,4 @@
-> **Document:** `docs/TEST-VPS.en.md` · **Location:** `docs/` · **Version:** v0.2 · **Last updated:** 2026-08-12
+> **Document:** `docs/TEST-VPS.en.md` · **Location:** `docs/` · **Version:** v0.3 · **Last updated:** 2026-09-05
 >
 > [Main README](../README.en.md) — project overview and quick start
 

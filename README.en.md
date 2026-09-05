@@ -1,4 +1,4 @@
-**Version:** v0.2 · **Last updated:** 2026-08-20
+**Version:** v0.3 · **Last updated:** 2026-09-05
 
 [![Русский](https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-808080?style=flat)](README.md)
 [![English](https://img.shields.io/badge/English-00a693?style=flat)](README.en.md)
@@ -62,7 +62,7 @@ The minimal case — just the VPS IP. The password will be requested interactive
 
 You can run it with one of three clients, or with none:
 
-- `xrayvpn` (Python) — [`python-client/`](python-client/README.md) — Windows, Linux and macOS; recommended;
+- `xrayvpn` (Python) — [`python-client/`](python-client/README.en.md) — Windows, Linux and macOS; recommended;
 - Bash — [`shell-clients/bash/provision-vpn.sh`](shell-clients/bash/provision-vpn.sh) — Linux / WSL (supported, not developed further);
 - PowerShell — [`shell-clients/powershell/Provision-VPN.ps1`](shell-clients/powershell/Provision-VPN.ps1) — Windows + WSL;
 - Ansible directly — `ansible-playbook -i inventory.yml deploy.yml`, no client.
@@ -88,7 +88,9 @@ uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4
 uv run --project python-client xrayvpn deploy --execution remote --use-inventory
 ```
 
-The rest (`--pkey`, local mode, installing `uv`) — in [`python-client/README.md`](python-client/README.md).
+No `uv`? One-line install: Windows — `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`, Linux/macOS — `curl -LsSf https://astral.sh/uv/install.sh | sh`.
+
+The rest (`--pkey`, local mode, client scenarios) — in [`python-client/README.en.md`](python-client/README.en.md).
 
 </details>
 
@@ -201,7 +203,7 @@ Run paths and platform requirements — in the "Quick start" above.
 
 **Local machine:**
 
-- Python 3.12+ for the main `xrayvpn` client (install/run via `uv`, see [`python-client/README.md`](python-client/README.md)); SSH access to the VPS by key or password (uses the built-in `paramiko` — no `sshpass` needed).
+- Python 3.12+ for the main `xrayvpn` client (install/run via `uv`, see [`python-client/README.en.md`](python-client/README.en.md)); SSH access to the VPS by key or password (uses the built-in `paramiko` — no `sshpass` needed).
 - For the alternative shell clients: Linux/WSL with `apt`; on Windows — WSL2 with Ubuntu/Debian.
 
 The wrapper installs Python 3, Ansible and `sshpass` itself if they are missing. On Windows only WSL is needed.
@@ -250,6 +252,8 @@ I use Clash Verge (Windows) and FlClash (Android). Amnezia works, but because of
 - [`docs/GLOSSARY.en.md`](docs/GLOSSARY.en.md) — project terms.
 - [`docs/CLIENT-STATUS.en.md`](docs/CLIENT-STATUS.en.md) — client status.
 - [`docs/PLANNED.en.md`](docs/PLANNED.en.md) — what's planned next.
+- [`docs/RELEASE.en.md`](docs/RELEASE.en.md) — release policy and release statuses.
+- [`CHANGELOG.en.md`](CHANGELOG.en.md) — changes by version.
 
 ## License
 

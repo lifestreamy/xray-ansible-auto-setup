@@ -1,17 +1,47 @@
 # Changelog
 
 Version history. Русская версия: [CHANGELOG.md](CHANGELOG.md).
-Release policy and acceptance records — [docs/RELEASE.en.md](docs/RELEASE.en.md).
+Release policy and release statuses — [docs/RELEASE.en.md](docs/RELEASE.en.md).
 
 Format:
 
 - Newest versions first; one section per release: `## [vX.Y] — YYYY-MM-DD`.
 - Inside a section — categories: **Added**, **Changed**, **Fixed**, **Removed**.
-- Each release section carries a `Status:` line (`experimental`; after promotion — `stable since YYYY-MM-DD`) and a pointer to the acceptance record: `Acceptance: docs/RELEASE.en.md#release-acceptance`.
+- Each release section carries a `Status:` line (`experimental`; after promotion — `stable since YYYY-MM-DD`).
 - Entries are built from commit messages and land in the release commit; no auto-bump.
 - The RU/EN pair is updated in the same commit; section structure is mirrored.
 
 ## [Unreleased]
+
+## v0.3 — 2026-09-05
+
+Status: experimental (promotion criteria — `docs/RELEASE.en.md`).
+
+### Added
+- The primary CLI client `xrayvpn` (Python): remote mode over SSH and a local mode, common
+  parameters as flags.
+- GitHub Actions CI: `molecule` workflow — syntax check, molecule matrix on ubuntu 22.04/24.04 and
+  debian 12, a full host run with the firewall and a mihomo-client e2e; `python-client` workflow —
+  CLI tests and lint.
+- Manual check runbook — `docs/TEST-LOCAL.en.md`.
+- Release policy — `docs/RELEASE.en.md`: experimental/stable statuses, tag scheme, release
+  sequence. The CHANGELOG pair (this file plus `CHANGELOG.md`).
+- Hints for clients when `inventory.yml` is missing or incomplete.
+- Enabling `xray.service` at boot and auto-install of `ufw` / `python3-venv` during deploy.
+
+### Changed
+- All role variables live in one file, `config/settings.yml`; `group_vars/` and role defaults
+  are gone.
+- Runtime choice: `native` (default), `docker`, `podman` (experimental).
+- Docker and podman units run with `--network host`, no extra NAT hop.
+- Repository layout: `shell-clients/`, `python-client/`, `scripts/`, `config/`; contributor
+  tooling separated from client wrappers.
+- README quick start: three run paths (the clients and bare Ansible) with direct file links,
+  command details in collapsible blocks.
+
+### Fixed
+- Readable inventory error messages; `--use-inventory` parsing in the shell clients was broken
+  since v0.2.
 
 ## v0.2 — 2026-08-03
 

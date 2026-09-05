@@ -1,4 +1,4 @@
-**Version:** v0.2 · **Last updated:** 2026-08-20
+**Version:** v0.3 · **Last updated:** 2026-09-05
 
 [![English](https://img.shields.io/badge/English-808080?style=flat)](README.en.md)
 [![Русский](https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-00a693?style=flat)](README.md)
@@ -88,7 +88,9 @@ uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4
 uv run --project python-client xrayvpn deploy --execution remote --use-inventory
 ```
 
-Остальное (`--pkey`, локальный режим, установка `uv`) — в [`python-client/README.md`](python-client/README.md).
+Нет `uv`? Ставится одной командой: Windows — `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`, Linux/macOS — `curl -LsSf https://astral.sh/uv/install.sh | sh`.
+
+Остальное (`--pkey`, локальный режим, сценарии клиента) — в [`python-client/README.md`](python-client/README.md).
 
 </details>
 
@@ -250,6 +252,8 @@ CLI-режим (`-H` без `--use-inventory`) файл `inventory.yml` не и�
 - [`docs/GLOSSARY.md`](docs/GLOSSARY.md) — термины проекта.
 - [`docs/CLIENT-STATUS.md`](docs/CLIENT-STATUS.md) — статус клиентов.
 - [`docs/PLANNED.md`](docs/PLANNED.md) — что запланировано дальше.
+- [`docs/RELEASE.md`](docs/RELEASE.md) — релизная политика и статусы релизов.
+- [`CHANGELOG.md`](CHANGELOG.md) — что менялось по версиям.
 
 ## Лицензия
 
