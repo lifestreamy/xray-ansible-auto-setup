@@ -1,0 +1,20 @@
+---
+# Test-harness environment for molecule/CI. The role itself declares NO
+# dependencies (see roles/xray_vpn/meta/main.yml NOTE): production deploy
+# paths each install what they need (bash client — apt ansible bundle;
+# remote mode — bootstrap galaxy step; dev — scripts/dev/setup_test_env.py).
+# This file is read only by molecule's galaxy dependency step and the CI
+# workflow; the role never references molecule/.
+#   - community.general: modules used by the role (ufw); pin = validated
+#     version in the WSL dev venv.
+#   - community.docker:  provides the `docker` connection plugin that the
+#     molecule docker driver needs on the controller (molecule/distro).
+#   - ansible.posix:     required by molecule itself (its dependency step
+#     hard-checks for it); the role uses none of its modules.
+collections:
+  - name: community.general
+    version: 12.1.0
+  - name: community.docker
+    version: 5.2.2
+  - name: ansible.posix
+    version: 2.2.2

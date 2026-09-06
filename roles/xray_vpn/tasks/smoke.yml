@@ -1,35 +1,104 @@
 ---
 # Post-deploy smoke checks (non-fatal; warnings only).
-# These checks verify the pinned image, that the Xray TCP port is listening
-# locally, and that the Xray journal has no obvious errors. They do NOT
-# validate a REALITY handshake or WARP egress — confirm those with a real
-# client from outside the VPS.
+# All checks use failed_when: false so a smoke failure does not abort
+# the deploy — the operator inspects warnings and the journal.
+# Branched by xray_runtime so each runtime's reality is verified with
+# the right tool: native binary version + systemctl, or container
+# inspect for docker/podman.
 
-- name: Check Xray container is running with pinned image
+# === Native runtime smoke ===
+- name: Native - report xray binary version
+  ansible.builtin.command:
+    cmd: "{{ xray_symlink | default('/usr/local/bin/xray') }} version"
+  register: xray_native_version
+  changed_when: false
+  failed_when: false
+  become: true
+  when: xray_runtime == 'native'
+  tags: smoke
+
+- name: Native - assert xray service is active
+  ansible.builtin.command:
+    cmd: systemctl is-active xray
+  register: xray_native_service_status
+  changed_when: false
+  failed_when: false
+  become: true
+  when: xray_runtime == 'native'
+  tags: smoke
+
+- name: Native - report xray service boot state
+  ansible.builtin.command:
+    cmd: systemctl is-enabled xray
+  register: xray_native_service_enabled
+  changed_when: false
+  failed_when: false
+  become: true
+  when: xray_runtime == 'native'
+  tags: smoke
+
+- name: Native - smoke result
+  ansible.builtin.debug:
+    msg:
+      - "xray binary: {{ xray_native_version.stdout | default('(no output)') }}"
+      - "xray service: {{ xray_native_service_status.stdout | default('unknown') }}"
+      - "xray boot state: {{ xray_native_service_enabled.stdout | default('unknown') }}"
+  when:
+    - xray_runtime == 'native'
+    - xray_debug | default(false) | bool
+  tags: smoke,debug
+
+# === Docker runtime smoke ===
+- name: Docker - inspect xray container image
   ansible.builtin.command:
     cmd: docker inspect xray --format "{{ '{{' }} .Config.Image {{ '}}' }}"
-  register: xray_image_check
+  register: xray_docker_image_check
   changed_when: false
-  become: true
   failed_when: false
+  become: true
+  when: xray_runtime == 'docker'
   tags: smoke
 
-- name: Verify pinned Xray image in container
+- name: Docker - assert pinned image
   ansible.builtin.assert:
     that:
-      - xray_image_check.stdout is search(xray_docker_image | default(''))
-    success_msg: "Xray container uses pinned image: {{ xray_image_check.stdout }}"
-    fail_msg: "WARNING: Xray container image '{{ xray_image_check.stdout }}' may not match pinned '{{ xray_docker_image }}'"
-  when: xray_image_check.stdout | default('') != ''
+      - xray_docker_image_check.stdout is search(xray_container_image | default(''))
+    success_msg: "Xray container uses pinned image: {{ xray_docker_image_check.stdout }}"
+    fail_msg: "WARNING: Xray container image '{{ xray_docker_image_check.stdout }}' may not match pinned '{{ xray_container_image }}'"
+  when:
+    - xray_runtime == 'docker'
+    - xray_docker_image_check.stdout | default('') != ''
   failed_when: false
   tags: smoke
 
+# === Podman runtime smoke ===
+- name: Podman - inspect xray container image
+  ansible.builtin.command:
+    cmd: podman inspect xray --format "{{ '{{' }} .ImageName {{ '}}' }}"
+  register: xray_podman_image_check
+  changed_when: false
+  failed_when: false
+  when: xray_runtime == 'podman'
+  tags: smoke
+
+- name: Podman - assert pinned image
+  ansible.builtin.assert:
+    that:
+      - xray_podman_image_check.stdout is search(xray_container_image | default(''))
+    success_msg: "Xray container uses pinned image: {{ xray_podman_image_check.stdout }}"
+    fail_msg: "WARNING: Xray container image '{{ xray_podman_image_check.stdout }}' may not match pinned '{{ xray_container_image }}'"
+  when:
+    - xray_runtime == 'podman'
+    - xray_podman_image_check.stdout | default('') != ''
+  failed_when: false
+  tags: smoke
+
+# === Common smoke (all runtimes) ===
 - name: Wait for Xray TCP port to be listening
   ansible.builtin.wait_for:
     port: "{{ xray_port | default(443) }}"
     host: localhost
     timeout: 10
-  when: xray_image_check.stdout | default('') != ''
   failed_when: false
   tags: smoke
 
@@ -38,8 +107,8 @@
     cmd: journalctl -u xray --no-pager -n 20
   register: xray_journal
   changed_when: false
-  become: true
   failed_when: false
+  become: true
   tags: smoke
 
 - name: Report Xray journal error summary

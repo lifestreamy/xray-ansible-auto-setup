@@ -1,4 +1,4 @@
-> **Document:** `docs/SETUP.en.md` · **Location:** `docs/` · **Version:** v0.2 · **Last updated:** 2026-08-12
+> **Document:** `docs/SETUP.en.md` · **Location:** `docs/` · **Version:** v0.3 · **Last updated:** 2026-09-05
 >
 > [Main README](../README.en.md) — project overview and quick start
 
@@ -14,49 +14,25 @@ The full glossary is in [`docs/GLOSSARY.en.md`](GLOSSARY.en.md).
 
 | File | What it configures | How it affects |
 |---|---|---|
-| `inventory.yml` (created from `inventory.yml.example`) | VPS connection: host, user, port, key or password | Only for `--use-inventory`; CLI mode builds its own inventory |
-| `group_vars/all.yml` | All server parameters: `num_clients`, `reality_camouflage_domain`, `warp_enabled`, `xray_port`, `xray_docker_image` and others | Read on every Ansible playbook run |
-| `roles/xray_vpn/defaults/main.yml` | Role defaults — safe fallback values | Overridden by `group_vars/all.yml`; change only if you know why |
+| `inventory.yml` (created from `inventory.yml.example`: `cp` / `Copy-Item`) | VPS connection: host, user, port, key or password | Only for inventory mode (`--use-inventory` or `--inventory PATH`); CLI mode builds its own inventory and does not need `inventory.yml` |
+| `config/settings.yml` | All server parameters: `num_clients`, `reality_camouflage_domain`, `warp_enabled`, `xray_port`, `xray_docker_image` and others | Read on every Ansible playbook run via `vars_files` |
 | `deploy.yml` | The playbook entry point | Usually left alone |
 
-Which parameters can be passed as CLI flags — only connection parameters (`-H`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`, cleanup and verbosity). The rest of the configuration goes through `group_vars/all.yml`. The "CLI flags for all parameters" item — in [`docs/PLANNED.en.md`](PLANNED.en.md), planned after 0.3.
+Which parameters can be passed as CLI flags — connection (`--host`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`/`--inventory`, cleanup, verbosity) and common overrides (runtime, port, number of clients, WARP, rotation, firewall) — through the main `xrayvpn` client (see the "`xrayvpn deploy` CLI flags" section below; all run options — in the README Quick start). The rest of the configuration goes through `config/settings.yml`.
 
-## About the project
-
-This is a utility that uses Ansible to deploy an Xray VLESS + REALITY VPN server on a remote VPS. It generates client configs for Clash Verge / FlClash (Mihomo Meta YAML) and Amnezia VPN (JSON). Clash Verge and FlClash are the main recommended and tested clients. Amnezia works but isn't recommended because of instability. Platform wrappers are PowerShell and Bash scripts (PowerShell invokes Bash).
-
-## What you need before you start
-
-**VPS:**
-
-- Fresh Ubuntu 20.04+ or Debian 11+.
-- Root or sudo.
-- Public IP.
-
-**Local machine:**
-
-Linux:
-
-- Ubuntu/Debian (or any distro with `apt`).
-- SSH access to the VPS.
-
-Windows:
-
-- WSL2 with Ubuntu/Debian (installed beforehand).
-- PowerShell 5.1+ (built into Windows 10/11).
-
-Before paying for a VPS long-term, check it with `carrox-vps-check` or `ipcheck-plus`. Details — in [`docs/TEST-VPS.en.md`](TEST-VPS.en.md).
-
-## `group_vars/all.yml` variables
+## `config/settings.yml` variables
 
 <details>
   <summary>All variables (for techies)</summary>
 
 | Variable | What it does |
 |---|---|
+| `xray_runtime` | Runtime selector: `native` (default), `docker`, `podman`. See the "Runtime selector" section below. |
+| `xray_version` | Single Xray-core version (default `"26.6.27"`). |
+| `xray_container_repo` | Container repository for `docker` / `podman` (default `ghcr.io/xtls/xray-core`). |
 | `num_clients` | How many client configs to generate (each with its own UUID). |
 | `reality_camouflage_domain` | SNI of a legitimate site for REALITY masking (default `dl.google.com`). Public parameter. |
-| `xray_docker_image` | The Xray image tag. Pinned to `teddysun/xray:26.6.27`. |
+| `xray_docker_image` | Explicit container image pin (docker and podman). If unset, the image is assembled from `xray_container_repo:xray_version`. Currently set to `teddysun/xray:26.6.27`. |
 | `xray_config_dir` | The state directory on the VPS (`/root/xray-config`). |
 | `xray_client_configs_dir` | The generated configs directory on the VPS (`/root/vpn-configs`). |
 | `xray_port` | The inbound port (default `443`). |
@@ -71,54 +47,79 @@ Before paying for a VPS long-term, check it with `carrox-vps-check` or `ipcheck-
 
 </details>
 
-## WARP in detail
+## Runtime selector
 
-`warp_enabled: true` adds an extra outgoing tunnel through Cloudflare WARP to Xray. This hides your VPS IP from visited sites — they'll see the Cloudflare IP instead of yours.
+`config/settings.yml` supports three deployment variants through `xray_runtime`:
 
-**IPv4-only by default.** The `warp_ipv6: false` parameter excludes the IPv6 address from the WireGuard interface. This is for compatibility with VPSes without an IPv6 route. In this mode `allowedIPs` and `domainStrategy` remain, but the actual tunnel goes over IPv4 only. If you have working IPv6, switch to `true`.
+| `xray_runtime` | What gets installed | When to pick it |
+|---|---|---|
+| `native` (default) | Xray binary at `/usr/local/xray/xray` under systemd | Smallest footprint (~10 MB RAM); recommended for new deployments. |
+| `docker` | Docker Engine + `teddysun/xray:26.6.27` via `xray.service.docker.j2` | Legacy escape hatch. Kept for compatibility with old deploys; not covered by molecule. |
+| `podman` | Podman + the `xray_container_image` image (see `xray_docker_image`) via `xray.service.podman.j2` | Experimental; not covered by molecule. |
 
-**Endpoint.** Default `162.159.192.1:2408` — the Cloudflare WARP IPv4 anycast. The stable name is `engage.cloudflareclient.com:2408`. Override in `group_vars/all.yml` if needed.
+To switch runtime, change `xray_runtime` in `config/settings.yml` and rerun the playbook. Related variables:
 
-**Requirements.** `wgcf` 2.2.22. The role downloads the binary itself when `warp_enabled: true`. Persistent credentials are `wgcf-account.toml` and `wgcf-profile.conf` in `/root/xray-config/`.
+- `xray_version: "26.6.27"` — single source of truth for the Xray-core version. Do not use `:latest` (Incident 2026-07-28: 26.7.11 broke VLESS+REALITY+vision).
+- `xray_container_repo: "ghcr.io/xtls/xray-core"` — repository used for `docker` and `podman`.
+- `xray_docker_image` — an explicit container image pin; currently `teddysun/xray:26.6.27`. The mechanism — the variables table below.
 
-**Egress check.** Check from outside the VPS, through a real VPN client, not via `curl` from inside the Xray container. From the device where the VPN client runs:
+## `xrayvpn deploy` CLI flags
+
+The main client is `python-client/` (the `xrayvpn deploy` command). It accepts:
+
+- `--execution {local|remote}` — execution mode (default `local`; without the flag — interactive choice).
+- Connection parameters (remote): `--host/-H`, `--user/-u` (root), `--port/-p` (22), `--pkey` / `--pass` (mutually exclusive; if neither is set — hidden password prompt), `--use-inventory` (connection params and vars from your personal `inventory.yml`).
+- `--inventory <path>` — use an existing inventory file instead of the generated one (local mode only; in remote mode use `--use-inventory`).
+- `--clients-dir <path>` — where generated client configs are saved (default `downloaded-clients/`).
+- `--cleanup` (default) / `--full-cleanup` / `--no-cleanup` — remove server-side temporary data after the run. `--cleanup` keeps the venv cache for the next run, `--full-cleanup` removes it too.
+- Overrides: `--runtime {native|docker|podman}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-firewall/--no-firewall`.
+- `--dry-run` — local: `ansible-playbook --check`; remote: plan of commands without connecting.
+- `--debug` / `--verbose` — Ansible `-vvv` / `-vvvv` + `xray_debug=true`.
+
+Examples:
 
 ```bash
-curl -4 https://ifconfig.io   # should return the Cloudflare IP (or VPS IP if WARP is off)
-curl -4 https://cloudflare.com/cdn-cgi/trace   # alternative, look for colo= and ip=
+uv run --project python-client xrayvpn deploy --execution local --no-warp
+uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 --pkey ~/.ssh/id_rsa --runtime native
+uv run --project python-client xrayvpn deploy --execution remote --use-inventory --no-warp
 ```
 
-WARP rotation details — in [`docs/ROTATION.en.md`](ROTATION.en.md), section §4.
+The generated local inventory `.xrayvpn-inventory.yml` (gitignored) contains only the passed overrides; everything else still comes from `config/settings.yml`. In remote mode the inventory is assembled on the server itself, and your personal `inventory.yml` is never uploaded.
+
+The alternative shell clients (`shell-clients/`) accept only connection parameters plus cleanup and verbosity — see their `--help` for details.
+
+## About the project
+
+This is a utility that uses Ansible to deploy an Xray VLESS + REALITY VPN server on a remote VPS. It generates client configs for Clash Verge / FlClash (Mihomo Meta YAML) and Amnezia VPN (JSON). Clash Verge and FlClash are the main recommended and tested clients. Amnezia works but isn't recommended because of instability. Platform wrappers: PowerShell and Bash. The PowerShell wrapper runs the Bash client through WSL.
+
+## What you need before you start
+
+**VPS:** fresh Ubuntu 20.04+ or Debian 11+, root or sudo, public IP.
+
+**Local machine:** on Windows — WSL2 with Ubuntu/Debian and PowerShell 5.1+. Before paying for a VPS long-term, check it — [`docs/TEST-VPS.en.md`](TEST-VPS.en.md). Platform requirements — in the README, the "Requirements" section.
+
+## WARP in detail
+
+`warp_enabled: true` adds an outgoing tunnel through Cloudflare WARP: sites see the Cloudflare IP instead of your VPS IP.
+
+- **IPv4-only by default** (`warp_ipv6: false`); if you have working IPv6 — `true`.
+- **Endpoint:** `162.159.192.1:2408` (stable name — `engage.cloudflareclient.com:2408`); override in `config/settings.yml`.
+- **Credentials:** `wgcf` 2.2.22, the role downloads it itself; `wgcf-account.toml` and `wgcf-profile.conf` — in `/root/xray-config/`.
+
+Egress check — from outside the VPS, through a real VPN client: `curl -4 https://ifconfig.io` should return the Cloudflare IP. WARP rotation — in [`docs/ROTATION.en.md`](ROTATION.en.md), §4.
 
 ## Post-deployment checks
 
-After any run (with or without rotation) do a manual check.
-
-Check that the right Xray image is running (should return `teddysun/xray:26.6.27` or the current `xray_docker_image` value):
-
 ```bash
-docker inspect xray --format '{{ .Config.Image }}'   # prints the image tag
+systemctl is-active xray                      # should return 'active'
+nc -zv <VPS_IP> 443                           # port listening; replace <VPS_IP> with yours
 ```
 
-Check that the Xray journal has no REALITY handshake errors:
-
-```bash
-journalctl -u xray --no-pager -n 30 | grep -iE 'error|fail|panic'   # grep filters only problem lines
-```
-
-Check that the Xray port (`xray_port`, default `443`) is listening on the VPS:
-
-```bash
-nc -zv <VPS_IP> 443   # replace <VPS_IP> with yours; should return succeeded
-```
-
-Connect with at least one real client (Clash Verge / FlClash / Amnezia) and verify traffic goes through it.
-
-The role's built-in checks cover only the pinned image, the listening port and obvious journal errors. They don't replace the manual check above.
+Then connect with at least one real client (Clash Verge / FlClash / Amnezia) and verify traffic goes through it. The role's built-in checks don't replace this.
 
 ## Adding more clients without rotation
 
-To add a new client config without touching existing keys — increase `num_clients` in `group_vars/all.yml` and run the playbook. New UUIDs will be added to `reality-state.json`, new configs will appear in `/root/vpn-configs/` on the VPS and in `./downloaded-clients/` locally. Existing clients keep working.
+To add a new client config without touching existing keys — increase `num_clients` in `config/settings.yml` and run the playbook. New UUIDs will be added to `reality-state.json`, new configs will appear in `/root/vpn-configs/` on the VPS and in `./downloaded-clients/` locally. Existing clients keep working.
 
 ## License
 

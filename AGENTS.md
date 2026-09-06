@@ -17,6 +17,7 @@ See `README.md` (RU) / `README.en.md` (EN) for the full description.
 - `docs/TEST-VPS.md` — validating a fresh VPS before running the playbook.
 - `docs/ROTATION.md` — credential/certificate rotation procedures.
 - `docs/CLIENT-STATUS.md` — current operational status of the deployed server.
+- `docs/RELEASE.md` — release policy: versioning statuses, tagging, the release procedure.
 - `docs/PLANNED.md` — planned roadmap and upcoming changes.
 - `docs/GLOSSARY.md` — domain-specific terms used in this project.
 
@@ -24,7 +25,8 @@ See `README.md` (RU) / `README.en.md` (EN) for the full description.
 
 - `deploy.yml` — top-level Ansible playbook.
 - `inventory.yml.example` — template for the inventory (real `inventory.yml` is gitignored).
-- `provision-vpn.sh` / `Provision-VPN.ps1` — convenience wrappers around the playbook.
+- `shell-clients/bash/provision-vpn.sh` / `shell-clients/powershell/Provision-VPN.ps1` — convenience wrappers around the playbook.
+- `python-client/` — the primary client (Python CLI `xrayvpn`), local and remote execution modes.
 - `group_vars/` — Ansible group variables.
 - `roles/` — Ansible roles (the actual logic lives here).
 

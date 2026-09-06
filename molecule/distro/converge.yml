@@ -1,0 +1,21 @@
+---
+# molecule/distro/converge.yml — mirrors molecule/default/converge.yml.
+# Differences are structural only: the docker driver provides the
+# connection to the container instance, so there is no
+# `hosts: localhost, connection: local` pair. Keep the role-parameter
+# block in sync with molecule/default/converge.yml.
+- name: Converge
+  hosts: all
+  become: true
+  vars_files:
+    - ../../config/settings.yml
+  roles:
+    - role: xray_vpn
+      # Test-only overrides. Role params outrank vars_files (play vars do
+      # NOT: vars_files sit above play vars in the current precedence list).
+      num_clients: 1
+      warp_enabled: false
+      xray_backup_enabled: false
+      xray_reality_rotate: false
+      xray_manage_firewall: false
+      xray_debug: false

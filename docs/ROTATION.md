@@ -1,4 +1,4 @@
-> **Document:** `docs/ROTATION.md` · **Location:** `docs/` · **Version:** v0.2 · **Last updated:** 2026-08-12
+> **Document:** `docs/ROTATION.md` · **Location:** `docs/` · **Version:** v0.3 · **Last updated:** 2026-09-05
 >
 > [Главный README](../README.md) — обзор проекта и быстрый старт
 
@@ -34,8 +34,8 @@
 
 | Составляющая | Где живёт / действие | Эффект |
 |---|---|---|
-| Изменение `xray_reality_rotate` | `group_vars/all.yml` или `-e ...` | Полная смена REALITY-ключей, short ID и UUID клиентов. |
-| Изменение `num_clients` | `group_vars/all.yml` | Сколько клиентских конфигов сгенерировать. Без `xray_reality_rotate: true` действует как добавление/уменьшение. |
+| Изменение `xray_reality_rotate` | `config/settings.yml` или `-e ...` | Полная смена REALITY-ключей, short ID и UUID клиентов. |
+| Изменение `num_clients` | `config/settings.yml` | Сколько клиентских конфигов сгенерировать. Без `xray_reality_rotate: true` действует как добавление/уменьшение. |
 | Ротация WARP | `/root/xray-config/wgcf-account.toml`, `/root/xray-config/wgcf-profile.conf` — удалить вручную, затем rerun | Смена учётных данных WARP (если он включён). Не зависит от `xray_reality_rotate`. Подробности в §4. |
 
 ## 2. Ротация идентичности REALITY
@@ -48,7 +48,7 @@
 xray_reality_rotate: true
 ```
 
-Передайте его через `group_vars/all.yml` для разового запуска, либо через `-e xray_reality_rotate=true` в командной строке:
+Передайте его через `config/settings.yml` для разового запуска, либо через `-e xray_reality_rotate=true` в командной строке:
 
 ```bash
 ansible-playbook -i inventory.yml deploy.yml -e xray_reality_rotate=true
@@ -101,7 +101,7 @@ ls -la /root/xray-config/reality-state.json*   # должны быть видн�
 
 - Новые клиентские конфиги загрузятся локально в папку проекта, откуда производился запуск `/downloaded-clients/`, а также сохранятся в `/root/vpn-configs/` на VPS.
 - Загрузите новые конфиги в ваши vpn-клиенты: Clash Verge / FlClash / Amnezia.
-- Верните `xray_reality_rotate` в `false` в `group_vars/all.yml`, если хотите сохранять идентичность при следующих запусках.
+- Верните `xray_reality_rotate` в `false` в `config/settings.yml`, если хотите сохранять идентичность при следующих запусках.
 
 ## 4. Ротация учётных данных WARP
 
@@ -154,7 +154,7 @@ curl -4 https://cloudflare.com/cdn-cgi/trace   # альтернатива, в в
    chown root:root /root/xray-config/reality-state.json
    chmod 0600 /root/xray-config/reality-state.json
    ```
-4. Убедитесь, что в `group_vars/all.yml` стоит `xray_reality_rotate: false`.
+4. Убедитесь, что в `config/settings.yml` стоит `xray_reality_rotate: false`.
 5. Перезапустите playbook. Роль подхватит восстановленное состояние и перегенерирует `config.json` и клиентские конфиги под него.
 
 Держите последнюю резервную копию, пока не проверите новую ротацию целиком.

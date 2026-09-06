@@ -1,0 +1,35 @@
+---
+# Docker runtime — install Docker Engine, ensure the service, and pull
+# the pinned Xray container image. Used when xray_runtime == 'docker'
+# (legacy escape hatch; new deployments should use xray_runtime: native).
+
+- name: Install Docker from Ubuntu repos
+  ansible.builtin.apt:
+    name: docker.io
+    state: present
+    update_cache: true
+  become: true
+  tags: docker
+
+- name: Ensure Docker service is running and enabled
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+    daemon_reload: true
+  become: true
+  tags: docker
+
+- name: Pull pinned Xray container image
+  ansible.builtin.command:
+    cmd: docker pull {{ xray_container_image }}
+  changed_when: false
+  register: docker_pull
+  become: true
+  tags: docker
+
+- name: Debug docker pull result
+  ansible.builtin.debug:
+    var: docker_pull
+  when: xray_debug | default(false) | bool
+  tags: docker,debug

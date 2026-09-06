@@ -1,4 +1,4 @@
-> **Document:** `docs/GLOSSARY.en.md` · **Location:** `docs/` · **Version:** v0.2 · **Last updated:** 2026-08-12
+> **Document:** `docs/GLOSSARY.en.md` · **Location:** `docs/` · **Version:** v0.3 · **Last updated:** 2026-09-05
 >
 > [Main README](../README.en.md) — project overview and quick start
 
@@ -6,13 +6,25 @@
 
 Project terms. If you meet an unfamiliar word in the documentation, look it up here.
 
+## Runtime selector (`xray_runtime`)
+
+A parameter in `config/settings.yml` (`xray_runtime: native | docker | podman`) that picks how the Xray server is launched. Default `native` — smallest footprint. `docker` — legacy escape hatch via Docker Engine. `podman` — experimental.
+
+## `xray_cli_command`
+
+A runtime-aware command used to invoke the Xray CLI / keygen. Set as a fact in `roles/xray_vpn/tasks/runtime_setup.yml`: for `native` it is `/usr/local/bin/xray`, for `docker` it is `docker run --rm <image>`, for `podman` it is `podman run --rm <image>`. The role uses it everywhere instead of a hard-coded `docker run`.
+
+## `xray_container_image`
+
+The container image for `docker` and `podman`. The role computes it itself (pin or assembly from repository and version); how to set it and the current pin — the variables table in `docs/SETUP.en.md`.
+
 ## Rotation
 
 Replacing credentials with new ones. After rotation, old client configs stop connecting — you need to distribute new ones. Details — in `docs/ROTATION.en.md`.
 
 ## The `xray_reality_rotate` switch
 
-A parameter in `group_vars/all.yml` or the `-e xray_reality_rotate=true` command-line flag. Makes the Ansible role regenerate keys, short IDs and client UUIDs.
+A parameter in `config/settings.yml` or the `-e xray_reality_rotate=true` command-line flag. Makes the Ansible role regenerate keys, short IDs and client UUIDs.
 
 ## REALITY
 
@@ -40,13 +52,9 @@ How many client configs to generate. Increasing adds new UUIDs to `reality-state
 
 ## WARP
 
-An extra outgoing tunnel through Cloudflare. Hides your VPS IP from visited sites — instead of your VPS IP they see the Cloudflare WARP IP. Optional. Enabled in `group_vars/all.yml` via `warp_enabled: true`.
+An extra outgoing tunnel through Cloudflare. Hides your VPS IP from visited sites — instead of your VPS IP they see the Cloudflare WARP IP. Optional. Enabled in `config/settings.yml` via `warp_enabled: true`.
 
 WARP credentials are `wgcf-account.toml` and `wgcf-profile.conf` in `/root/xray-config/`. They rotate separately from REALITY (by deleting the files and re-running the playbook).
-
-## `xray_docker_image`
-
-The Xray Docker image tag. Pinned to `teddysun/xray:26.6.27`. Don't use `:latest` — an auto-update to 26.7.11 in July 2026 broke VLESS+REALITY. To upgrade deliberately, switch to a new tag or a sha256 digest.
 
 ## `reality_camouflage_domain`
 
@@ -66,4 +74,4 @@ Ansible is a configuration management tool. The project role (`roles/xray_vpn/`)
 
 ---
 
-All `group_vars/all.yml` parameters are described in `docs/SETUP.en.md`.
+All `config/settings.yml` parameters are described in `docs/SETUP.en.md`.

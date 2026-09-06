@@ -1,7 +1,8 @@
 [Unit]
-Description=Xray VPN Service (REALITY Protocol)
+Description=Xray VPN Service (REALITY Protocol, Docker)
 Documentation=https://xtls.github.io
-After=network.target
+After=network.target docker.service
+Requires=docker.service
 StartLimitIntervalSec=60
 StartLimitBurst=3
 
@@ -11,14 +12,15 @@ User=root
 ExecStart=/usr/bin/docker run \
   --rm \
   --name xray \
+  --network host \
   -v {{ xray_config_dir }}:/etc/xray \
-  -p 443:443/tcp \
-  {{ xray_docker_image }} \
+  {{ xray_container_image }} \
   /usr/bin/xray -c /etc/xray/config.json
 
 ExecStop=/usr/bin/docker stop xray
 Restart=always
 RestartSec=10
 
+# Enabled at deploy by the Ansible role; after a manual cp of this unit run `systemctl enable xray`.
 [Install]
 WantedBy=multi-user.target

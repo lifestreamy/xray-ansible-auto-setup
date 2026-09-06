@@ -1,4 +1,4 @@
-> **Document:** `docs/GLOSSARY.md` · **Location:** `docs/` · **Version:** v0.2 · **Last updated:** 2026-08-12
+> **Document:** `docs/GLOSSARY.md` · **Location:** `docs/` · **Version:** v0.3 · **Last updated:** 2026-09-05
 >
 > [Главный README](../README.md) — обзор проекта и быстрый старт
 
@@ -6,13 +6,25 @@
 
 Термины проекта. Если встретили незнакомое слово в документации — ищите его здесь.
 
+## Runtime selector (`xray_runtime`)
+
+Параметр в `config/settings.yml` (`xray_runtime: native | docker | podman`), выбирает способ запуска Xray-сервера. По умолчанию `native` — наименьший footprint. `docker` — легаси-путь через Docker Engine. `podman` — experimental.
+
+## `xray_cli_command`
+
+Команда для вызова Xray CLI и keygen. Зависит от рантайма: для `native` это `/usr/local/bin/xray`, для `docker` — `docker run --rm <image>`, для `podman` — `podman run --rm <image>`. Роль задаёт её сама в `roles/xray_vpn/tasks/runtime_setup.yml` — в задачах использовать её, а не прямой `docker run`.
+
+## `xray_container_image`
+
+Образ контейнера для `docker` и `podman`. Роль вычисляет его сама (пин или сборка из репозитория и версии); как задать и какой сейчас пин — таблица переменных в `docs/SETUP.md`.
+
 ## Ротация
 
 Замена учётных данных на новые. После ротации старые конфиги клиентов перестают подключаться, нужно раздать новые. Подробности — в `docs/ROTATION.md`.
 
 ## Переключатель `xray_reality_rotate`
 
-Параметр в `group_vars/all.yml` или флаг `-e xray_reality_rotate=true` в командной строке. Заставляет Ansible-роль пересоздать ключи, short ID и UUID клиентов.
+Параметр в `config/settings.yml` или флаг `-e xray_reality_rotate=true` в командной строке. Заставляет Ansible-роль пересоздать ключи, short ID и UUID клиентов.
 
 ## REALITY
 
@@ -40,13 +52,9 @@
 
 ## WARP
 
-Дополнительный исходящий туннель через Cloudflare. Скрывает IP вашего VPS от посещаемых сайтов — вместо IP VPS они видят IP Cloudflare WARP. Опционален. Включается в `group_vars/all.yml` через `warp_enabled: true`.
+Дополнительный исходящий туннель через Cloudflare. Скрывает IP вашего VPS от посещаемых сайтов — вместо IP VPS они видят IP Cloudflare WARP. Опционален. Включается в `config/settings.yml` через `warp_enabled: true`.
 
-Учётные данные WARP — `wgcf-account.toml` и `wgcf-profile.conf` в `/root/xray-config/`. Они ротируются отдельно от REALITY (через удаление файлов и rerun playbook).
-
-## `xray_docker_image`
-
-Тег Docker-образа Xray. Закреплён на `teddysun/xray:26.6.27`. Использовать `:latest` нельзя — автообновление на 26.7.11 в июле 2026 сломало VLESS+REALITY. Для осознанного обновления меняйте на новый тег или sha256-дигест.
+Учётные данные WARP — `wgcf-account.toml` и `wgcf-profile.conf` в `/root/xray-config/`. Они ротируются отдельно от REALITY (через удаление файлов и повторный запуск playbook).
 
 ## `reality_camouflage_domain`
 
@@ -66,4 +74,4 @@ Ansible — инструмент для управления конфигура�
 
 ---
 
-Все параметры `group_vars/all.yml` описаны в `docs/SETUP.md`.
+Все параметры `config/settings.yml` описаны в `docs/SETUP.md`.

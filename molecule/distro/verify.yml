@@ -1,0 +1,65 @@
+---
+# molecule/distro/verify.yml — mirrors molecule/default/verify.yml
+# (container variant: the docker driver owns the connection to `all`).
+# Re-runs the role's own warn-only smoke plus the file-artifact asserts;
+# e2e.yml is SHARED with the default scenario (imported, not copied —
+# zero drift; it is container-safe: tun disabled, mixed-port proxy).
+# Keep in sync with molecule/default/verify.yml.
+
+- name: Verify
+  hosts: all
+  become: true
+  vars_files:
+    - ../../config/settings.yml
+  vars:
+    # Scenario knobs for the e2e step (see converge.yml for the rest).
+    xray_e2e_enabled: true
+    mihomo_version: "1.19.29"
+  tasks:
+    - name: Re-run role smoke checks (warn-only parity; runtime-aware)
+      ansible.builtin.import_tasks: ../../roles/xray_vpn/tasks/smoke.yml
+
+    - name: Assert Xray systemd unit exists
+      ansible.builtin.stat:
+        path: /etc/systemd/system/xray.service
+      register: xray_unit
+      failed_when: not xray_unit.stat.exists
+
+    # Hard boot-persistence assert (fatal here, unlike the role's warn-only
+    # smoke): the unit must be enabled for multi-user.target.
+    - name: Assert xray.service is enabled at boot
+      ansible.builtin.command:
+        cmd: systemctl is-enabled xray
+      register: xray_enabled_state
+      changed_when: false
+      failed_when: xray_enabled_state.stdout | trim != 'enabled'
+
+    - name: Assert Xray config file exists
+      ansible.builtin.stat:
+        path: "{{ xray_config_dir }}/config.json"
+      register: xray_cfg
+      failed_when: not xray_cfg.stat.exists
+
+    - name: Assert REALITY state file exists (mode 0600)
+      ansible.builtin.stat:
+        path: "{{ xray_config_dir }}/reality-state.json"
+      register: reality_state
+      failed_when:
+        - not reality_state.stat.exists
+        - reality_state.stat.mode != "0600"
+
+    - name: Assert client JSON config exists
+      ansible.builtin.stat:
+        path: "{{ xray_client_configs_dir }}/client_0.json"
+      register: client_json
+      failed_when: not client_json.stat.exists
+
+    - name: Assert client clash YAML config exists
+      ansible.builtin.stat:
+        path: "{{ xray_client_configs_dir }}/clash_client_0.yaml"
+      register: client_yaml
+      failed_when: not client_yaml.stat.exists
+
+    - name: Run mihomo end-to-end handshake (shared with molecule/default)
+      ansible.builtin.import_tasks: ../default/e2e.yml
+      when: xray_e2e_enabled | default(false)

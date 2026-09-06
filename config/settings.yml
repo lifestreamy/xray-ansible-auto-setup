@@ -1,0 +1,64 @@
+---
+# Single source of truth for xray_vpn role variables.
+# Loaded via `vars_files: - config/settings.yml` in deploy.yml.
+# Personal overrides go into inventory.yml (gitignored) or via CLI flags when available.
+
+# --- Runtime selector ---
+# Which container/host runtime to deploy xray under.
+#   native — Xray binary on host, managed by systemd (default, smallest footprint)
+#   docker — Docker Engine (legacy, kept as escape hatch)
+#   podman — Podman (experimental stub, not covered by molecule)
+# Asserted at the top of roles/xray_vpn/tasks/main.yml; only the matching
+# runtime_X.yml tasks and xray.service.X.j2 unit are applied.
+xray_runtime: native
+
+# Xray core version — single source of truth for the version string.
+# Bump deliberately; do NOT track :latest (Incident 2026-07-28: 26.7.11
+# broke VLESS+REALITY+vision).
+xray_version: "26.6.27"
+
+# Container image repository used to derive xray_container_image when no
+# explicit override is given. Pairs with xray_version (tags match the core
+# release, verified 2026-08-22).
+xray_container_repo: "ghcr.io/xtls/xray-core"
+
+# Optional override for the derived container image (escape hatch).
+# Default behaviour: xray_container_image is derived from
+# "{{ xray_container_repo }}:{{ xray_version }}" at runtime.
+# Set xray_docker_image explicitly to switch to a different image
+# (e.g. teddysun/xray:tag). Kept as escape hatch until the role
+# introduces a runtime-aware default for xray_container_image.
+# Incident 2026-07-28: teddysun/xray:latest -> 26.7.11 broke VLESS+REALITY+vision.
+xray_docker_image: "teddysun/xray:26.6.27"
+# ---
+
+# Number of client configs to generate; each gets its own UUID.
+num_clients: 3
+
+# REALITY camouflage/SNI domain used for probe redirection (active censorship protection)
+reality_camouflage_domain: dl.google.com
+
+# Paths
+xray_config_dir: /root/xray-config
+xray_client_configs_dir: /root/vpn-configs
+
+# VLESS inbound listening port
+xray_port: 443  
+
+# --- Cloudflare WARP outbound options ---
+warp_enabled: true  # Enable Cloudflare WARP outbound in Xray.
+warp_ipv6: false  # IPv4-only VPS safe: omit IPv6 WireGuard address (incident root cause #2)
+warp_endpoint: "162.159.192.1:2408"  # Cloudflare WARP IPv4 anycast endpoint (stable name: engage.cloudflareclient.com:2408; override if needed)
+warp_mtu: 1420  # Safe high MTU for most networks; lower only if something breaks. The old Warp client's default of 1280 is too low for some connections
+warp_wgcf_version: "2.2.22"  # wgcf version to download on the server.
+warp_wgcf_url: "https://github.com/ViRb3/wgcf/releases/download/v{{ warp_wgcf_version }}/wgcf_{{ warp_wgcf_version }}_linux_amd64"  # Linux amd64 wgcf binary.
+# ----
+
+# --- Backup and rotation ---
+xray_backup_enabled: true  # Timestamped backups before overwriting config/unit
+xray_reality_rotate: false  # Set true to force REALITY key + UUID regeneration (backs up old state first)
+# ---
+
+# Role behavior 
+# Overrideable in inventory.yml (gitignored); for tests — in the molecule scenario.
+xray_manage_firewall: true  # Ufw rule task (ufw is auto-installed if missing); false in the molecule scenario (host firewall is out of test scope)
