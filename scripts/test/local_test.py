@@ -24,7 +24,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-SUPPORTED_RUNTIMES = ("native", "docker", "podman")
+SUPPORTED_RUNTIMES = ("native", "docker")
 
 
 def run_in_venv(venv_dir: Path, cmd: list[str]) -> int:
@@ -61,7 +61,7 @@ def main() -> int:
         "--runtime",
         choices=SUPPORTED_RUNTIMES,
         default=None,
-        help="xray_runtime passed to molecule as --extra-vars (native|docker|podman). "
+        help="xray_runtime passed to molecule as --extra-vars (native|docker). "
              "When omitted, the value from config/settings.yml is used.",
     )
     parser.add_argument(

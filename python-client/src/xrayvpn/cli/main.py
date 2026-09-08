@@ -39,7 +39,7 @@ from xrayvpn.core.inventory import (
 )
 from xrayvpn.core.transport.remote import FabricRemote
 
-SUPPORTED_RUNTIMES = ("native", "docker", "podman")
+SUPPORTED_RUNTIMES = ("native", "docker")
 EXECUTION_MODES = ("local", "remote")
 
 app = typer.Typer(

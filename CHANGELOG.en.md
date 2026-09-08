@@ -13,6 +13,10 @@ Format:
 
 ## [Unreleased]
 
+### Removed
+- The `podman` runtime (experimental stub, never left experimental; not covered by molecule
+  tests). Supported runtimes: `native` (default) and `docker`.
+
 ## v0.3 — 2026-09-05
 
 Status: experimental (promotion criteria — `docs/RELEASE.en.md`).

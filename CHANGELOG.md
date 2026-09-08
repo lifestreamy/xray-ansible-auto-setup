@@ -13,6 +13,10 @@
 
 ## [Unreleased]
 
+### Removed
+- Рантайм `podman` (экспериментальный стаб, никогда не покидал experimental; не покрыт
+  molecule-тестами). Поддерживаемые рантаймы: `native` (по умолчанию) и `docker`.
+
 ## v0.3 — 2026-09-05
 
 Status: experimental (критерии перевода в stable — `docs/RELEASE.md`).

@@ -4,7 +4,7 @@
 # the deploy — the operator inspects warnings and the journal.
 # Branched by xray_runtime so each runtime's reality is verified with
 # the right tool: native binary version + systemctl, or container
-# inspect for docker/podman.
+# inspect for docker.
 
 # === Native runtime smoke ===
 - name: Native - report xray binary version
@@ -68,28 +68,6 @@
   when:
     - xray_runtime == 'docker'
     - xray_docker_image_check.stdout | default('') != ''
-  failed_when: false
-  tags: smoke
-
-# === Podman runtime smoke ===
-- name: Podman - inspect xray container image
-  ansible.builtin.command:
-    cmd: podman inspect xray --format "{{ '{{' }} .ImageName {{ '}}' }}"
-  register: xray_podman_image_check
-  changed_when: false
-  failed_when: false
-  when: xray_runtime == 'podman'
-  tags: smoke
-
-- name: Podman - assert pinned image
-  ansible.builtin.assert:
-    that:
-      - xray_podman_image_check.stdout is search(xray_container_image | default(''))
-    success_msg: "Xray container uses pinned image: {{ xray_podman_image_check.stdout }}"
-    fail_msg: "WARNING: Xray container image '{{ xray_podman_image_check.stdout }}' may not match pinned '{{ xray_container_image }}'"
-  when:
-    - xray_runtime == 'podman'
-    - xray_podman_image_check.stdout | default('') != ''
   failed_when: false
   tags: smoke
 

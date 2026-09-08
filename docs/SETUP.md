@@ -27,12 +27,12 @@
 
 | Переменная | Что делает |
 |---|---|
-| `xray_runtime` | Runtime selector: `native` (по умолчанию), `docker`, `podman`. См. раздел «Runtime selector» ниже. |
+| `xray_runtime` | Runtime selector: `native` (по умолчанию), `docker`. См. раздел «Runtime selector» ниже. |
 | `xray_version` | Единая версия Xray-core (по умолчанию `"26.6.27"`). |
-| `xray_container_repo` | Репозиторий для `docker` / `podman` (по умолчанию `ghcr.io/xtls/xray-core`). |
+| `xray_container_repo` | Репозиторий для `docker` (по умолчанию `ghcr.io/xtls/xray-core`). |
 | `num_clients` | Сколько клиентских конфигов сгенерировать (каждый со своим UUID). |
 | `reality_camouflage_domain` | SNI легитимного сайта для маскировки REALITY (по умолчанию `dl.google.com`). Публичный параметр. |
-| `xray_docker_image` | Явный пин образа контейнера (docker и podman). Если не задан, образ собирается из `xray_container_repo:xray_version`. Сейчас задан `teddysun/xray:26.6.27`. |
+| `xray_docker_image` | Явный пин образа контейнера (docker). Если не задан, образ собирается из `xray_container_repo:xray_version`. Сейчас задан `teddysun/xray:26.6.27`. |
 | `xray_config_dir` | Каталог состояния на VPS (`/root/xray-config`). |
 | `xray_client_configs_dir` | Каталог сгенерированных конфигов на VPS (`/root/vpn-configs`). |
 | `xray_port` | Порт inbound (по умолчанию `443`). |
@@ -49,18 +49,17 @@
 
 ## Runtime selector
 
-`config/settings.yml` поддерживает три варианта развёртывания через переменную `xray_runtime`:
+`config/settings.yml` поддерживает два варианта развёртывания через переменную `xray_runtime`:
 
 | `xray_runtime` | Что устанавливается | Когда выбирать |
 |---|---|---|
 | `native` (по умолчанию) | Xray-бинарь `/usr/local/xray/xray` под управлением systemd | Наименьший footprint (~10 МБ RAM); рекомендуемый вариант для новых развёртываний. |
 | `docker` | Docker Engine + `teddysun/xray:26.6.27` через `xray.service.docker.j2` | Легаси-путь. Оставлен для совместимости со старыми развёртываниями; не покрыт molecule-тестами. |
-| `podman` | Podman + образ `xray_container_image` (см. `xray_docker_image`) через `xray.service.podman.j2` | Experimental; не покрыт molecule-тестами. |
 
-Изменить runtime можно в `config/settings.yml` (`xray_runtime: native` → `docker` или `podman`) и перезапустить playbook. Дополнительные переменные:
+Изменить runtime можно в `config/settings.yml` (`xray_runtime: native` → `docker`) и перезапустить playbook. Дополнительные переменные:
 
 - `xray_version: "26.6.27"` — единственный источник версии Xray-core. Не используйте `:latest` (Инцидент 2026-07-28: 26.7.11 сломал VLESS+REALITY+vision).
-- `xray_container_repo: "ghcr.io/xtls/xray-core"` — репозиторий для `docker` и `podman`.
+- `xray_container_repo: "ghcr.io/xtls/xray-core"` — репозиторий для `docker`.
 - `xray_docker_image` — явный пин образа контейнера; сейчас `teddysun/xray:26.6.27`. Механизм — таблица переменных ниже.
 
 ## CLI-флаги `xrayvpn deploy`
@@ -72,7 +71,7 @@
 - `--inventory <path>` — готовый inventory-файл вместо генерируемого (только local-режим; в remote используйте `--use-inventory`).
 - `--clients-dir <path>` — куда сохранять клиентские конфиги (по умолчанию `downloaded-clients/`).
 - `--cleanup` (по умолчанию) / `--full-cleanup` / `--no-cleanup` — удаление временных данных на сервере после запуска. `--cleanup` оставляет venv-кэш для следующего запуска, `--full-cleanup` удаляет и его.
-- Override'ы: `--runtime {native|docker|podman}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-firewall/--no-firewall`.
+- Override'ы: `--runtime {native|docker}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-firewall/--no-firewall`.
 - `--dry-run` — local: `ansible-playbook --check`; remote: план команд без подключения.
 - `--debug` / `--verbose` — Ansible `-vvv` / `-vvvv` + `xray_debug=true`.
 

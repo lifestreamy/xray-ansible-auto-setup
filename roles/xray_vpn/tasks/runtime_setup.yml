@@ -6,7 +6,7 @@
 #     "{{ xray_container_repo }}:{{ xray_version }}" when unset.
 #   - xray_cli_command: full invocation that leads to the `xray` CLI on
 #     the target — the native binary path, or
-#     `docker run --rm <image> xray` / `podman run --rm <image> xray`
+#     `docker run --rm <image> xray`
 #     (the trailing `xray` is the binary name inside the container).
 #     Keys.yml calls `{{ xray_cli_command }} x25519` uniformly.
 
@@ -35,9 +35,5 @@
       {{
         '/usr/local/bin/xray'
         if (xray_runtime == 'native')
-        else (
-          'docker run --rm ' ~ xray_container_image ~ ' xray'
-          if (xray_runtime == 'docker')
-          else 'podman run --rm ' ~ xray_container_image ~ ' xray'
-        )
+        else 'docker run --rm ' ~ xray_container_image ~ ' xray'
       }}

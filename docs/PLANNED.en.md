@@ -13,7 +13,7 @@ Deadlines are rough targets, not promises. The order can change.
   through CLI flags, no hand-editing of yaml files.
 - GitHub Actions CI: molecule matrix on ubuntu 22.04 / 24.04 / debian 12 plus a full host run
   with the mihomo-client e2e (ufw is exercised there).
-- Runtimes: `native` (default), `docker`, `podman`. Container systemd units use `--network host`.
+- Runtimes: `native` (default), `docker`. Container systemd units use `--network host`.
 - `xray.service` is enabled on deploy; `ufw` and `python3-venv` are auto-installed where needed.
 - Readable `inventory.yml` errors with a hint on how to create the file from the template.
 - Release policy (`docs/RELEASE.en.md`), CHANGELOG (RU/EN), docs brought to one rhythm.
@@ -28,8 +28,6 @@ Deadlines are rough targets, not promises. The order can change.
   there are binaries: self-update via releases (the common scheme — a `latest.json` manifest with
   per-platform urls and signatures) and installing from package managers (winget / choco / PyPI).
   Target: post-0.3.
-- **[Infrastructure]** — compare runtimes by footprint and latency (podman vs native); for now
-  this is a research item.
 - **[WARP]** — think through scenarios: multiple outbounds, endpoint rotation. Target: none.
 
 ## Low priority

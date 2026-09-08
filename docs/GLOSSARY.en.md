@@ -8,15 +8,15 @@ Project terms. If you meet an unfamiliar word in the documentation, look it up h
 
 ## Runtime selector (`xray_runtime`)
 
-A parameter in `config/settings.yml` (`xray_runtime: native | docker | podman`) that picks how the Xray server is launched. Default `native` — smallest footprint. `docker` — legacy escape hatch via Docker Engine. `podman` — experimental.
+A parameter in `config/settings.yml` (`xray_runtime: native | docker`) that picks how the Xray server is launched. Default `native` — smallest footprint. `docker` — legacy escape hatch via Docker Engine.
 
 ## `xray_cli_command`
 
-A runtime-aware command used to invoke the Xray CLI / keygen. Set as a fact in `roles/xray_vpn/tasks/runtime_setup.yml`: for `native` it is `/usr/local/bin/xray`, for `docker` it is `docker run --rm <image>`, for `podman` it is `podman run --rm <image>`. The role uses it everywhere instead of a hard-coded `docker run`.
+A runtime-aware command used to invoke the Xray CLI / keygen. Set as a fact in `roles/xray_vpn/tasks/runtime_setup.yml`: for `native` it is `/usr/local/bin/xray`, for `docker` it is `docker run --rm <image>`. The role uses it everywhere instead of a hard-coded `docker run`.
 
 ## `xray_container_image`
 
-The container image for `docker` and `podman`. The role computes it itself (pin or assembly from repository and version); how to set it and the current pin — the variables table in `docs/SETUP.en.md`.
+The container image for `docker`. The role computes it itself (pin or assembly from repository and version); how to set it and the current pin — the variables table in `docs/SETUP.en.md`.
 
 ## Rotation
 

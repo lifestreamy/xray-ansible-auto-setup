@@ -14,7 +14,7 @@
 
 # === Runtime-aware pre-flight: confirm Xray is actually accepting TCP 443 ===
 # For the native scenario the listener is on the host's localhost:443 (xray
-# installed natively, bound via systemd). For docker/podman the listener is
+# installed natively, bound via systemd). For docker the listener is
 # the container's localhost:443 (also reachable from the host in a delegated
 # scenario where the role is applied locally). Either way: wait_for 443 is
 # the universal gate before the mihomo handshake.
@@ -38,7 +38,7 @@
     timeout: 30
     delay: 1
 
-- name: Pre-flight | assert Xray service is active (native) / container running (docker/podman)
+- name: Pre-flight | assert Xray service is active (native) / container running (docker)
   ansible.builtin.shell:
     cmd: |
       if [ "{{ xray_runtime }}" = "native" ]; then

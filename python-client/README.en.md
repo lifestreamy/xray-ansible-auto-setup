@@ -55,7 +55,7 @@ uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 
 ## `deploy` flags
 
 - Mode: `--execution local|remote`.
-- Server overrides (otherwise taken from `config/settings.yml`): `--runtime native|docker|podman`,
+- Server overrides (otherwise taken from `config/settings.yml`): `--runtime native|docker`,
   `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`,
   `--rotate/--no-rotate` (regenerate the REALITY key and UUIDs / keep them),
   `--manage-firewall/--no-firewall`.

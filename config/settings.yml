@@ -7,7 +7,6 @@
 # Which container/host runtime to deploy xray under.
 #   native — Xray binary on host, managed by systemd (default, smallest footprint)
 #   docker — Docker Engine (legacy, kept as escape hatch)
-#   podman — Podman (experimental stub, not covered by molecule)
 # Asserted at the top of roles/xray_vpn/tasks/main.yml; only the matching
 # runtime_X.yml tasks and xray.service.X.j2 unit are applied.
 xray_runtime: native

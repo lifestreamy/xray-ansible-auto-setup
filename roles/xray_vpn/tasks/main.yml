@@ -1,12 +1,12 @@
 ---
 # Assert runtime selector — fail early on invalid values.
-- name: Assert xray_runtime is one of native|docker|podman
+- name: Assert xray_runtime is one of native|docker
   ansible.builtin.assert:
     that:
-      - xray_runtime in ['native', 'docker', 'podman']
+      - xray_runtime in ['native', 'docker']
     fail_msg: >-
       xray_runtime={{ xray_runtime | default('UNDEFINED') }} is not supported.
-      Set xray_runtime in config/settings.yml to one of: native, docker, podman.
+      Set xray_runtime in config/settings.yml to one of: native, docker.
     success_msg: "xray_runtime={{ xray_runtime }} selected"
 
 # Common setup: apt deps + set_fact xray_cli_command / xray_container_image.
@@ -14,15 +14,15 @@
   ansible.builtin.import_tasks: runtime_setup.yml
   tags: runtime
 
-# Runtime-specific install: docker engine / native tarball / podman engine.
+# Runtime-specific install: docker engine / native tarball.
 # Must run BEFORE keys.yml — keygen invokes {{ xray_cli_command }}, which
-# needs the engine (docker/podman) or the native binary in place.
+# needs the engine (docker) or the native binary in place.
 - name: Include runtime-specific install
   ansible.builtin.import_tasks: "runtime_{{ xray_runtime }}.yml"
   tags: runtime
 
 # REALITY identity persistence — single runtime-aware keygen (uses
-# {{ xray_cli_command }} so the same path serves native/docker/podman).
+# {{ xray_cli_command }} so the same path serves native/docker).
 - name: Include REALITY keys
   ansible.builtin.import_tasks: keys.yml
   tags: keys
@@ -125,7 +125,7 @@
   when: xray_backup_enabled | default(true) and xray_unit_stat.stat.exists
   tags: service,backup
 
-# Create Xray systemd service file (runtime-specific: native|docker|podman)
+# Create Xray systemd service file (runtime-specific: native|docker)
 - name: Create Xray systemd service
   ansible.builtin.template:
     src: "xray.service.{{ xray_runtime }}.j2"

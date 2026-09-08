@@ -5,7 +5,7 @@
 # nothing extra is needed here. The file is kept for symmetry with
 # the docker scenario (where the inner dockerd + vfs storage driver
 # used to be configured here) and as a hook for future per-runner
-# tweaks (e.g. enabling lingering for podman).
+# tweaks.
 - name: Prepare
   hosts: localhost
   connection: local

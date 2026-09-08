@@ -27,12 +27,12 @@ Which parameters can be passed as CLI flags — connection (`--host`, `-u`, `-p`
 
 | Variable | What it does |
 |---|---|
-| `xray_runtime` | Runtime selector: `native` (default), `docker`, `podman`. See the "Runtime selector" section below. |
+| `xray_runtime` | Runtime selector: `native` (default), `docker`. See the "Runtime selector" section below. |
 | `xray_version` | Single Xray-core version (default `"26.6.27"`). |
-| `xray_container_repo` | Container repository for `docker` / `podman` (default `ghcr.io/xtls/xray-core`). |
+| `xray_container_repo` | Container repository for `docker` (default `ghcr.io/xtls/xray-core`). |
 | `num_clients` | How many client configs to generate (each with its own UUID). |
 | `reality_camouflage_domain` | SNI of a legitimate site for REALITY masking (default `dl.google.com`). Public parameter. |
-| `xray_docker_image` | Explicit container image pin (docker and podman). If unset, the image is assembled from `xray_container_repo:xray_version`. Currently set to `teddysun/xray:26.6.27`. |
+| `xray_docker_image` | Explicit container image pin (docker). If unset, the image is assembled from `xray_container_repo:xray_version`. Currently set to `teddysun/xray:26.6.27`. |
 | `xray_config_dir` | The state directory on the VPS (`/root/xray-config`). |
 | `xray_client_configs_dir` | The generated configs directory on the VPS (`/root/vpn-configs`). |
 | `xray_port` | The inbound port (default `443`). |
@@ -49,18 +49,17 @@ Which parameters can be passed as CLI flags — connection (`--host`, `-u`, `-p`
 
 ## Runtime selector
 
-`config/settings.yml` supports three deployment variants through `xray_runtime`:
+`config/settings.yml` supports two deployment variants through `xray_runtime`:
 
 | `xray_runtime` | What gets installed | When to pick it |
 |---|---|---|
 | `native` (default) | Xray binary at `/usr/local/xray/xray` under systemd | Smallest footprint (~10 MB RAM); recommended for new deployments. |
 | `docker` | Docker Engine + `teddysun/xray:26.6.27` via `xray.service.docker.j2` | Legacy escape hatch. Kept for compatibility with old deploys; not covered by molecule. |
-| `podman` | Podman + the `xray_container_image` image (see `xray_docker_image`) via `xray.service.podman.j2` | Experimental; not covered by molecule. |
 
 To switch runtime, change `xray_runtime` in `config/settings.yml` and rerun the playbook. Related variables:
 
 - `xray_version: "26.6.27"` — single source of truth for the Xray-core version. Do not use `:latest` (Incident 2026-07-28: 26.7.11 broke VLESS+REALITY+vision).
-- `xray_container_repo: "ghcr.io/xtls/xray-core"` — repository used for `docker` and `podman`.
+- `xray_container_repo: "ghcr.io/xtls/xray-core"` — repository used for `docker`.
 - `xray_docker_image` — an explicit container image pin; currently `teddysun/xray:26.6.27`. The mechanism — the variables table below.
 
 ## `xrayvpn deploy` CLI flags
@@ -72,7 +71,7 @@ The main client is `python-client/` (the `xrayvpn deploy` command). It accepts:
 - `--inventory <path>` — use an existing inventory file instead of the generated one (local mode only; in remote mode use `--use-inventory`).
 - `--clients-dir <path>` — where generated client configs are saved (default `downloaded-clients/`).
 - `--cleanup` (default) / `--full-cleanup` / `--no-cleanup` — remove server-side temporary data after the run. `--cleanup` keeps the venv cache for the next run, `--full-cleanup` removes it too.
-- Overrides: `--runtime {native|docker|podman}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-firewall/--no-firewall`.
+- Overrides: `--runtime {native|docker}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-firewall/--no-firewall`.
 - `--dry-run` — local: `ansible-playbook --check`; remote: plan of commands without connecting.
 - `--debug` / `--verbose` — Ansible `-vvv` / `-vvvv` + `xray_debug=true`.
 

@@ -8,15 +8,15 @@
 
 ## Runtime selector (`xray_runtime`)
 
-Параметр в `config/settings.yml` (`xray_runtime: native | docker | podman`), выбирает способ запуска Xray-сервера. По умолчанию `native` — наименьший footprint. `docker` — легаси-путь через Docker Engine. `podman` — experimental.
+Параметр в `config/settings.yml` (`xray_runtime: native | docker`), выбирает способ запуска Xray-сервера. По умолчанию `native` — наименьший footprint. `docker` — легаси-путь через Docker Engine.
 
 ## `xray_cli_command`
 
-Команда для вызова Xray CLI и keygen. Зависит от рантайма: для `native` это `/usr/local/bin/xray`, для `docker` — `docker run --rm <image>`, для `podman` — `podman run --rm <image>`. Роль задаёт её сама в `roles/xray_vpn/tasks/runtime_setup.yml` — в задачах использовать её, а не прямой `docker run`.
+Команда для вызова Xray CLI и keygen. Зависит от рантайма: для `native` это `/usr/local/bin/xray`, для `docker` — `docker run --rm <image>`. Роль задаёт её сама в `roles/xray_vpn/tasks/runtime_setup.yml` — в задачах использовать её, а не прямой `docker run`.
 
 ## `xray_container_image`
 
-Образ контейнера для `docker` и `podman`. Роль вычисляет его сама (пин или сборка из репозитория и версии); как задать и какой сейчас пин — таблица переменных в `docs/SETUP.md`.
+Образ контейнера для `docker`. Роль вычисляет его сама (пин или сборка из репозитория и версии); как задать и какой сейчас пин — таблица переменных в `docs/SETUP.md`.
 
 ## Ротация
 
