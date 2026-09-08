@@ -8,21 +8,22 @@ How the project ships releases: versioning, statuses and the check sequence befo
 
 ## Purpose and scope
 
-The project is maintained by a single author. Experimental releases are the author's own operation stage; external users work with stable releases (`v0.2_release` and subsequent `_stable` tags). The verification signal is automated CI runs (GitHub Actions), the author's own operation on a production VPS, and user reports on stable releases (GitHub issues). There is no "alpha → beta → stable" ladder; a status is defined by the concrete criteria below.
+Contributions to the project are welcome (issues and pull requests on GitHub). The quality signals for releases are automated CI runs (GitHub Actions), operation on a production VPS, and user reports on stable releases (GitHub issues). There is no "alpha → beta → stable" ladder; a status is defined by the concrete criteria below.
 
 ## Versioning
 
-- SemVer in the 0.x phase: a minor bump (`v0.3 → v0.4`) may contain breaking changes; a patch (`v0.3 → v0.3.1`) is fixes only.
+- SemVer in the 0.x phase: a minor bump (`v0.3 → v0.4`) is a substantial change, breaking included; a patch (`v0.3 → v0.3.1`) is fixes, removals of experimental features and small renames (recorded in the CHANGELOG).
 - The `v` prefix is required in all tags.
 
 ## Statuses and tags
 
 Every release is pinned by an annotated git tag on a commit of the `staging` development line. No release branches are created.
 
-| Status | Tag | Meaning |
-|---|---|---|
-| experimental | `vX.Y_experimental` (patches: `vX.Y.Z_experimental`) | shipped after a green CI run; used in real production |
-| stable | `vX.Y_stable` — a second tag on the same commit | all criteria below are met |
+Statuses — an explicit list:
+
+- Code in `staging` without a tag is **not a release and has no status**; it may never become one.
+- **experimental** — a shipped pre-release: tag `vX.Y_experimental` (patches: `vX.Y.Z_experimental`) + a GitHub Release with the pre-release flag, handed to manual operation — used on a production VPS, accumulating the promotion criteria. The experimental status is granted only after the pre-release is published.
+- **stable** — all promotion criteria are met (see below); a second tag `vX.Y_stable` on the same commit + the latest flag on the GitHub Release.
 
 - Promoting does not change the commit: only the tag, the `Status` line in the CHANGELOG and the GitHub Release flag.
 - If the next release ships before `vX.Y` meets the stable criteria, the older one stays experimental — a normal outcome.
@@ -59,4 +60,4 @@ The short sha is the verified code; its runs are visible in the repository's Act
 
 ## Release commit
 
-Its rules reduce to step 3 of the release sequence: `docs/PLANNED.*` (the "what is next" overview rewritten for the new version), public doc stamps, the README summary, both CHANGELOG halves. This document (`docs/RELEASE.*`), until a release ships, is edited by regular commits.
+Its rules reduce to step 3 of the release sequence: `docs/PLANNED.*` (the "what is next" overview rewritten for the new version), public doc stamps, the README summary, both CHANGELOG halves. This document (`docs/RELEASE.en.md`), until a release ships, is edited by regular commits.
