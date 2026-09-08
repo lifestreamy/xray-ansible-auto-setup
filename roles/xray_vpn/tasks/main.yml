@@ -33,11 +33,7 @@
   when: warp_enabled | default(false) | bool
   tags: warp
 
-# Configure firewall (skip if xray_manage_firewall=false; e.g. molecule scenario)
-# Bare-VPS policy: the firewall tool must exist before we manage rules.
-# Debian-family only (role contract); idempotent no-op when present. Never
-# `ufw enable` here — rule management on an inactive firewall is harmlessly
-# inert and the operator keeps control of activation.
+# ufw install + allow xray_port/tcp when xray_manage_firewall; never runs `ufw enable`.
 - name: Ensure ufw is installed
   ansible.builtin.apt:
     name: ufw

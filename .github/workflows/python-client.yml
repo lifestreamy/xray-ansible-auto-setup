@@ -1,16 +1,7 @@
 ---
-# Python client CI for the xrayvpn CLI (split out of molecule.yml).
-#
-# Jobs:
-#   gate — always-on change classifier: on a docs-only pull request it marks
-#     docs_only and the heavy legs below skip. A conditionally skipped job
-#     reports "skipped", which counts as a successful status even if the
-#     repo later starts requiring these checks; workflow_dispatch always
-#     runs everything. The identical gate block lives in molecule.yml too
-#     (deliberate duplication; a reusable workflow would be overkill for two).
-#   python-tests — pytest suite + ruff for python-client (incl. the static
-#     xrayvpn-deploy.pyw <-> CLI-flags contract test); future python legs
-#     (version matrix, etc.) belong here.
+# Python client CI: gate (docs-only classifier) + python-tests (pytest, ruff;
+# incl. the .pyw <-> CLI-flags contract test). Triggers: pull_request,
+# workflow_dispatch. Gate block deliberately duplicated in molecule.yml.
 
 name: python-client
 
