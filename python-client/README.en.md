@@ -58,7 +58,7 @@ uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 
 - Server overrides (otherwise taken from `config/settings.yml`): `--runtime native|docker`,
   `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`,
   `--rotate/--no-rotate` (regenerate the REALITY key and UUIDs / keep them),
-  `--manage-firewall/--no-firewall`.
+  `--manage-ufw/--no-ufw`.
 - Inventory: `--inventory PATH` — local only, an existing file instead of the generated one;
   `--use-inventory` — remote only, reads connection vars from the personal `inventory.yml`
   (overrides the host/key flags with a warning).

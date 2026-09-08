@@ -13,6 +13,11 @@
 
 ## [Unreleased]
 
+### Changed
+- `ufw` больше не устанавливается ролью: allow-правило для `xray_port`/tcp добавляется только если
+  `ufw` уже есть на сервере. Переменная `xray_manage_firewall` и CLI-флаг переименованы в
+  `xray_manage_ufw` / `--manage-ufw/--no-ufw`.
+
 ### Removed
 - Рантайм `podman` (экспериментальный стаб, никогда не покидал experimental; не покрыт
   molecule-тестами). Поддерживаемые рантаймы: `native` (по умолчанию) и `docker`.

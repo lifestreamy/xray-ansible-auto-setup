@@ -1,6 +1,6 @@
 ---
 # Distro-matrix scenario: systemd containers, image via MOLECULE_IMAGE (CI sets per leg).
-# xray_manage_firewall=false here (scoping); firewall coverage — native CI job.
+# xray_manage_ufw=false here (scoping); ufw coverage — native CI job.
 
 dependency:
   name: galaxy

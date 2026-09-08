@@ -58,7 +58,7 @@ uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 
 - Переопределения сервера (иначе берётся из `config/settings.yml`): `--runtime native|docker`,
   `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`,
   `--rotate/--no-rotate` (перегенерация ключа REALITY и UUID / оставить как есть),
-  `--manage-firewall/--no-firewall`.
+  `--manage-ufw/--no-ufw`.
 - Инвентарь: `--inventory PATH` — только local, готовый файл вместо генерируемого;
   `--use-inventory` — только remote, читает подключение и переменные из личного `inventory.yml`
   (перекрывает host/key-флаги с предупреждением).

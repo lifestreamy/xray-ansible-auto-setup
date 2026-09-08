@@ -14,7 +14,8 @@ Deadlines are rough targets, not promises. The order can change.
 - GitHub Actions CI: molecule matrix on ubuntu 22.04 / 24.04 / debian 12 plus a full host run
   with the mihomo-client e2e (ufw is exercised there).
 - Runtimes: `native` (default), `docker`. Container systemd units use `--network host`.
-- `xray.service` is enabled on deploy; `ufw` and `python3-venv` are auto-installed where needed.
+- `xray.service` is enabled on deploy; `python3-venv` is auto-installed where needed;
+  `ufw` is not installed — the allow rule is added only if `ufw` already exists.
 - Readable `inventory.yml` errors with a hint on how to create the file from the template.
 - Release policy (`docs/RELEASE.en.md`), CHANGELOG (RU/EN), docs brought to one rhythm.
 

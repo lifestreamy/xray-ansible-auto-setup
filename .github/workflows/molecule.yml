@@ -164,8 +164,9 @@ jobs:
           key: ansible-collections-${{ hashFiles('molecule/requirements.yml') }}
           restore-keys: ansible-collections-
 
+      # ufw coverage — distro legs run with xray_manage_ufw=false (scoping).
       - name: Molecule test (host scenario, managed firewall)
-        run: molecule test -- -e xray_manage_firewall=true
+        run: molecule test -- -e xray_manage_ufw=true
 
       - name: Upload molecule logs
         if: failure()

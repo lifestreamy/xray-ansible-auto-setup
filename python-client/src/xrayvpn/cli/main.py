@@ -8,7 +8,7 @@
   (Fabric transport; tarball upload; no GitHub dependency).
 
 The flag surface covers the legacy shell clients' options plus the deploy
-overrides (runtime, port, client count, WARP, rotation, firewall).
+overrides (runtime, port, client count, WARP, rotation, ufw).
 """
 
 from __future__ import annotations
@@ -96,8 +96,8 @@ def _collect_overrides(args: dict) -> dict[str, object]:
         overrides["warp_enabled"] = args["warp"]
     if args.get("rotate") is not None:
         overrides["xray_reality_rotate"] = args["rotate"]
-    if args.get("manage_firewall") is not None:
-        overrides["xray_manage_firewall"] = args["manage_firewall"]
+    if args.get("manage_ufw") is not None:
+        overrides["xray_manage_ufw"] = args["manage_ufw"]
     return overrides
 
 
@@ -142,11 +142,11 @@ def deploy(
             help="Force REALITY key + UUID regeneration / keep existing state",
         ),
     ] = None,
-    manage_firewall: Annotated[
+    manage_ufw: Annotated[
         bool | None,
         typer.Option(
-            "--manage-firewall/--no-firewall",
-            help="Enable/disable ufw management (disable on WSL test hosts)",
+            "--manage-ufw/--no-ufw",
+            help="Enable/disable ufw allow-rule management (disable on WSL test hosts)",
         ),
     ] = None,
     inventory: Annotated[

@@ -13,6 +13,11 @@ Format:
 
 ## [Unreleased]
 
+### Changed
+- The role no longer installs `ufw`: the allow rule for `xray_port`/tcp is added only when `ufw`
+  already exists on the server. The `xray_manage_firewall` variable and CLI flag renamed to
+  `xray_manage_ufw` / `--manage-ufw/--no-ufw`.
+
 ### Removed
 - The `podman` runtime (experimental stub, never left experimental; not covered by molecule
   tests). Supported runtimes: `native` (default) and `docker`.

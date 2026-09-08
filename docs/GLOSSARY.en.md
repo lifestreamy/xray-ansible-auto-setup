@@ -72,6 +72,10 @@ A placeholder. Your VPS IP address. Replace it before running commands from this
 
 Ansible is a configuration management tool. The project role (`roles/xray_vpn/`) is applied to the VPS via `deploy.yml`. The inventory file (`inventory.yml`) describes the host connection. Syntax — standard Ansible inventory.
 
+## `xray_manage_ufw`
+
+Parameter in `config/settings.yml` (default `true`). The role does not install `ufw`; if `ufw` already exists on the server, it adds an allow rule for the `xray_port`/tcp port (never runs `ufw enable`, never touches other rules).
+
 ---
 
 All `config/settings.yml` parameters are described in `docs/SETUP.en.md`.

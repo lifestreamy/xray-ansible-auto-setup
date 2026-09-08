@@ -72,6 +72,10 @@ SNI легитимного сайта, под который маскирует�
 
 Ansible — инструмент для управления конфигурациями. Роль проекта (`roles/xray_vpn/`) применяется на VPS через `deploy.yml`. Inventory-файл (`inventory.yml`) описывает подключение к хосту. Синтаксис — стандартный Ansible inventory.
 
+## `xray_manage_ufw`
+
+Параметр в `config/settings.yml` (по умолчанию `true`). Роль не устанавливает `ufw`; если `ufw` уже есть на сервере — добавляет allow-правило для порта `xray_port`/tcp (не выполняет `ufw enable`, чужие правила не трогает).
+
 ---
 
 Все параметры `config/settings.yml` описаны в `docs/SETUP.md`.
