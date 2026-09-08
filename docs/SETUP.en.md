@@ -16,7 +16,7 @@ The full glossary is in [`docs/GLOSSARY.en.md`](GLOSSARY.en.md).
 |---|---|---|
 | `inventory.yml` (created from `inventory.yml.example`: `cp` / `Copy-Item`) | VPS connection: host, user, port, key or password | Only for inventory mode (`--use-inventory` or `--inventory PATH`); CLI mode builds its own inventory and does not need `inventory.yml` |
 | `config/settings.yml` | All server parameters: `num_clients`, `reality_camouflage_domain`, `warp_enabled`, `xray_port`, `xray_docker_image` and others | Read on every Ansible playbook run via `vars_files` |
-| `deploy.yml` | The playbook entry point | Usually left alone |
+| `deploy.yml` | The playbook entry point | Not a configuration surface — usually left alone |
 
 Which parameters can be passed as CLI flags — connection (`--host`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`/`--inventory`, cleanup, verbosity) and common overrides (runtime, port, number of clients, WARP, rotation, firewall) — through the main `xrayvpn` client (see the "`xrayvpn deploy` CLI flags" section below; all run options — in the README Quick start). The rest of the configuration goes through `config/settings.yml`.
 

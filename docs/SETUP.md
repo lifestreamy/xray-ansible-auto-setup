@@ -16,7 +16,7 @@
 |---|---|---|
 | `inventory.yml` (создаётся из `inventory.yml.example`: `cp` / `Copy-Item`) | Подключение к VPS: хост, пользователь, порт, ключ или пароль | Только для inventory-режима (`--use-inventory` или `--inventory PATH`); CLI-режим собирает свой inventory сам и `inventory.yml` не требует |
 | `config/settings.yml` | Все параметры сервера: `num_clients`, `reality_camouflage_domain`, `warp_enabled`, `xray_port`, `xray_docker_image` и остальные | Читается при каждом запуске Ansible playbook через `vars_files` |
-| `deploy.yml` | Точка входа playbook | Обычно не трогается |
+| `deploy.yml` | Точка входа playbook | Не конфигурационная поверхность — обычно не трогается |
 
 Какие параметры можно передать как CLI-флаги — подключение (`--host`, `-u`, `-p`, `--pkey`, `--pass`, `--use-inventory`/`--inventory`, cleanup, verbosity) и частые override'ы (runtime, порт, число клиентов, WARP, ротация, firewall) — через основной клиент `xrayvpn` (см. раздел «CLI-флаги `xrayvpn deploy`» ниже; все способы запуска — в быстром старте README). Остальная конфигурация — через `config/settings.yml`.
 

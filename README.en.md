@@ -58,7 +58,7 @@ But if I missed something, something broke for you, it doesn't start at all, or 
 
 ## Quick start
 
-The minimal case — just the VPS IP. The password will be requested interactively with hidden input.
+Parameters are optional: the client can be run with no arguments at all — `xrayvpn deploy` interactively asks for the execution mode and the VPS IP, then requests the password with hidden input. The minimal case — just the VPS IP.
 
 You can run it with one of three clients, or with none:
 
@@ -69,11 +69,10 @@ You can run it with one of three clients, or with none:
 
 ### About configuration
 
-IP and password are enough — everything else configures itself. If you need to change something (number of clients, WARP, port, camouflage domain), additional configuration is done through these files:
+IP and password are enough — everything else configures itself. If you need to change something (number of clients, WARP, port, camouflage domain), additional configuration is done through two files:
 
 - `inventory.yml` — VPS connection (created from `inventory.yml.example`).
 - `config/settings.yml` — server parameters: `num_clients`, `warp_enabled`, `xray_port`, `reality_camouflage_domain` and others.
-- `deploy.yml` — the playbook entry point.
 
 More about each file — in [`docs/SETUP.en.md`](docs/SETUP.en.md), the "Configuration files" section.
 

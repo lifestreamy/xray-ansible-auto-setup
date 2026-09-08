@@ -8,7 +8,7 @@ How the project ships releases: versioning, statuses and the check sequence befo
 
 ## Purpose and scope
 
-The project is maintained by a single author; no external tester base is planned. The verification signal is automated CI runs (GitHub Actions) plus the author's own operation on a production VPS. There is no "alpha → beta → stable" ladder; a status is defined by the concrete criteria below.
+The project is maintained by a single author. Experimental releases are the author's own operation stage; external users work with stable releases (`v0.2_release` and subsequent `_stable` tags). The verification signal is automated CI runs (GitHub Actions), the author's own operation on a production VPS, and user reports on stable releases (GitHub issues). There is no "alpha → beta → stable" ladder; a status is defined by the concrete criteria below.
 
 ## Versioning
 
