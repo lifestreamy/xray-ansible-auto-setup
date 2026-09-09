@@ -85,6 +85,15 @@ but with --dry-run so that no packages are installed, no Ansible run
 modifies the VPS, and no temporary files are removed. Useful for previewing
 the final command line and verifying parameters.
 
+.PARAMETER Rotate
+Regenerate the REALITY identity (forwards --rotate to the bash script;
+the old state is backed up on the server before rotation).
+Mutually exclusive with -NoRotate.
+
+.PARAMETER NoRotate
+Explicitly keep the existing REALITY identity (forwards --no-rotate;
+this is the default behavior).
+
 .PARAMETER LogLevel
 Controls output verbosity.
 Forwards to the bash script and Ansible.
@@ -158,6 +167,12 @@ param(
     [switch]$DryRun,
 
     [Parameter()]
+    [switch]$Rotate,
+
+    [Parameter()]
+    [switch]$NoRotate,
+
+    [Parameter()]
     [ValidateSet('None', 'Default', 'Verbose')]
     [string]$LogLevel = 'Default'
 )
@@ -209,6 +224,10 @@ if ($DryRun) {
 
 if ($UseInventory -and $Inventory) {
     throw "Parameters -UseInventory and -Inventory are mutually exclusive; use only one."
+}
+
+if ($Rotate -and $NoRotate) {
+    throw "Parameters -Rotate and -NoRotate are mutually exclusive; use only one."
 }
 $inventoryMode = [bool]($UseInventory -or $Inventory)
 
@@ -290,6 +309,14 @@ switch ($LogLevel) {
         $wslArgs += '--verbose'
         Write-LogVerbose "Passing verbosity flag to bash: --verbose"
     }
+}
+
+if ($Rotate) {
+    $wslArgs += '--rotate'
+    Write-LogVerbose "Passing rotation flag to bash: --rotate"
+} elseif ($NoRotate) {
+    $wslArgs += '--no-rotate'
+    Write-LogVerbose "Passing rotation flag to bash: --no-rotate"
 }
 
 if ($Inventory) {

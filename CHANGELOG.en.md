@@ -16,6 +16,8 @@ Format:
 ### Added
 - `--ru` (global and on `deploy`): Russian CLI output — prompts, messages, errors
   (help texts stay English).
+- Rotation flags in the shell wrappers: `--rotate`/`--no-rotate` (bash) and
+  `-Rotate`/`-NoRotate` (PowerShell) — parity with the python CLI.
 
 ### Changed
 - **Breaking**: `xrayvpn deploy` now defaults to `--execution remote` (was `local`): a no-argument

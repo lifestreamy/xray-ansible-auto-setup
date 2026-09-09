@@ -71,6 +71,11 @@ Cleanup options:
   --full-cleanup       Remove temporary workspace AND any packages installed by this script.
   --no-cleanup         Keep the temporary workspace for debugging/inspection.
 
+Rotation options:
+  --rotate             Regenerate the REALITY identity (xray_reality_rotate=true);
+                       the old state is backed up on the server before rotation.
+  --no-rotate          Explicitly keep the existing REALITY identity (default behavior).
+
 Other:
   -h, --help           Show this help message and exit.
   --dry-run            Simulate actions without changing the system.
@@ -170,6 +175,7 @@ CLI_CONN_FLAG=0
 ANSIBLE_VERBOSE_LEVEL=0
 ANSIBLE_VERBOSITY_LABEL="default"
 Xray_DEBUG=0
+ROTATE=""
 
 CLIENTS_DIR=""
 HOST=""
@@ -226,6 +232,14 @@ while [[ $# -gt 0 ]]; do
             ANSIBLE_VERBOSE_LEVEL=4
             ANSIBLE_VERBOSITY_LABEL="verbose"
             Xray_DEBUG=1
+            shift
+            ;;
+        --rotate)
+            ROTATE="true"
+            shift
+            ;;
+        --no-rotate)
+            ROTATE="false"
             shift
             ;;
         -h|--help)
@@ -457,6 +471,9 @@ elif [[ "$ANSIBLE_VERBOSE_LEVEL" -eq 4 ]]; then
 fi
 if [[ "$Xray_DEBUG" -eq 1 ]]; then
     ANSIBLE_CMD+=(-e "xray_debug=true")
+fi
+if [[ -n "$ROTATE" ]]; then
+    ANSIBLE_CMD+=(-e "xray_reality_rotate=$ROTATE")
 fi
 if [[ "$USE_INVENTORY" -eq 1 ]]; then
     ANSIBLE_CMD+=(-i "$INVENTORY_FILE" deploy.yml)
