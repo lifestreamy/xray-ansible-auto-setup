@@ -13,6 +13,10 @@ Format:
 
 ## [Unreleased]
 
+### Added
+- `--ru` (global and on `deploy`): Russian CLI output — prompts, messages, errors
+  (help texts stay English).
+
 ### Changed
 - **Breaking**: `xrayvpn deploy` now defaults to `--execution remote` (was `local`): a no-argument
   run provisions a remote VPS (asks for the IP and the password); local mode requires the explicit

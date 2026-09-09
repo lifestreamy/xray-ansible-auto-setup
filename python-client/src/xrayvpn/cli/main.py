@@ -20,7 +20,7 @@ from typing import Annotated
 
 import typer
 
-from xrayvpn import __version__
+from xrayvpn import __version__, i18n
 from xrayvpn.cli import prompts
 from xrayvpn.core.config import find_repo_root, load_settings, merge_overrides
 from xrayvpn.core.execution.base import DeployRequest
@@ -69,18 +69,32 @@ def main(
             help="Show the version and exit.",
         ),
     ] = False,
+    ru: Annotated[
+        bool,
+        typer.Option("--ru", help="Русский вывод интерфейса (промпты, сообщения, ошибки)"),
+    ] = False,
 ) -> None:
     """xrayvpn — one client, two execution modes (local / remote)."""
+    if ru:
+        i18n.set_ru(True)
 
 
 def _resolve_execution(execution: str | None) -> str:
     if execution is None:
         selected = prompts.select(
-            "Execution mode", list(EXECUTION_MODES), default="remote"
+            i18n.t("Execution mode", "Режим исполнения"),
+            list(EXECUTION_MODES),
+            default="remote",
         )
         execution = selected or "remote"
     if execution not in EXECUTION_MODES:
-        typer.echo(f"error: unknown execution mode: {execution}", err=True)
+        typer.echo(
+            i18n.t(
+                f"error: unknown execution mode: {execution}",
+                f"ошибка: неизвестный режим исполнения: {execution}",
+            ),
+            err=True,
+        )
         raise typer.Exit(2)
     return execution
 
@@ -226,37 +240,72 @@ def deploy(
         bool,
         typer.Option("--no-cleanup", help="Remote cleanup: keep the staging dir"),
     ] = False,
+    ru: Annotated[
+        bool,
+        typer.Option("--ru", help="Русский вывод интерфейса (промпты, сообщения, ошибки)"),
+    ] = False,
 ) -> None:
     """Run the deploy playbook. Local mode runs it on the current machine."""
+    if ru:
+        i18n.set_ru(True)
     if debug and verbose:
-        typer.echo("error: --debug and --verbose are mutually exclusive", err=True)
+        typer.echo(
+            i18n.t(
+                "error: --debug and --verbose are mutually exclusive",
+                "ошибка: --debug и --verbose взаимоисключающие",
+            ),
+            err=True,
+        )
         raise typer.Exit(2)
     if full_cleanup and no_cleanup:
-        typer.echo("error: --full-cleanup and --no-cleanup are mutually exclusive", err=True)
+        typer.echo(
+            i18n.t(
+                "error: --full-cleanup and --no-cleanup are mutually exclusive",
+                "ошибка: --full-cleanup и --no-cleanup взаимоисключающие",
+            ),
+            err=True,
+        )
         raise typer.Exit(2)
     if runtime is not None and runtime not in SUPPORTED_RUNTIMES:
         typer.echo(
-            f"error: --runtime must be one of {', '.join(SUPPORTED_RUNTIMES)}",
+            i18n.t(
+                f"error: --runtime must be one of {', '.join(SUPPORTED_RUNTIMES)}",
+                f"ошибка: --runtime должен быть одним из {', '.join(SUPPORTED_RUNTIMES)}",
+            ),
             err=True,
         )
         raise typer.Exit(2)
     if pkey is not None and password is not None:
-        typer.echo("error: --pkey and --pass are mutually exclusive", err=True)
+        typer.echo(
+            i18n.t(
+                "error: --pkey and --pass are mutually exclusive",
+                "ошибка: --pkey и --pass взаимоисключающие",
+            ),
+            err=True,
+        )
         raise typer.Exit(2)
 
     mode = _resolve_execution(execution)
 
     if use_inventory and mode == "local":
         typer.echo(
-            "error: --use-inventory applies to --execution remote only; "
-            "local mode generates its own inventory",
+            i18n.t(
+                "error: --use-inventory applies to --execution remote only; "
+                "local mode generates its own inventory",
+                "ошибка: --use-inventory применим только к --execution remote; "
+                "local-режим генерирует свой inventory",
+            ),
             err=True,
         )
         raise typer.Exit(2)
     if inventory is not None and mode == "remote":
         typer.echo(
-            "error: --inventory applies to --execution local only; "
-            "remote mode reads the personal inventory.yml via --use-inventory",
+            i18n.t(
+                "error: --inventory applies to --execution local only; "
+                "remote mode reads the personal inventory.yml via --use-inventory",
+                "ошибка: --inventory применим только к --execution local; "
+                "remote-режим читает личный inventory.yml через --use-inventory",
+            ),
             err=True,
         )
         raise typer.Exit(2)
@@ -302,13 +351,18 @@ def deploy(
     try:
         rc = executor.deploy(request)
     except RuntimeError as exc:
-        typer.echo(f"error: {exc}", err=True)
+        typer.echo(i18n.t(f"error: {exc}", f"ошибка: {exc}"), err=True)
         raise typer.Exit(2) from exc
     if rc != 0:
         raise typer.Exit(rc)
     if not dry_run:
         executor.fetch_configs(request)
-    typer.echo(f"[done] configs written to {request.resolved_clients_dir()}")
+    typer.echo(
+        i18n.t(
+            f"[done] configs written to {request.resolved_clients_dir()}",
+            f"[готово] конфиги записаны в {request.resolved_clients_dir()}",
+        )
+    )
 
 
 def _swap_guard(remote: FabricRemote) -> None:
@@ -324,19 +378,45 @@ def _swap_guard(remote: FabricRemote) -> None:
     if not swap_guard_needed(mem_kb, swap_entries):
         return
     typer.echo(
-        f"[remote] low memory: {mem_kb // 1024} MB RAM and no active swap — "
-        "the deploy may be OOM-killed",
+        i18n.t(
+            f"[remote] low memory: {mem_kb // 1024} MB RAM and no active swap — "
+            "the deploy may be OOM-killed",
+            f"[remote] мало памяти: {mem_kb // 1024} МБ RAM и нет активного swap — "
+            "деплой может быть убит OOM-killer",
+        ),
         err=True,
     )
-    if not prompts.confirm("Create a 1 GB swapfile /swapfile on the server?"):
-        typer.echo("[remote] swap-guard declined; continuing without swap", err=True)
+    if not prompts.confirm(
+        i18n.t(
+            "Create a 1 GB swapfile /swapfile on the server?",
+            "Создать swap-файл 1 ГБ /swapfile на сервере?",
+        )
+    ):
+        typer.echo(
+            i18n.t(
+                "[remote] swap-guard declined; continuing without swap",
+                "[remote] swap-guard отклонён; продолжаю без swap",
+            ),
+            err=True,
+        )
         return
     for command in swap_guard_commands():
         result = remote.run(command, warn=True)
         if result.failed:
-            typer.echo(f"[remote] swap-guard failed: {command}\n{result.stderr}", err=True)
+            typer.echo(
+                i18n.t(
+                    f"[remote] swap-guard failed: {command}\n{result.stderr}",
+                    f"[remote] swap-guard ошибка: {command}\n{result.stderr}",
+                ),
+                err=True,
+            )
             raise typer.Exit(result.return_code or 1)
-    typer.echo("[remote] swapfile created and enabled (fstab entry added)")
+    typer.echo(
+        i18n.t(
+            "[remote] swapfile created and enabled (fstab entry added)",
+            "[remote] swap-файл создан и включён (запись в fstab добавлена)",
+        )
+    )
 
 
 def _run_remote(
@@ -361,24 +441,33 @@ def _run_remote(
     if use_inventory:
         if host is not None or pkey is not None or password is not None or user != "root" or port != 22:
             typer.echo(
-                "warning: --use-inventory overrides connection/auth flags",
+                i18n.t(
+                    "warning: --use-inventory overrides connection/auth flags",
+                    "предупреждение: --use-inventory переопределяет флаги подключения/аутентификации",
+                ),
                 err=True,
             )
         try:
             connection, user_vars = parse_user_inventory(repo_root)
         except (RuntimeError, TypeError) as exc:
-            typer.echo(f"error: {exc}", err=True)
+            typer.echo(i18n.t(f"error: {exc}", f"ошибка: {exc}"), err=True)
             raise typer.Exit(2) from exc
         problems = validate_connection(connection)
         if problems:
             typer.echo(
-                f"error: {repo_root / 'inventory.yml'} is not ready for remote deploy:",
+                i18n.t(
+                    f"error: {repo_root / 'inventory.yml'} is not ready for remote deploy:",
+                    f"ошибка: {repo_root / 'inventory.yml'} не готов к remote-деплою:",
+                ),
                 err=True,
             )
             for problem in problems:
                 typer.echo(f"  - {problem}", err=True)
             typer.echo(
-                "  fill the keys under all.hosts.<host> as in inventory.yml.example",
+                i18n.t(
+                    "  fill the keys under all.hosts.<host> as in inventory.yml.example",
+                    "  заполните ключи в all.hosts.<host> как в inventory.yml.example",
+                ),
                 err=True,
             )
             raise typer.Exit(2)
@@ -387,8 +476,12 @@ def _run_remote(
             or connection.get("ansible_ssh_pass")
         ):
             typer.echo(
-                "note: no auth key in inventory.yml; the SSH password will be "
-                "requested at run time (or set ansible_ssh_private_key_file)",
+                i18n.t(
+                    "note: no auth key in inventory.yml; the SSH password will be "
+                    "requested at run time (or set ansible_ssh_private_key_file)",
+                    "заметка: в inventory.yml нет ключа аутентификации; SSH-пароль будет "
+                    "запрошен во время запуска (или укажите ansible_ssh_private_key_file)",
+                ),
                 err=True,
             )
         extra_vars = merge_overrides(user_vars, overrides)
@@ -415,25 +508,40 @@ def _run_remote(
         return
 
     if not resolved_host:
-        selected = prompts.text("VPS host (IP or hostname)")
+        selected = prompts.text(i18n.t("VPS host (IP or hostname)", "Хост VPS (IP или hostname)"))
         if not selected:
-            typer.echo("error: --host is required in remote mode", err=True)
+            typer.echo(
+                i18n.t(
+                    "error: --host is required in remote mode",
+                    "ошибка: --host обязателен в remote-режиме",
+                ),
+                err=True,
+            )
             raise typer.Exit(2)
         resolved_host = selected
 
     if resolved_pkey is not None and resolved_password is not None:
         typer.echo(
-            "error: both a private key and a password are configured; use one",
+            i18n.t(
+                "error: both a private key and a password are configured; use one",
+                "ошибка: указаны и приватный ключ, и пароль; используйте что-то одно",
+            ),
             err=True,
         )
         raise typer.Exit(2)
     if resolved_pkey is not None:
         key_path = Path(resolved_pkey).expanduser()
         if not key_path.is_file():
-            typer.echo(f"error: private key not found: {key_path}", err=True)
+            typer.echo(
+                i18n.t(
+                    f"error: private key not found: {key_path}",
+                    f"ошибка: приватный ключ не найден: {key_path}",
+                ),
+                err=True,
+            )
             raise typer.Exit(2)
     elif resolved_password is None:
-        resolved_password = getpass.getpass("SSH password: ")
+        resolved_password = getpass.getpass(i18n.t("SSH password: ", "SSH-пароль: "))
 
     request = DeployRequest(
         repo_root=repo_root,
@@ -444,8 +552,12 @@ def _run_remote(
     )
     if cleanup == "full-cleanup":
         typer.echo(
-            "[remote] note: full-cleanup keeps the swapfile (if the swap-guard created "
-            "one); remove /swapfile and its fstab line manually if not needed",
+            i18n.t(
+                "[remote] note: full-cleanup keeps the swapfile (if the swap-guard created "
+                "one); remove /swapfile and its fstab line manually if not needed",
+                "[remote] заметка: full-cleanup сохраняет swap-файл (если swap-guard его "
+                "создал); удалите /swapfile и строку в fstab вручную, если он не нужен",
+            ),
             err=True,
         )
     with FabricRemote(
@@ -470,14 +582,23 @@ def _preview_remote(
     debug: bool,
 ) -> None:
     """Remote dry-run: show the plan without connecting anywhere."""
-    typer.echo(f"[preview] remote deploy to {host or '<host>'}")
     typer.echo(
-        "[preview] swap-guard: detect RAM/swap; if RAM < 1024 MB and no swap — "
-        "offer an opt-in 1G /swapfile"
+        i18n.t(
+            f"[preview] remote deploy to {host or '<host>'}",
+            f"[превью] remote-деплой на {host or '<host>'}",
+        )
+    )
+    typer.echo(
+        i18n.t(
+            "[preview] swap-guard: detect RAM/swap; if RAM < 1024 MB and no swap — "
+            "offer an opt-in 1G /swapfile",
+            "[превью] swap-guard: детект RAM/swap; при RAM < 1024 МБ без swap — "
+            "opt-in вопрос про 1G /swapfile",
+        )
     )
     for command in bootstrap_commands():
         typer.echo(f"[preview] $ {command}")
-    typer.echo("[preview] upload tarball with (allowlist):")
+    typer.echo(i18n.t("[preview] upload tarball with (allowlist):", "[превью] загрузка tarball (allowlist):"))
     from xrayvpn.core import manifest
 
     for entry in manifest.allowlist_entries(repo_root):

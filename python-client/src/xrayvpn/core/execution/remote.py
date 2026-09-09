@@ -12,6 +12,7 @@ import shlex
 import tempfile
 from pathlib import Path
 
+from xrayvpn import i18n
 from xrayvpn.core import manifest
 from xrayvpn.core.execution.base import DeployRequest, extra_var_args
 from xrayvpn.core.inventory import build_inventory
@@ -143,7 +144,12 @@ class RemoteExecutor:
         for command in bootstrap_commands():
             result = self._remote.run(command, warn=True)
             if result.failed:
-                print(f"[remote] bootstrap failed: {command}\n{result.stderr}")
+                print(
+                    i18n.t(
+                        f"[remote] bootstrap failed: {command}\n{result.stderr}",
+                        f"[remote] ошибка bootstrap: {command}\n{result.stderr}",
+                    )
+                )
                 return result.return_code
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -158,7 +164,7 @@ class RemoteExecutor:
             )
             result = self._remote.run(extract, warn=True)
             if result.failed:
-                print(f"[remote] extract failed:\n{result.stderr}")
+                print(i18n.t(f"[remote] extract failed:\n{result.stderr}", f"[remote] ошибка распаковки:\n{result.stderr}"))
                 return result.return_code
 
             inv = temp / "inventory.yml"
@@ -175,7 +181,7 @@ class RemoteExecutor:
 
             result = self._remote.run(playbook_command(request, extra_vars), warn=True)
             if result.failed:
-                print(f"[remote] playbook failed (rc={result.return_code})")
+                print(i18n.t(f"[remote] playbook failed (rc={result.return_code})", f"[remote] ошибка playbook (rc={result.return_code})"))
                 return result.return_code
 
         if not request.dry_run:
@@ -201,4 +207,4 @@ class RemoteExecutor:
             remote_path = f"{SERVER_FETCH_DIR}/{name}"
             local_path = clients_dir / name
             self._remote.get(remote_path, local_path)
-            print(f"[remote] fetched {name}")
+            print(i18n.t(f"[remote] fetched {name}", f"[remote] получен {name}"))
