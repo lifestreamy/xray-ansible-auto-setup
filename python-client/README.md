@@ -22,9 +22,10 @@ uv run --project python-client xrayvpn --help
 ```
 
 Внутри `python-client/` (после `uv sync`) работают и `uv run xrayvpn ...`, и `python -m xrayvpn`.
-На Windows можно вообще без флагов: двойной клик по `xrayvpn-deploy.pyw` открывает консоль и
-запускает локальное развертывание (имя через дефис обязательно — `xrayvpn.pyw` рядом с пакетом
-перехватывал бы `import xrayvpn` на Windows).
+На Windows можно вообще без флагов: двойной клик по `xrayvpn-deploy.pyw` (английский интерфейс)
+или `xrayvpn-deploy-ru.pyw` (русский интерфейс) открывает консоль и запускает локальное
+развертывание; окно держится открытым до Enter, ошибки и код возврата видны явно (имя через
+дефис обязательно — `xrayvpn.pyw` рядом с пакетом перехватывал бы `import xrayvpn` на Windows).
 
 ## Две схемы исполнения
 
@@ -78,8 +79,8 @@ uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 
 ## Где что лежит
 
 - `src/xrayvpn/` — пакет (`cli/`, `core/`, `core/execution/`, `core/transport/`);
-- `tests/` — pytest-набор (в CI нога `python-client` гоняет его и ruff; есть и статический
-  контракт `xrayvpn-deploy.pyw` ↔ CLI);
+- `tests/` — pytest-набор (в CI нога `python-client` гоняет его и ruff; контракт лаунчеров
+  `.pyw` ↔ CLI проверяется статически и реальным запуском);
 - смежные зоны репо: `shell-clients/` (Bash/PowerShell, поддержка без развития), `scripts/`
   (инструменты разработки).
 

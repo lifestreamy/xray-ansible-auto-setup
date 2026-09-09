@@ -22,9 +22,10 @@ uv run --project python-client xrayvpn --help
 ```
 
 Inside `python-client/` (after `uv sync`) both `uv run xrayvpn ...` and `python -m xrayvpn` work.
-On Windows you can skip flags entirely: double-clicking `xrayvpn-deploy.pyw` opens a console and
-runs a local deploy (the hyphen in the name is mandatory — a plain `xrayvpn.pyw` next to the
-package would hijack `import xrayvpn` on Windows).
+On Windows you can skip flags entirely: double-clicking `xrayvpn-deploy.pyw` (English UI) or
+`xrayvpn-deploy-ru.pyw` (Russian UI) opens a console and runs a local deploy; the window stays
+open until Enter and failures show an explicit message and exit code (the hyphen in the name is
+mandatory — a plain `xrayvpn.pyw` next to the package would hijack `import xrayvpn` on Windows).
 
 ## Two execution models
 
@@ -78,8 +79,8 @@ Full list: `xrayvpn deploy --help`.
 ## Layout
 
 - `src/xrayvpn/` — the package (`cli/`, `core/`, `core/execution/`, `core/transport/`);
-- `tests/` — pytest suite (the `python-client` CI leg runs it plus ruff; there is also a static
-  contract test `xrayvpn-deploy.pyw` ↔ CLI);
+- `tests/` — pytest suite (the `python-client` CI leg runs it plus ruff; the `.pyw` launcher ↔ CLI
+  contract is checked statically and by a real end-to-end launch);
 - sibling repo zones: `shell-clients/` (Bash/PowerShell, maintained, not developed) and
   `scripts/` (contributor tooling).
 
