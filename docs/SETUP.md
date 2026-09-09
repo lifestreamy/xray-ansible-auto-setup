@@ -1,4 +1,4 @@
-> **Document:** `docs/SETUP.md` · **Location:** `docs/` · **Version:** v0.3 · **Last updated:** 2026-09-05
+> **Document:** `docs/SETUP.md` · **Location:** `docs/` · **Version:** v0.4.0 · **Last updated:** 2026-09-09
 >
 > [Главный README](../README.md) — обзор проекта и быстрый старт
 

@@ -1,4 +1,4 @@
-> **Document:** `docs/RELEASE.en.md` · **Location:** `docs/` · **Version:** v0.3 · **Last updated:** 2026-09-05
+> **Document:** `docs/RELEASE.en.md` · **Location:** `docs/` · **Version:** v0.4.0 · **Last updated:** 2026-09-09
 >
 > [Main README](../README.en.md) — project overview and quick start
 
@@ -60,6 +60,7 @@ The short sha is the verified code; its runs are visible in the repository's Act
 | Release | Verified code | Checked by CI | Status |
 |---|---|---|---|
 | v0.3 | `cf98f0b` | distro matrix (ubuntu 22.04 / 24.04, debian 12), firewall job, CLI tests and lint — 2026-09-05 | `v0.3_experimental` |
+| v0.4.0 | `9aab48e` | distro matrix (ubuntu 22.04 / 24.04, debian 12), firewall job, CLI tests and lint on ubuntu / windows / macos — run expected after push | `v0.4.0_experimental` |
 
 Note (2026-09-09): the promotion criteria changed — the calendar check "not before 2026-09-20" for v0.3 is void; v0.3 stays experimental, the next release is v0.4.0 (three-component format).
 

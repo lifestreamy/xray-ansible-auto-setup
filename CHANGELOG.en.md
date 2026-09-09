@@ -5,17 +5,24 @@ Release policy and release statuses — [docs/RELEASE.en.md](docs/RELEASE.en.md)
 
 Format:
 
-- Newest versions first; one section per release: `## [vX.Y] — YYYY-MM-DD`.
+- Newest versions first; one section per release: `## vX.Y.Z — YYYY-MM-DD`.
 - Inside a section — categories: **Added**, **Changed**, **Fixed**, **Removed**.
 - Each release section carries a `Status:` line (`experimental`; after promotion — `stable since YYYY-MM-DD`).
 - Entries are built from commit messages and land in the release commit; no auto-bump.
 - The RU/EN pair is updated in the same commit; section structure is mirrored.
 
-## [Unreleased]
+## v0.4.0 — 2026-09-09
+
+Status: experimental (promotion criteria — `docs/RELEASE.en.md`).
 
 ### Added
-- `--ru` (global and on `deploy`): Russian CLI output — prompts, messages, errors
-  (help texts stay English).
+- `--ru` (global and on `deploy`) and the `XRAYVPN_LANG` environment variable: a fully Russian
+  CLI interface — prompts, messages, errors and `--help`; the flag works in any argument position.
+- The `xrayvpn-deploy-ru.pyw` launcher (double-click, Russian interface) next to
+  `xrayvpn-deploy.pyw` (English): the console stays open until Enter, errors and the exit code
+  are shown explicitly.
+- Installing the command onto PATH: `uv tool install --editable python-client` — plain `xrayvpn`
+  without the `uv run` prefix (documented in the READMEs and `docs/SETUP.en.md`).
 - Rotation flags in the shell wrappers: `--rotate`/`--no-rotate` (bash) and
   `-Rotate`/`-NoRotate` (PowerShell) — parity with the python CLI.
 
@@ -29,6 +36,14 @@ Format:
 - The role no longer installs `ufw`: the allow rule for `xray_port`/tcp is added only when `ufw`
   already exists on the server. The `xray_manage_firewall` variable and CLI flag renamed to
   `xray_manage_ufw` / `--manage-ufw/--no-ufw`.
+
+### Fixed
+- Double-clicking `xrayvpn-deploy.pyw` on Windows failed (cmd quote escaping inside the
+  launcher): direct interpreter launch without cmd, an honest exit code, explicit diagnostics
+  when `.venv`/`uv` are missing; the launcher contract in the tests now verifies a real launch,
+  not just static flags.
+- The python-client package version is synced with the release (`xrayvpn --version` → 0.4.0);
+  the finalize-bump rule is codified in `docs/RELEASE.en.md`.
 
 ### Removed
 - The `podman` runtime (experimental stub, never left experimental; not covered by molecule

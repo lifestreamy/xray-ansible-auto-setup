@@ -1,4 +1,4 @@
-> **Document:** `docs/RELEASE.md` · **Location:** `docs/` · **Version:** v0.3 · **Last updated:** 2026-09-05
+> **Document:** `docs/RELEASE.md` · **Location:** `docs/` · **Version:** v0.4.0 · **Last updated:** 2026-09-09
 >
 > [Главный README](../README.md) — обзор проекта и быстрый старт
 
@@ -60,6 +60,7 @@
 | Релиз | Проверенный код | Проверено CI | Статус |
 |---|---|---|---|
 | v0.3 | `cf98f0b` | матрица дистрибутивов (ubuntu 22.04 / 24.04, debian 12), firewall-нога, тесты и линт CLI — 2026-09-05 | `v0.3_experimental` |
+| v0.4.0 | `9aab48e` | матрица дистрибутивов (ubuntu 22.04 / 24.04, debian 12), firewall-нога, тесты и линт CLI на ubuntu / windows / macos — прогон после push | `v0.4.0_experimental` |
 
 Примечание (2026-09-09): критерии перевода изменены — календарная проверка v0.3 «не раньше 2026-09-20» снята; v0.3 остаётся experimental, следующий релиз — v0.4.0 (трёхзначный формат).
 
