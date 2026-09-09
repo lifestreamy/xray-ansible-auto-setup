@@ -1,9 +1,5 @@
 ---
-# Handlers are triggered by notify: from template tasks in main.yml.
-# Restart xray is runtime-agnostic: both xray.service.X.j2 units
-# are managed by systemd, so `systemctl restart xray` works whether
-# the unit ExecStarts the native binary or a docker container.
-# Reload systemd picks up changes to the unit file itself.
+# Restart xray is runtime-agnostic: both units are systemd-managed.
 
 - name: Restart xray
   ansible.builtin.systemd:

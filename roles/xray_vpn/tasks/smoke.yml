@@ -1,12 +1,6 @@
 ---
-# Post-deploy smoke checks (non-fatal; warnings only).
-# All checks use failed_when: false so a smoke failure does not abort
-# the deploy — the operator inspects warnings and the journal.
-# Branched by xray_runtime so each runtime's reality is verified with
-# the right tool: native binary version + systemctl, or container
-# inspect for docker.
+# Non-fatal post-deploy checks: failed_when:false everywhere — warnings, not aborts.
 
-# === Native runtime smoke ===
 - name: Native - report xray binary version
   ansible.builtin.command:
     cmd: "{{ xray_symlink | default('/usr/local/bin/xray') }} version"
@@ -48,7 +42,6 @@
     - xray_debug | default(false) | bool
   tags: smoke,debug
 
-# === Docker runtime smoke ===
 - name: Docker - inspect xray container image
   ansible.builtin.command:
     cmd: docker inspect xray --format "{{ '{{' }} .Config.Image {{ '}}' }}"
@@ -71,7 +64,6 @@
   failed_when: false
   tags: smoke
 
-# === Common smoke (all runtimes) ===
 - name: Wait for Xray TCP port to be listening
   ansible.builtin.wait_for:
     port: "{{ xray_port | default(443) }}"
