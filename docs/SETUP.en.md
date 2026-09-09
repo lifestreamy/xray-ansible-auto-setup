@@ -72,7 +72,7 @@ The main client is `python-client/` (the `xrayvpn deploy` command). It accepts:
 - `--inventory <path>` — use an existing inventory file instead of the generated one (local mode only; in remote mode use `--use-inventory`).
 - `--clients-dir <path>` — where generated client configs are saved (default `downloaded-clients/`).
 - `--cleanup` (default) / `--full-cleanup` / `--no-cleanup` — remove server-side temporary data after the run. `--cleanup` keeps the venv cache for the next run, `--full-cleanup` removes it too.
-- Overrides: `--runtime {native|docker}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-ufw/--no-ufw`, `--ru` (Russian output).
+- Overrides: `--runtime {native|docker}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-ufw/--no-ufw`, `--ru` (fully Russian interface, `--help` included; alternative — `XRAYVPN_LANG=ru`).
 - `--dry-run` — local: `ansible-playbook --check`; remote: plan of commands without connecting.
 - `--debug` / `--verbose` — Ansible `-vvv` / `-vvvv` + `xray_debug=true`.
 

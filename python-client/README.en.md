@@ -56,7 +56,8 @@ uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 
 ## `deploy` flags
 
 - Mode: `--execution local|remote`.
-- Language: `--ru` — Russian output (prompts, messages, errors); help stays English.
+- Language: `--ru` — fully Russian interface (prompts, messages, errors, `--help`);
+  works in any argument position, alternative — the `XRAYVPN_LANG=ru` environment variable.
 - Server overrides (otherwise taken from `config/settings.yml`): `--runtime native|docker`,
   `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`,
   `--rotate/--no-rotate` (regenerate the REALITY key and UUIDs / keep them),

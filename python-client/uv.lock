@@ -637,7 +637,7 @@ requires-dist = [
     { name = "inquirerpy", specifier = ">=0.3.4" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "rich", specifier = ">=15.0.0" },
-    { name = "typer", specifier = ">=0.27.2" },
+    { name = "typer", specifier = ">=0.27.2,<0.28" },
 ]
 
 [package.metadata.requires-dev]

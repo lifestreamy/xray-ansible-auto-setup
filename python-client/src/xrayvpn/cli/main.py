@@ -21,7 +21,7 @@ from typing import Annotated
 import typer
 
 from xrayvpn import __version__, i18n
-from xrayvpn.cli import prompts
+from xrayvpn.cli import l10n_typer, prompts
 from xrayvpn.core.config import find_repo_root, load_settings, merge_overrides
 from xrayvpn.core.execution.base import DeployRequest
 from xrayvpn.core.execution.local import DEFAULT_WSL_VENV, LocalExecutor
@@ -45,10 +45,31 @@ from xrayvpn.core.transport.remote import FabricRemote
 SUPPORTED_RUNTIMES = ("native", "docker")
 EXECUTION_MODES = ("local", "remote")
 
+def _harden_stdio() -> None:
+    """Redirected Windows streams default to the locale codec (cp1252) and
+    crash on Cyrillic; UTF-8 keeps RU output intact in pipes and files."""
+    for stream in (sys.stdout, sys.stderr):
+        if stream is None or not hasattr(stream, "reconfigure"):
+            continue
+        if stream.isatty():
+            stream.reconfigure(errors="replace")
+        else:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+
+
+_harden_stdio()
+i18n.preinit()
+if i18n.is_ru():
+    l10n_typer.apply_ru()
+
 app = typer.Typer(
     name="xrayvpn",
-    help="Provision Xray VLESS + REALITY VPN servers (local or remote execution).",
+    help=i18n.t(
+        "Provision Xray VLESS + REALITY VPN servers (local or remote execution).",
+        "Развёртывание VPN-серверов Xray VLESS + REALITY (локальное или удалённое исполнение).",
+    ),
     no_args_is_help=True,
+    add_completion=False,
 )
 
 
@@ -66,12 +87,18 @@ def main(
             "--version",
             callback=_version_callback,
             is_eager=True,
-            help="Show the version and exit.",
+            help=i18n.t("Show the version and exit.", "Показать версию и выйти."),
         ),
     ] = False,
     ru: Annotated[
         bool,
-        typer.Option("--ru", help="Русский вывод интерфейса (промпты, сообщения, ошибки)"),
+        typer.Option(
+            "--ru",
+            help=i18n.t(
+                "Russian interface output (prompts, messages, errors, help)",
+                "Русский вывод интерфейса (промпты, сообщения, ошибки, help)",
+            ),
+        ),
     ] = False,
 ) -> None:
     """xrayvpn — one client, two execution modes (local / remote)."""
@@ -118,64 +145,112 @@ def _collect_overrides(args: dict) -> dict[str, object]:
     return overrides
 
 
-@app.command()
+@app.command(
+    help=i18n.t(
+        "Run the deploy playbook. Local mode runs it on the current machine.",
+        "Запуск playbook развёртывания. Локальный режим выполняет его на этой машине.",
+    )
+)
 def deploy(
     execution: Annotated[
         str | None,
         typer.Option(
             "--execution",
-            help=f"Execution mode: {'|'.join(EXECUTION_MODES)} (default: remote)",
+            help=i18n.t(
+                f"Execution mode: {'|'.join(EXECUTION_MODES)} (default: remote)",
+                f"Режим исполнения: {'|'.join(EXECUTION_MODES)} (по умолчанию remote)",
+            ),
         ),
     ] = None,
     runtime: Annotated[
         str | None,
         typer.Option(
             "--runtime",
-            help=f"xray_runtime override ({', '.join(SUPPORTED_RUNTIMES)})",
+            help=i18n.t(
+                f"xray_runtime override ({', '.join(SUPPORTED_RUNTIMES)})",
+                f"Переопределение xray_runtime ({', '.join(SUPPORTED_RUNTIMES)})",
+            ),
         ),
     ] = None,
     xray_port: Annotated[
         int | None,
-        typer.Option("--xray-port", help="VLESS inbound TCP port override"),
+        typer.Option(
+            "--xray-port",
+            help=i18n.t(
+                "VLESS inbound TCP port override",
+                "Переопределение TCP-порта входящего VLESS",
+            ),
+        ),
     ] = None,
     num_clients: Annotated[
         int | None,
-        typer.Option("--num-clients", help="Number of client configs to generate"),
+        typer.Option(
+            "--num-clients",
+            help=i18n.t(
+                "Number of client configs to generate",
+                "Сколько клиентских конфигов генерировать",
+            ),
+        ),
     ] = None,
     camouflage_domain: Annotated[
         str | None,
         typer.Option(
-            "--camouflage-domain", help="REALITY camouflage/SNI domain override"
+            "--camouflage-domain",
+            help=i18n.t(
+                "REALITY camouflage/SNI domain override",
+                "Переопределение домена маскировки REALITY (SNI)",
+            ),
         ),
     ] = None,
     warp: Annotated[
         bool | None,
-        typer.Option("--warp/--no-warp", help="Enable/disable Cloudflare WARP outbound"),
+        typer.Option(
+            "--warp/--no-warp",
+            help=i18n.t(
+                "Enable/disable Cloudflare WARP outbound",
+                "Включить/выключить исходящий туннель Cloudflare WARP",
+            ),
+        ),
     ] = None,
     rotate: Annotated[
         bool | None,
         typer.Option(
             "--rotate/--no-rotate",
-            help="Force REALITY key + UUID regeneration / keep existing state",
+            help=i18n.t(
+                "Force REALITY key + UUID regeneration / keep existing state",
+                "Принудительно перегенерировать ключ REALITY и UUID / сохранить текущее состояние",
+            ),
         ),
     ] = None,
     manage_ufw: Annotated[
         bool | None,
         typer.Option(
             "--manage-ufw/--no-ufw",
-            help="Enable/disable ufw allow-rule management (disable on WSL test hosts)",
+            help=i18n.t(
+                "Enable/disable ufw allow-rule management (disable on WSL test hosts)",
+                "Включить/выключить управление правилами ufw (отключайте на тестовых хостах WSL)",
+            ),
         ),
     ] = None,
     inventory: Annotated[
         Path | None,
         typer.Option(
             "--inventory",
-            help="Use an existing inventory file instead of the generated one",
+            help=i18n.t(
+                "Use an existing inventory file instead of the generated one",
+                "Использовать готовый inventory-файл вместо генерируемого",
+            ),
         ),
     ] = None,
     dry_run: Annotated[
         bool,
-        typer.Option("--dry-run", help="Pass --check to ansible-playbook; no changes"),
+        typer.Option(
+            "--dry-run",
+            help=i18n.t(
+                "Pass --check to ansible-playbook; no changes",
+                "Передать --check в ansible-playbook; без изменений",
+            ),
+        ),
     ] = False,
     debug: Annotated[
         bool,
@@ -187,62 +262,116 @@ def deploy(
     ] = False,
     wsl_distro: Annotated[
         str | None,
-        typer.Option("--wsl-distro", help="WSL distro for local mode (default distro)"),
+        typer.Option(
+            "--wsl-distro",
+            help=i18n.t(
+                "WSL distro for local mode (default distro)",
+                "Дистрибутив WSL для локального режима (по умолчанию)",
+            ),
+        ),
     ] = None,
     wsl_venv: Annotated[
         str,
         typer.Option(
             "--wsl-venv",
-            help="WSL venv holding ansible-playbook (local mode)",
+            help=i18n.t(
+                "WSL venv holding ansible-playbook (local mode)",
+                "WSL venv с ansible-playbook (локальный режим)",
+            ),
         ),
     ] = DEFAULT_WSL_VENV,
     host: Annotated[
         str | None,
-        typer.Option("--host", "-H", help="VPS host/IP (remote mode; required)"),
+        typer.Option(
+            "--host",
+            "-H",
+            help=i18n.t(
+                "VPS host/IP (remote mode; required)",
+                "Хост/IP VPS (удалённый режим; обязателен)",
+            ),
+        ),
     ] = None,
     user: Annotated[
         str,
-        typer.Option("--user", "-u", help="SSH user (remote mode)"),
+        typer.Option(
+            "--user", "-u", help=i18n.t("SSH user (remote mode)", "SSH-пользователь (удалённый режим)")
+        ),
     ] = "root",
     port: Annotated[
         int,
-        typer.Option("--port", "-p", help="SSH port (remote mode)"),
+        typer.Option(
+            "--port", "-p", help=i18n.t("SSH port (remote mode)", "SSH-порт (удалённый режим)")
+        ),
     ] = 22,
     pkey: Annotated[
         Path | None,
-        typer.Option("--pkey", help="Path to an SSH private key (remote mode)"),
+        typer.Option(
+            "--pkey",
+            help=i18n.t(
+                "Path to an SSH private key (remote mode)",
+                "Путь к приватному SSH-ключу (удалённый режим)",
+            ),
+        ),
     ] = None,
     password: Annotated[
         str | None,
-        typer.Option("--pass", help="SSH password (remote mode; avoid, prefer --pkey)"),
+        typer.Option(
+            "--pass",
+            help=i18n.t(
+                "SSH password (remote mode; avoid, prefer --pkey)",
+                "SSH-пароль (удалённый режим; не рекомендуется, лучше --pkey)",
+            ),
+        ),
     ] = None,
     use_inventory: Annotated[
         bool,
         typer.Option(
             "--use-inventory",
-            help="Read connection params and vars from the personal inventory.yml",
+            help=i18n.t(
+                "Read connection params and vars from the personal inventory.yml",
+                "Читать параметры подключения и переменные из личного inventory.yml",
+            ),
         ),
     ] = False,
     clients_dir: Annotated[
         Path | None,
         typer.Option(
-            "--clients-dir", help="Where generated client configs are saved"
+            "--clients-dir",
+            help=i18n.t(
+                "Where generated client configs are saved",
+                "Куда сохранять сгенерированные клиентские конфиги",
+            ),
         ),
     ] = None,
     full_cleanup: Annotated[
         bool,
         typer.Option(
             "--full-cleanup",
-            help="Remote cleanup: also remove the server-side venv",
+            help=i18n.t(
+                "Remote cleanup: also remove the server-side venv",
+                "Уборка на сервере: удалить и серверный venv",
+            ),
         ),
     ] = False,
     no_cleanup: Annotated[
         bool,
-        typer.Option("--no-cleanup", help="Remote cleanup: keep the staging dir"),
+        typer.Option(
+            "--no-cleanup",
+            help=i18n.t(
+                "Remote cleanup: keep the staging dir",
+                "Уборка на сервере: сохранить staging-каталог",
+            ),
+        ),
     ] = False,
     ru: Annotated[
         bool,
-        typer.Option("--ru", help="Русский вывод интерфейса (промпты, сообщения, ошибки)"),
+        typer.Option(
+            "--ru",
+            help=i18n.t(
+                "Russian interface output (prompts, messages, errors, help)",
+                "Русский вывод интерфейса (промпты, сообщения, ошибки, help)",
+            ),
+        ),
     ] = False,
 ) -> None:
     """Run the deploy playbook. Local mode runs it on the current machine."""

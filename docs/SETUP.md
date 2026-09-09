@@ -72,7 +72,7 @@
 - `--inventory <path>` — готовый inventory-файл вместо генерируемого (только local-режим; в remote используйте `--use-inventory`).
 - `--clients-dir <path>` — куда сохранять клиентские конфиги (по умолчанию `downloaded-clients/`).
 - `--cleanup` (по умолчанию) / `--full-cleanup` / `--no-cleanup` — удаление временных данных на сервере после запуска. `--cleanup` оставляет venv-кэш для следующего запуска, `--full-cleanup` удаляет и его.
-- Override'ы: `--runtime {native|docker}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-ufw/--no-ufw`, `--ru` (русскоязычный вывод).
+- Override'ы: `--runtime {native|docker}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-ufw/--no-ufw`, `--ru` (полностью русскоязычный интерфейс, включая `--help`; альтернатива — `XRAYVPN_LANG=ru`).
 - `--dry-run` — local: `ansible-playbook --check`; remote: план команд без подключения.
 - `--debug` / `--verbose` — Ansible `-vvv` / `-vvvv` + `xray_debug=true`.
 

@@ -56,7 +56,8 @@ uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 
 ## Флаги `deploy`
 
 - Режим: `--execution local|remote`.
-- Язык: `--ru` — русский вывод (промпты, сообщения, ошибки); help — англоязычный.
+- Язык: `--ru` — полностью русский интерфейс (промпты, сообщения, ошибки, `--help`);
+  работает в любой позиции аргументов, альтернатива — переменная окружения `XRAYVPN_LANG=ru`.
 - Переопределения сервера (иначе берётся из `config/settings.yml`): `--runtime native|docker`,
   `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`,
   `--rotate/--no-rotate` (перегенерация ключа REALITY и UUID / оставить как есть),
