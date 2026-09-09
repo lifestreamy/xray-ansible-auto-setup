@@ -89,6 +89,39 @@ def cleanup_commands(mode: str) -> list[str]:
     return [f"rm -rf {SERVER_STAGING}"]
 
 
+SWAPFILE = "/swapfile"
+SWAP_GUARD_MIN_RAM_KB = 1024 * 1024
+
+
+def swap_status_commands() -> list[str]:
+    """Detection: total RAM in kB, then the number of active swap entries."""
+    return [
+        "awk '/MemTotal/{print $2}' /proc/meminfo",
+        "tail -n +2 /proc/swaps | wc -l",
+    ]
+
+
+def swap_guard_needed(mem_kb: int, swap_entries: int) -> bool:
+    """True only when RAM is below the threshold AND no swap is active."""
+    return mem_kb < SWAP_GUARD_MIN_RAM_KB and swap_entries == 0
+
+
+def swap_guard_commands() -> list[str]:
+    """Opt-in 1 GB swapfile; runs only when no active swap exists (never touches
+    an existing swap/fstab/sysctl configuration of the user)."""
+    return [
+        (
+            f"sudo -n bash -c 'fallocate -l 1G {SWAPFILE} || "
+            f"dd if=/dev/zero of={SWAPFILE} bs=1M count=1024 status=none'"
+        ),
+        f"sudo -n bash -c 'chmod 600 {SWAPFILE} && mkswap {SWAPFILE} && swapon {SWAPFILE}'",
+        (
+            f"sudo -n bash -c 'grep -qs \"^{SWAPFILE} \" /etc/fstab || "
+            f"echo \"{SWAPFILE} none swap sw 0 0\" >> /etc/fstab'"
+        ),
+    ]
+
+
 def fetch_targets(listing: str) -> list[str]:
     """Filter an `ls` listing down to client config files (.json/.yaml)."""
     targets: list[str] = []

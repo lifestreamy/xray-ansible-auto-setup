@@ -10,11 +10,15 @@ from xrayvpn.core.execution.remote import (
     SERVER_COLLECTIONS,
     SERVER_STAGING,
     SERVER_VENV,
+    SWAPFILE,
     RemoteExecutor,
     bootstrap_commands,
     cleanup_commands,
     fetch_targets,
     playbook_command,
+    swap_guard_commands,
+    swap_guard_needed,
+    swap_status_commands,
 )
 from xrayvpn.core.transport.remote import CommandResult
 
@@ -51,6 +55,32 @@ def test_cleanup_commands_modes() -> None:
 def test_fetch_targets_filters() -> None:
     listing = "clash.yaml\namnezia.json\nnotes.txt\nsubdir\n"
     assert fetch_targets(listing) == ["clash.yaml", "amnezia.json"]
+
+
+def test_swap_guard_needed_thresholds() -> None:
+    assert swap_guard_needed(512 * 1024, 0)
+    assert swap_guard_needed(1024 * 1024 - 1, 0)
+    assert not swap_guard_needed(1024 * 1024, 0)
+    assert not swap_guard_needed(512 * 1024, 1)
+    assert not swap_guard_needed(2048 * 1024, 0)
+
+
+def test_swap_status_commands_read_proc() -> None:
+    commands = swap_status_commands()
+    assert any("/proc/meminfo" in c for c in commands)
+    assert any("/proc/swaps" in c for c in commands)
+
+
+def test_swap_guard_commands_content() -> None:
+    commands = swap_guard_commands()
+    joined = "\n".join(commands)
+    assert SWAPFILE in joined
+    assert "fallocate -l 1G" in joined
+    assert "dd if=/dev/zero" in joined
+    assert "chmod 600" in joined
+    assert "mkswap" in joined and "swapon" in joined
+    assert "/etc/fstab" in joined
+    assert all(c.startswith("sudo -n") for c in commands)
 
 
 class FakeRemote:

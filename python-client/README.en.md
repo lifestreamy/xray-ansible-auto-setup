@@ -34,7 +34,7 @@ package would hijack `import xrayvpn` on Windows).
 - **local** (`--execution local`) — the playbook runs on this machine: directly on Linux,
   through WSL on Windows (the client finds/creates `uv` and a venv inside the distro;
   default venv `~/xray-venv`).
-- Without `--execution` the CLI asks in the terminal (default: local).
+- Without `--execution` the CLI asks in the terminal (default: remote).
 
 ## Examples
 

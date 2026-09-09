@@ -66,7 +66,8 @@ To switch runtime, change `xray_runtime` in `config/settings.yml` and rerun the 
 
 The main client is `python-client/` (the `xrayvpn deploy` command). It accepts:
 
-- `--execution {local|remote}` — execution mode (default `local`; without the flag — interactive choice).
+- `--execution {local|remote}` — execution mode (default `remote`; without the flag — interactive choice, defaulting to `remote`).
+- Low-memory VPS: with < 1024 MB RAM and no swap, the client offers to create a 1 GB swapfile before the deploy (explicit opt-in prompt; an existing swap configuration is never touched).
 - Connection parameters (remote): `--host/-H`, `--user/-u` (root), `--port/-p` (22), `--pkey` / `--pass` (mutually exclusive; if neither is set — hidden password prompt), `--use-inventory` (connection params and vars from your personal `inventory.yml`).
 - `--inventory <path>` — use an existing inventory file instead of the generated one (local mode only; in remote mode use `--use-inventory`).
 - `--clients-dir <path>` — where generated client configs are saved (default `downloaded-clients/`).

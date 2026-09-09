@@ -14,6 +14,12 @@
 ## [Unreleased]
 
 ### Changed
+- **Breaking**: `xrayvpn deploy` по умолчанию выполняет `--execution remote` (было `local`): запуск
+  без аргументов разворачивает удалённый VPS (спрашивает IP и пароль); локальный режим — через
+  явный `--execution local`.
+- Remote-деплой: guard малой памяти — при RAM < 1024 МБ и отсутствии активного swap клиент
+  предлагает создать swap-файл `/swapfile` 1 ГБ (явный opt-in-вопрос; существующие настройки
+  swap/fstab не трогаются).
 - `ufw` больше не устанавливается ролью: allow-правило для `xray_port`/tcp добавляется только если
   `ufw` уже есть на сервере. Переменная `xray_manage_firewall` и CLI-флаг переименованы в
   `xray_manage_ufw` / `--manage-ufw/--no-ufw`.

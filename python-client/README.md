@@ -34,7 +34,7 @@ uv run --project python-client xrayvpn --help
 - **local** (`--execution local`) — playbook прогоняется на этой машине: на Linux напрямую,
   на Windows — через WSL (`uv` и venv на стороне дистрибутива клиент находит/создаёт сам,
   вenv по умолчанию `~/xray-venv`).
-- Без `--execution` — вопрос в терминале (по умолчанию local).
+- Без `--execution` — вопрос в терминале (по умолчанию remote).
 
 ## Примеры
 

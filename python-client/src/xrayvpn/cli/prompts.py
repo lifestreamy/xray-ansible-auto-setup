@@ -26,6 +26,18 @@ def select(title: str, choices: list[str], default: str | None = None) -> str | 
         return default
 
 
+def confirm(title: str, default: bool = False) -> bool:
+    """Yes/no prompt; returns `default` when not interactive."""
+    if not _interactive():
+        return default
+    try:
+        from InquirerPy import inquirer
+
+        return bool(inquirer.confirm(message=title, default=default).execute())
+    except Exception as exc:  # noqa - intentional: prompts degrade to defaults
+        return default
+
+
 def text(title: str, default: str | None = None) -> str | None:
     """Prompt for a text value; returns `default` when not interactive."""
     if not _interactive():

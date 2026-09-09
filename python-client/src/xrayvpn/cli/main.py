@@ -4,8 +4,8 @@
 
 - `--execution local`  — run the playbook against the current machine
   (Windows: via the WSL bridge);
-- `--execution remote` — bootstrap and provision a remote VPS over SSH
-  (Fabric transport; tarball upload; no GitHub dependency).
+- `--execution remote` (default) — bootstrap and provision a remote VPS over
+  SSH (Fabric transport; tarball upload; no GitHub dependency).
 
 The flag surface covers the legacy shell clients' options plus the deploy
 overrides (runtime, port, client count, WARP, rotation, ufw).
@@ -30,6 +30,9 @@ from xrayvpn.core.execution.remote import (
     bootstrap_commands,
     cleanup_commands,
     playbook_command,
+    swap_guard_commands,
+    swap_guard_needed,
+    swap_status_commands,
 )
 from xrayvpn.core.inventory import (
     build_inventory,
@@ -73,9 +76,9 @@ def main(
 def _resolve_execution(execution: str | None) -> str:
     if execution is None:
         selected = prompts.select(
-            "Execution mode", list(EXECUTION_MODES), default="local"
+            "Execution mode", list(EXECUTION_MODES), default="remote"
         )
-        execution = selected or "local"
+        execution = selected or "remote"
     if execution not in EXECUTION_MODES:
         typer.echo(f"error: unknown execution mode: {execution}", err=True)
         raise typer.Exit(2)
@@ -107,7 +110,7 @@ def deploy(
         str | None,
         typer.Option(
             "--execution",
-            help=f"Execution mode: {'|'.join(EXECUTION_MODES)} (default: local)",
+            help=f"Execution mode: {'|'.join(EXECUTION_MODES)} (default: remote)",
         ),
     ] = None,
     runtime: Annotated[
@@ -308,6 +311,34 @@ def deploy(
     typer.echo(f"[done] configs written to {request.resolved_clients_dir()}")
 
 
+def _swap_guard(remote: FabricRemote) -> None:
+    """Low-memory guard: opt-in 1G swapfile before bootstrap (never silent)."""
+    detect_mem, detect_swap = swap_status_commands()
+    mem = remote.run(detect_mem, warn=True)
+    swaps = remote.run(detect_swap, warn=True)
+    try:
+        mem_kb = int(mem.stdout.strip())
+        swap_entries = int(swaps.stdout.strip())
+    except ValueError:
+        return
+    if not swap_guard_needed(mem_kb, swap_entries):
+        return
+    typer.echo(
+        f"[remote] low memory: {mem_kb // 1024} MB RAM and no active swap — "
+        "the deploy may be OOM-killed",
+        err=True,
+    )
+    if not prompts.confirm("Create a 1 GB swapfile /swapfile on the server?"):
+        typer.echo("[remote] swap-guard declined; continuing without swap", err=True)
+        return
+    for command in swap_guard_commands():
+        result = remote.run(command, warn=True)
+        if result.failed:
+            typer.echo(f"[remote] swap-guard failed: {command}\n{result.stderr}", err=True)
+            raise typer.Exit(result.return_code or 1)
+    typer.echo("[remote] swapfile created and enabled (fstab entry added)")
+
+
 def _run_remote(
     repo_root: Path,
     *,
@@ -411,6 +442,12 @@ def _run_remote(
         verbosity=verbosity,
         debug=debug,
     )
+    if cleanup == "full-cleanup":
+        typer.echo(
+            "[remote] note: full-cleanup keeps the swapfile (if the swap-guard created "
+            "one); remove /swapfile and its fstab line manually if not needed",
+            err=True,
+        )
     with FabricRemote(
         resolved_host,
         user=resolved_user,
@@ -418,6 +455,7 @@ def _run_remote(
         key_filename=str(key_path) if resolved_pkey else None,
         password=resolved_password,
     ) as remote:
+        _swap_guard(remote)
         executor = RemoteExecutor(remote, cleanup=cleanup)
         rc = executor.deploy(request, extra_vars=extra_vars)
     raise typer.Exit(rc)
@@ -433,6 +471,10 @@ def _preview_remote(
 ) -> None:
     """Remote dry-run: show the plan without connecting anywhere."""
     typer.echo(f"[preview] remote deploy to {host or '<host>'}")
+    typer.echo(
+        "[preview] swap-guard: detect RAM/swap; if RAM < 1024 MB and no swap — "
+        "offer an opt-in 1G /swapfile"
+    )
     for command in bootstrap_commands():
         typer.echo(f"[preview] $ {command}")
     typer.echo("[preview] upload tarball with (allowlist):")

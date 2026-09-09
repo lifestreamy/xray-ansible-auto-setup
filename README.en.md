@@ -58,7 +58,7 @@ But if I missed something, something broke for you, it doesn't start at all, or 
 
 ## Quick start
 
-Parameters are optional: the client can be run with no arguments at all — `xrayvpn deploy` interactively asks for the execution mode and the VPS IP, then requests the password with hidden input. The minimal case — just the VPS IP.
+Parameters are optional: the client can be run with no arguments at all — `xrayvpn deploy` interactively asks for the execution mode (default `remote`) and the VPS IP, then requests the password with hidden input. The minimal case — just the VPS IP.
 
 You can run it with one of three clients, or with none:
 

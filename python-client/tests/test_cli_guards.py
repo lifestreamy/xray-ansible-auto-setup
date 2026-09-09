@@ -52,3 +52,12 @@ def test_local_missing_venv_reported_as_guard_error(
     assert "error:" in out
     assert "setup_test_env" in out
     assert "Traceback" not in out
+
+
+def test_default_execution_is_remote() -> None:
+    """No flag + non-interactive stdin must resolve to remote (never silent local)."""
+    from xrayvpn.cli.main import _resolve_execution
+
+    assert _resolve_execution(None) == "remote"
+    assert _resolve_execution("local") == "local"
+    assert _resolve_execution("remote") == "remote"

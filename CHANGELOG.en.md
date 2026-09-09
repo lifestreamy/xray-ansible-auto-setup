@@ -14,6 +14,12 @@ Format:
 ## [Unreleased]
 
 ### Changed
+- **Breaking**: `xrayvpn deploy` now defaults to `--execution remote` (was `local`): a no-argument
+  run provisions a remote VPS (asks for the IP and the password); local mode requires the explicit
+  `--execution local`.
+- Remote deploy: low-memory guard — with < 1024 MB RAM and no active swap the client offers to
+  create a 1 GB `/swapfile` (explicit opt-in prompt; an existing swap/fstab configuration is never
+  touched).
 - The role no longer installs `ufw`: the allow rule for `xray_port`/tcp is added only when `ufw`
   already exists on the server. The `xray_manage_firewall` variable and CLI flag renamed to
   `xray_manage_ufw` / `--manage-ufw/--no-ufw`.
