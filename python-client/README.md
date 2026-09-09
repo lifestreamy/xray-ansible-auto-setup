@@ -27,6 +27,18 @@ uv run --project python-client xrayvpn --help
 развертывание; окно держится открытым до Enter, ошибки и код возврата видны явно (имя через
 дефис обязательно — `xrayvpn.pyw` рядом с пакетом перехватывал бы `import xrayvpn` на Windows).
 
+### Команда `xrayvpn` в PATH
+
+Чтобы вводить `xrayvpn` в любом терминале без префикса `uv run`, из корня репозитория:
+
+```bash
+uv tool install --editable python-client
+```
+
+Установка editable — изменения кода в репозитории применяются сразу. Запускать из папки
+репозитория: клиент ищет `deploy.yml` и `config/settings.yml` вверх от текущей директории.
+Удаление — `uv tool uninstall xrayvpn-client`.
+
 ## Две схемы исполнения
 
 - **remote** (`--execution remote`) — клиент сам поднимает окружение на VPS по SSH:

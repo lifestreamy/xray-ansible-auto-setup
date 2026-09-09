@@ -84,6 +84,8 @@ uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 
 uv run --project python-client xrayvpn deploy --execution remote --use-inventory --no-warp
 ```
 
+Хотите голый `xrayvpn` в PATH без префикса `uv run` — `uv tool install --editable python-client` из корня репозитория (подробности — [python-client/README.md](../python-client/README.md)).
+
 Сгенерированный локальный inventory `.xrayvpn-inventory.yml` (gitignored) содержит только переданные override'ы; остальное по-прежнему берётся из `config/settings.yml`. В удалённом режиме inventory собирается на самом сервере, а личный `inventory.yml` на него не загружается никогда.
 
 Альтернативные shell-клиенты (`shell-clients/`) принимают только параметры подключения плюс cleanup и verbosity — подробности в их `--help`.

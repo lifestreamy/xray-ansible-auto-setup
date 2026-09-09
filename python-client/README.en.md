@@ -27,6 +27,18 @@ On Windows you can skip flags entirely: double-clicking `xrayvpn-deploy.pyw` (En
 open until Enter and failures show an explicit message and exit code (the hyphen in the name is
 mandatory — a plain `xrayvpn.pyw` next to the package would hijack `import xrayvpn` on Windows).
 
+### The `xrayvpn` command on PATH
+
+To type `xrayvpn` in any terminal without the `uv run` prefix, from the repository root:
+
+```bash
+uv tool install --editable python-client
+```
+
+The install is editable — repository code changes apply immediately. Run it from the repository
+folder: the client locates `deploy.yml` and `config/settings.yml` by walking up from the current
+directory. Remove with `uv tool uninstall xrayvpn-client`.
+
 ## Two execution models
 
 - **remote** (`--execution remote`) — the client bootstraps the VPS over SSH itself:

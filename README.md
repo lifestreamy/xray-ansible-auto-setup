@@ -89,6 +89,8 @@ uv run --project python-client xrayvpn deploy --execution remote --use-inventory
 
 Нет `uv`? Ставится одной командой: Windows — `powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"`, Linux/macOS — `curl -LsSf https://astral.sh/uv/install.sh | sh`.
 
+Хотите вводить `xrayvpn` без префикса `uv run`? Установите команду в PATH: `uv tool install --editable python-client` из корня репозитория; запускать из папки репозитория (подробности — [`python-client/README.md`](python-client/README.md)).
+
 Остальное (`--pkey`, локальный режим, сценарии клиента) — в [`python-client/README.md`](python-client/README.md).
 
 </details>
