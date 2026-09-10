@@ -171,11 +171,20 @@ def help_text() -> str:
     )
 
 
-def start(dispatch: Callable[[list[str]], int], *, version: str = __version__) -> int:
+def start(
+    dispatch: Callable[[list[str]], int],
+    *,
+    version: str = __version__,
+    update_hint: Callable[[], str | None] | None = None,
+) -> int:
     """Session loop; the process exit code is the last dispatched command's rc."""
     if not i18n.is_ru() and locale_suggests_ru():
         set_session_lang("ru")
     print(welcome_screen(version))
+    if update_hint is not None:
+        hint = update_hint()
+        if hint:
+            print(hint)
     last_rc = 0
     while True:
         try:

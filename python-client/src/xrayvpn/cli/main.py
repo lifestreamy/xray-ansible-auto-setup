@@ -27,7 +27,7 @@ import typer
 
 from xrayvpn import __version__, i18n
 from xrayvpn.cli import l10n_typer, prompts, repl
-from xrayvpn.core import runtime_paths, wsl
+from xrayvpn.core import runtime_paths, update_check, wsl
 from xrayvpn.core.config import find_repo_root, load_settings, merge_overrides
 from xrayvpn.core.execution.base import DeployRequest
 from xrayvpn.core.execution.local import DEFAULT_WSL_VENV, LocalExecutor, build_ssh_inventory_vars
@@ -83,7 +83,14 @@ app = typer.Typer(
 def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"xrayvpn {__version__}")
+        hint = _update_hint()
+        if hint:
+            typer.echo(hint)
         raise typer.Exit()
+
+
+def _update_hint() -> str | None:
+    return update_check.banner_hint(packaged=runtime_paths.find_repo_dir() is None)
 
 
 @app.callback()
@@ -114,7 +121,7 @@ def main(
         i18n.set_ru(True)
     if ctx.invoked_subcommand is None:
         if repl.session_requested():
-            raise typer.Exit(repl.start(_repl_dispatch))
+            raise typer.Exit(repl.start(_repl_dispatch, update_hint=_update_hint))
         typer.echo(ctx.get_help())
         raise typer.Exit(2)
 
@@ -122,7 +129,7 @@ def main(
 @app.command("repl", hidden=True)
 def repl_command() -> None:
     """Open the interactive session (default on a TTY without arguments)."""
-    raise typer.Exit(repl.start(_repl_dispatch))
+    raise typer.Exit(repl.start(_repl_dispatch, update_hint=_update_hint))
 
 
 def _repl_dispatch(tokens: list[str]) -> int:

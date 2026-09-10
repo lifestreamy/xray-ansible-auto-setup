@@ -55,7 +55,13 @@ def _feed(lines: list):
     return fake_input
 
 
-def _run(lines: list, dispatch=None) -> tuple[int, list[list[str]], str]:
+def _run(
+    lines: list,
+    dispatch=None,
+    *,
+    locale_ru: bool = False,
+    update_hint=None,
+) -> tuple[int, list[list[str]], str]:
     calls: list[list[str]] = []
 
     def record(tokens: list[str]) -> int:
@@ -65,8 +71,12 @@ def _run(lines: list, dispatch=None) -> tuple[int, list[list[str]], str]:
         return 7 if (tokens and tokens[-1] == "--boom") else 0
 
     buffer = io.StringIO()
-    with mock.patch.object(builtins, "input", _feed(lines)), redirect_stdout(buffer):
-        rc = start(dispatch or record, version="9.9.9")
+    with (
+        mock.patch.object(builtins, "input", _feed(lines)),
+        mock.patch.object(repl_mod, "locale_suggests_ru", lambda: locale_ru),
+        redirect_stdout(buffer),
+    ):
+        rc = start(dispatch or record, version="9.9.9", update_hint=update_hint)
     return rc, calls, buffer.getvalue()
 
 
@@ -214,10 +224,20 @@ def test_unknown_lang_prints_usage() -> None:
         assert "lang ru|en" in out
 
 
-def test_start_applies_ru_when_locale_suggests(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_update_hint_printed_under_banner() -> None:
+    _, _, out = _run(["exit"], update_hint=lambda: "UPDATE-HINT")
+    assert "UPDATE-HINT" in out
+    assert out.index("Just start:") < out.index("UPDATE-HINT")
+
+
+def test_no_hint_without_provider() -> None:
+    _, _, out = _run(["exit"])
+    assert "UPDATE-HINT" not in out
+
+
+def test_start_applies_ru_when_locale_suggests() -> None:
     with Restore():
-        monkeypatch.setattr(repl_mod, "locale_suggests_ru", lambda: True)
-        _, _, out = _run(["exit"])
+        _, _, out = _run(["exit"], locale_ru=True)
         assert "Просто начни:" in out
         assert i18n.is_ru()
 
@@ -276,14 +296,14 @@ def test_bare_invocation_non_tty_help_exit2_pinned(monkeypatch: pytest.MonkeyPat
 
 def test_bare_invocation_tty_opens_session(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(prompts, "is_interactive", lambda: True)
-    monkeypatch.setattr(repl_mod, "start", lambda dispatch, *, version=None: 5)
+    monkeypatch.setattr(repl_mod, "start", lambda dispatch, **kw: 5)
     result = runner.invoke(main_mod.app, [])
     assert result.exit_code == 5
 
 
 def test_repl_command_opens_without_tty(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(prompts, "is_interactive", lambda: False)
-    monkeypatch.setattr(repl_mod, "start", lambda dispatch, *, version=None: 9)
+    monkeypatch.setattr(repl_mod, "start", lambda dispatch, **kw: 9)
     result = runner.invoke(main_mod.app, ["repl"])
     assert result.exit_code == 9
 
@@ -311,6 +331,6 @@ def test_flag_invocations_do_not_open_session(monkeypatch: pytest.MonkeyPatch) -
         raise AssertionError("REPL must not intercept non-command runs")
 
     monkeypatch.setattr(prompts, "is_interactive", lambda: True)
-    monkeypatch.setattr(repl_mod, "start", lambda dispatch, *, version=None: explode())
+    monkeypatch.setattr(repl_mod, "start", lambda dispatch, **kw: explode())
     assert runner.invoke(main_mod.app, ["--version"]).exit_code == 0
     assert runner.invoke(main_mod.app, ["--ru", "--version"]).exit_code == 0
