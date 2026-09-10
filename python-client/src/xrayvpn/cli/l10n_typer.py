@@ -1,10 +1,12 @@
 """Russian translations for Typer/Click built-in strings (typer 0.27.x).
 
 Typer builds `--help` at import time and hard-codes its built-ins in
-English. `apply_ru()` patches the finite set of user-visible strings once
-per process; it must run before the app is created (see `i18n.preinit`).
-The dependency is pinned to typer <0.28: the patches touch private
-internals, and the pin plus tests/test_i18n.py bound the drift.
+English. `apply_ru()` patches the finite set of user-visible strings;
+`revert_ru()` restores the saved originals (idempotent pair, runtime-
+switchable for the REPL session — already-built help options keep the
+language chosen at process start). The dependency is pinned to typer
+<0.28: the patches touch private internals, and the pin plus
+tests/test_i18n.py bound the drift.
 
 Reachability on the current CLI surface — live and test-guarded: panel
 titles, RICH_HELP, DEFAULT_STRING, the Usage prefix, the help-option text,
@@ -20,7 +22,7 @@ from __future__ import annotations
 
 import re
 
-_PATCHED = False
+_BACKUP: list[tuple[object, str, object]] = []
 
 _EXTRA_ARGS = re.compile(r"^Got unexpected extra argument\(s\) \((?P<args>.*)\)$")
 _REQUIRES_ARG = re.compile(
@@ -75,25 +77,32 @@ def translate_message(message: str) -> str:
     return message
 
 
+def _set(target: object, name: str, value: object) -> None:
+    _BACKUP.append((target, name, getattr(target, name)))
+    setattr(target, name, value)
+
+
 def apply_ru() -> None:
-    global _PATCHED
-    if _PATCHED:
+    if _BACKUP:
         return
-    _PATCHED = True
 
     from typer import rich_utils
     from typer._click import decorators as click_decorators
     from typer._click import exceptions as click_exceptions
     from typer._click import formatting as click_formatting
 
-    rich_utils.ARGUMENTS_PANEL_TITLE = "Аргументы"
-    rich_utils.OPTIONS_PANEL_TITLE = "Опции"
-    rich_utils.COMMANDS_PANEL_TITLE = "Команды"
-    rich_utils.ERRORS_PANEL_TITLE = "Ошибка"
-    rich_utils.ABORTED_TEXT = "Прервано."
-    rich_utils.DEFAULT_STRING = "[по умолчанию: {}]"
-    rich_utils.REQUIRED_LONG_STRING = "[обязательно]"
-    rich_utils.RICH_HELP = "Попробуйте [blue]'{command_path} {help_option}'[/] для справки."
+    _set(rich_utils, "ARGUMENTS_PANEL_TITLE", "Аргументы")
+    _set(rich_utils, "OPTIONS_PANEL_TITLE", "Опции")
+    _set(rich_utils, "COMMANDS_PANEL_TITLE", "Команды")
+    _set(rich_utils, "ERRORS_PANEL_TITLE", "Ошибка")
+    _set(rich_utils, "ABORTED_TEXT", "Прервано.")
+    _set(rich_utils, "DEFAULT_STRING", "[по умолчанию: {}]")
+    _set(rich_utils, "REQUIRED_LONG_STRING", "[обязательно]")
+    _set(
+        rich_utils,
+        "RICH_HELP",
+        "Попробуйте [blue]'{command_path} {help_option}'[/] для справки.",
+    )
 
     original_write_usage = click_formatting.HelpFormatter.write_usage
 
@@ -102,7 +111,7 @@ def apply_ru() -> None:
             prefix = "Использование: "
         original_write_usage(self, prog, args, prefix)
 
-    click_formatting.HelpFormatter.write_usage = write_usage
+    _set(click_formatting.HelpFormatter, "write_usage", write_usage)
 
     original_help_option = click_decorators.help_option
 
@@ -116,7 +125,7 @@ def apply_ru() -> None:
 
         return apply
 
-    click_decorators.help_option = help_option
+    _set(click_decorators, "help_option", help_option)
 
     def click_exception_show(self, file=None):  # type: ignore[no-untyped-def]
         if file is None:
@@ -125,7 +134,7 @@ def apply_ru() -> None:
             f"Ошибка: {self.format_message()}", file=file, color=self.show_color
         )
 
-    click_exceptions.ClickException.show = click_exception_show
+    _set(click_exceptions.ClickException, "show", click_exception_show)
 
     def usage_error_show(self, file=None):  # type: ignore[no-untyped-def]
         if file is None:
@@ -145,12 +154,12 @@ def apply_ru() -> None:
             f"Ошибка: {self.format_message()}", file=file, color=color
         )
 
-    click_exceptions.UsageError.show = usage_error_show
+    _set(click_exceptions.UsageError, "show", usage_error_show)
 
     def usage_error_format_message(self):  # type: ignore[no-untyped-def]
         return translate_message(self.message)
 
-    click_exceptions.UsageError.format_message = usage_error_format_message
+    _set(click_exceptions.UsageError, "format_message", usage_error_format_message)
 
     def bad_parameter_format_message(self):  # type: ignore[no-untyped-def]
         if self.param_hint is not None:
@@ -162,7 +171,7 @@ def apply_ru() -> None:
         hint = click_exceptions._join_param_hints(param_hint)
         return f"Неверное значение для {hint}: {translate_message(self.message)}"
 
-    click_exceptions.BadParameter.format_message = bad_parameter_format_message
+    _set(click_exceptions.BadParameter, "format_message", bad_parameter_format_message)
 
     def missing_parameter_format_message(self):  # type: ignore[no-untyped-def]
         if self.param_hint is not None:
@@ -192,7 +201,9 @@ def apply_ru() -> None:
         }.get(param_type, f"Отсутствует {param_type}")
         return f"{missing}{param_hint}.{msg}"
 
-    click_exceptions.MissingParameter.format_message = missing_parameter_format_message
+    _set(
+        click_exceptions.MissingParameter, "format_message", missing_parameter_format_message
+    )
 
     def no_such_option_format_message(self):  # type: ignore[no-untyped-def]
         base = f"Нет такой опции: {self.option_name}"
@@ -201,9 +212,16 @@ def apply_ru() -> None:
         possibility_str = ", ".join(sorted(self.possibilities))
         return f"{base} (Возможные варианты: {possibility_str})"
 
-    click_exceptions.NoSuchOption.format_message = no_such_option_format_message
+    _set(click_exceptions.NoSuchOption, "format_message", no_such_option_format_message)
 
     def file_error_format_message(self):  # type: ignore[no-untyped-def]
         return f"Не удалось открыть файл {self.ui_filename!r}: {self.message}"
 
-    click_exceptions.FileError.format_message = file_error_format_message
+    _set(click_exceptions.FileError, "format_message", file_error_format_message)
+
+
+def revert_ru() -> None:
+    """Undo every patch made by the last apply_ru(); no-op when unpatched."""
+    while _BACKUP:
+        target, name, original = _BACKUP.pop()
+        setattr(target, name, original)

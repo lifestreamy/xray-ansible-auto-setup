@@ -26,7 +26,7 @@ from typing import Annotated
 import typer
 
 from xrayvpn import __version__, i18n
-from xrayvpn.cli import l10n_typer, prompts
+from xrayvpn.cli import l10n_typer, prompts, repl
 from xrayvpn.core import runtime_paths, wsl
 from xrayvpn.core.config import find_repo_root, load_settings, merge_overrides
 from xrayvpn.core.execution.base import DeployRequest
@@ -74,7 +74,8 @@ app = typer.Typer(
         "Provision an Xray VLESS + REALITY VPN server on a remote VPS.",
         "Развёртывание VPN-сервера Xray VLESS + REALITY на удалённом VPS.",
     ),
-    no_args_is_help=True,
+    no_args_is_help=False,
+    invoke_without_command=True,
     add_completion=False,
 )
 
@@ -87,6 +88,7 @@ def _version_callback(value: bool) -> None:
 
 @app.callback()
 def main(
+    ctx: typer.Context,
     version: Annotated[
         bool,
         typer.Option(
@@ -110,6 +112,26 @@ def main(
     """xrayvpn — one client, two execution modes (local / remote)."""
     if ru:
         i18n.set_ru(True)
+    if ctx.invoked_subcommand is None:
+        if repl.session_requested():
+            raise typer.Exit(repl.start(_repl_dispatch))
+        typer.echo(ctx.get_help())
+        raise typer.Exit(2)
+
+
+@app.command("repl", hidden=True)
+def repl_command() -> None:
+    """Open the interactive session (default on a TTY without arguments)."""
+    raise typer.Exit(repl.start(_repl_dispatch))
+
+
+def _repl_dispatch(tokens: list[str]) -> int:
+    """Run one CLI line in-process; the SystemExit code is the session rc."""
+    try:
+        app(args=tokens, prog_name="xrayvpn", standalone_mode=True)
+    except SystemExit as exc:
+        return int(exc.code or 0)
+    return 0
 
 
 def _pause_before_exit() -> None:
