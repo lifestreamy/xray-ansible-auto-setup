@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import getpass
 import sys
+import traceback
 from pathlib import Path
 from typing import Annotated
 
@@ -26,7 +27,7 @@ import typer
 
 from xrayvpn import __version__, i18n
 from xrayvpn.cli import l10n_typer, prompts
-from xrayvpn.core import wsl
+from xrayvpn.core import runtime_paths, wsl
 from xrayvpn.core.config import find_repo_root, load_settings, merge_overrides
 from xrayvpn.core.execution.base import DeployRequest
 from xrayvpn.core.execution.local import DEFAULT_WSL_VENV, LocalExecutor, build_ssh_inventory_vars
@@ -109,6 +110,35 @@ def main(
     """xrayvpn — one client, two execution modes (local / remote)."""
     if ru:
         i18n.set_ru(True)
+
+
+def _pause_before_exit() -> None:
+    typer.echo(
+        i18n.t(
+            "Press Enter to close this window...",
+            "Нажмите Enter, чтобы закрыть окно...",
+        )
+    )
+    try:
+        input()
+    except (EOFError, OSError):
+        pass
+
+
+def run() -> None:
+    """Console entry; a double-clicked packaged build keeps the traceback on
+    screen instead of closing the console when the process dies."""
+    if runtime_paths.is_frozen() and len(sys.argv) <= 1:
+        try:
+            app()
+        except SystemExit:
+            raise
+        except (Exception, KeyboardInterrupt):  # noqa: BLE001
+            traceback.print_exc()
+            _pause_before_exit()
+            sys.exit(1)
+        return
+    app()
 
 
 def _resolve_execution(execution: str | None) -> str:
@@ -536,7 +566,15 @@ def deploy(
         )
         raise typer.Exit(2)
 
-    repo_root = find_repo_root()
+    if inventory is not None:
+        inventory = inventory.expanduser().resolve()
+    if pkey is not None and mode == "local":
+        pkey = pkey.expanduser().resolve()
+    if clients_dir is not None:
+        clients_dir = clients_dir.expanduser().resolve()
+
+    roots = runtime_paths.resolve_roots(find_repo=find_repo_root)
+    repo_root, workspace, payload = roots.repo, roots.workspace, roots.payload
     load_settings(repo_root)
     overrides = _collect_overrides(locals())
     verbosity = 4 if verbose else (3 if debug else 0)
@@ -545,6 +583,8 @@ def deploy(
     if mode == "remote":
         _run_remote(
             repo_root,
+            workspace=workspace,
+            payload=payload,
             overrides=overrides,
             host=host,
             user=user,
@@ -563,6 +603,7 @@ def deploy(
 
     request = DeployRequest(
         repo_root=repo_root,
+        workspace=workspace,
         overrides=overrides,
         clients_dir=clients_dir,
         dry_run=dry_run,
@@ -572,7 +613,8 @@ def deploy(
     )
     # `inventory_path` keeps the user-provided ssh inventory for local mode.
     _run_local(
-        repo_root,
+        workspace,
+        payload=payload,
         overrides=overrides,
         request=request,
         host=host,
@@ -645,6 +687,8 @@ def _swap_guard(remote: FabricRemote) -> None:
 def _run_remote(
     repo_root: Path,
     *,
+    workspace: Path,
+    payload: Path,
     overrides: dict[str, object],
     host: str | None,
     user: str,
@@ -672,16 +716,17 @@ def _run_remote(
                 err=True,
             )
         try:
-            connection, user_vars = parse_user_inventory(repo_root)
+            connection, user_vars = parse_user_inventory(workspace, example_dir=payload)
         except (RuntimeError, TypeError) as exc:
             typer.echo(i18n.t(f"error: {exc}", f"ошибка: {exc}"), err=True)
             raise typer.Exit(2) from exc
         problems = validate_connection(connection)
         if problems:
+            personal_inventory = str(workspace / runtime_paths.PERSONAL_INVENTORY_NAME)
             typer.echo(
                 i18n.t(
-                    f"error: {repo_root / 'inventory.yml'} is not ready for remote deploy:",
-                    f"ошибка: {repo_root / 'inventory.yml'} не готов к remote-деплою:",
+                    f"error: {personal_inventory} is not ready for remote deploy:",
+                    f"ошибка: {personal_inventory} не готов к remote-деплою:",
                 ),
                 err=True,
             )
@@ -784,7 +829,7 @@ def _run_remote(
             port=int(resolved_port),
             auth_desc=_auth_descriptor(resolved_pkey, resolved_password),
             overrides=overrides,
-            clients_dir=Path(clients_dir or repo_root / "downloaded-clients"),
+            clients_dir=Path(clients_dir or workspace / "downloaded-clients"),
             cleanup=cleanup,
         ),
         no_interactive=no_interactive,
@@ -792,6 +837,7 @@ def _run_remote(
 
     request = DeployRequest(
         repo_root=repo_root,
+        workspace=workspace,
         overrides=overrides,
         clients_dir=clients_dir,
         verbosity=verbosity,
@@ -874,8 +920,9 @@ def _key_exists_for_runner(pkey: str) -> bool:
 
 
 def _run_local(
-    repo_root: Path,
+    workspace: Path,
     *,
+    payload: Path,
     overrides: dict[str, object],
     request: DeployRequest,
     host: str | None,
@@ -901,16 +948,17 @@ def _run_local(
                 err=True,
             )
         try:
-            connection, user_vars = parse_user_inventory(repo_root)
+            connection, user_vars = parse_user_inventory(workspace, example_dir=payload)
         except (RuntimeError, TypeError) as exc:
             typer.echo(i18n.t(f"error: {exc}", f"ошибка: {exc}"), err=True)
             raise typer.Exit(2) from exc
         problems = validate_connection(connection)
         if problems:
+            personal_inventory = str(workspace / runtime_paths.PERSONAL_INVENTORY_NAME)
             typer.echo(
                 i18n.t(
-                    f"error: {repo_root / 'inventory.yml'} is not ready for remote deploy:",
-                    f"ошибка: {repo_root / 'inventory.yml'} не готов к remote-деплою:",
+                    f"error: {personal_inventory} is not ready for remote deploy:",
+                    f"ошибка: {personal_inventory} не готов к remote-деплою:",
                 ),
                 err=True,
             )
@@ -1025,7 +1073,7 @@ def _run_local(
                 }
             ),
         )
-        temp_inventory = write_inventory(repo_root, content)
+        temp_inventory = write_inventory(workspace, content)
         temp_inventory.chmod(0o600)
         inventory = temp_inventory
 

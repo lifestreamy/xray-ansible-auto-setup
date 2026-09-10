@@ -22,6 +22,7 @@ class DeployRequest:
     """Everything an executor needs to run the deploy playbook."""
 
     repo_root: Path
+    workspace: Path | None = None
     overrides: dict[str, Any] = field(default_factory=dict)
     clients_dir: Path | None = None
     dry_run: bool = False
@@ -29,8 +30,11 @@ class DeployRequest:
     debug: bool = False
     inventory_path: Path | None = None
 
+    def resolved_workspace(self) -> Path:
+        return self.workspace or self.repo_root
+
     def resolved_clients_dir(self) -> Path:
-        return self.clients_dir or (self.repo_root / "downloaded-clients")
+        return self.clients_dir or (self.resolved_workspace() / "downloaded-clients")
 
 
 class Executor(Protocol):

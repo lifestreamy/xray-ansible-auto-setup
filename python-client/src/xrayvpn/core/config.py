@@ -7,16 +7,11 @@ from typing import Any
 
 import yaml
 
+from xrayvpn.core.runtime_paths import require_repo_root
+
 SETTINGS_FILE = "config/settings.yml"
 
-
-def find_repo_root(start: Path | None = None) -> Path:
-    """Walk up from `start` (default: cwd) to the repo root (the dir with deploy.yml)."""
-    current = (start or Path.cwd()).resolve()
-    for candidate in (current, *current.parents):
-        if (candidate / "deploy.yml").is_file():
-            return candidate
-    raise RuntimeError(f"repository root not found (no deploy.yml) from {current}")
+find_repo_root = require_repo_root
 
 
 def load_settings(repo_root: Path) -> dict[str, Any]:

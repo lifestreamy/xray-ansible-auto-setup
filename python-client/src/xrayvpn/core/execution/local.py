@@ -19,7 +19,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from xrayvpn.core import wsl
+from xrayvpn.core import runtime_paths, wsl
 from xrayvpn.core.execution.base import DeployRequest, extra_var_args
 
 DEFAULT_WSL_VENV = "~/xray-venv"
@@ -33,6 +33,17 @@ VENV_HINT = (
     "(makes ~/xray-venv with ansible-core; password auth additionally needs "
     "sshpass) — or use --execution remote instead"
 )
+VENV_HINT_BINARY = (
+    "install ansible-core on this machine (pipx install ansible-core, "
+    "pip install ansible-core, a distro package, or WSL; password auth "
+    "additionally needs sshpass) — or use --execution remote instead"
+)
+
+
+def venv_hint(*, frozen: bool | None = None) -> str:
+    """Venv-repair hint for the current install shape."""
+    is_packaged = runtime_paths.is_frozen() if frozen is None else frozen
+    return VENV_HINT_BINARY if is_packaged else VENV_HINT
 SSHPASS_HINT = (
     "local execution with a password needs sshpass on the control node "
     "(`sudo apt-get install sshpass` in WSL / your package manager elsewhere) "
@@ -178,14 +189,14 @@ class LocalExecutor:
             binary = self.venv_binary(wsl_home=self._wsl_home)
             if not wsl.path_exists(binary, distro=self.wsl_distro):
                 raise RuntimeError(
-                    f"ansible-playbook not found in WSL at {binary}; {VENV_HINT}"
+                    f"ansible-playbook not found in WSL at {binary}; {venv_hint()}"
                 )
             if password_auth and not wsl.command_exists("sshpass", distro=self.wsl_distro):
                 raise RuntimeError(SSHPASS_HINT)
             return
         if self._native_binary() is None:
             raise RuntimeError(
-                f"ansible-playbook not found ({self.wsl_venv}/bin or PATH); {VENV_HINT}"
+                f"ansible-playbook not found ({self.wsl_venv}/bin or PATH); {venv_hint()}"
             )
         if password_auth and shutil.which("sshpass") is None:
             raise RuntimeError(SSHPASS_HINT)
@@ -220,7 +231,7 @@ class LocalExecutor:
     def fetch_configs(self, request: DeployRequest, inventory: Path) -> None:
         clients = request.resolved_clients_dir()
         clients.mkdir(parents=True, exist_ok=True)
-        playbook = request.repo_root / ".xrayvpn-fetch-playbook.yml"
+        playbook = request.resolved_workspace() / ".xrayvpn-fetch-playbook.yml"
         playbook.write_text(self.fetch_playbook_text(clients), encoding="utf-8")
         try:
             self.run(self.fetch_argv(inventory, playbook), request)

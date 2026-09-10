@@ -18,6 +18,11 @@ from typing import Any
 
 import yaml
 
+from xrayvpn.core.runtime_paths import (
+    PERSONAL_INVENTORY_EXAMPLE_NAME,
+    PERSONAL_INVENTORY_NAME,
+)
+
 INVENTORY_FILE = ".xrayvpn-inventory.yml"
 
 
@@ -39,9 +44,9 @@ def build_inventory(
     return yaml.safe_dump(body, sort_keys=False, allow_unicode=True)
 
 
-def write_inventory(repo_root: Path, content: str) -> Path:
-    """Persist inventory content at the repo root (file is gitignored)."""
-    path = repo_root / INVENTORY_FILE
+def write_inventory(workspace: Path, content: str) -> Path:
+    """Persist generated inventory content into the writable workspace root."""
+    path = workspace / INVENTORY_FILE
     path.write_text(content, encoding="utf-8")
     return path
 
@@ -81,16 +86,20 @@ def validate_connection(connection: dict[str, str]) -> list[str]:
     return problems
 
 
-def parse_user_inventory(repo_root: Path) -> tuple[dict[str, str], dict[str, Any]]:
+def parse_user_inventory(
+    workspace: Path, *, example_dir: Path | None = None
+) -> tuple[dict[str, str], dict[str, Any]]:
     """Read the user's personal inventory.yml (read-only; never written).
 
-    Returns (connection params, extra vars). Connection keys are the
-    ansible_* connection fields; every other host/all var is treated as a
-    playbook extra var.
+    The file lives in the writable workspace; the template shown in the
+    missing-file hint comes from `example_dir` (the payload bundle in
+    packaged mode, the workspace itself by default). Returns (connection
+    params, extra vars). Connection keys are the ansible_* connection
+    fields; every other host/all var is treated as a playbook extra var.
     """
-    path = repo_root / "inventory.yml"
+    path = workspace / PERSONAL_INVENTORY_NAME
     if not path.is_file():
-        example = repo_root / "inventory.yml.example"
+        example = (example_dir or workspace) / PERSONAL_INVENTORY_EXAMPLE_NAME
         raise RuntimeError(
             f"inventory file not found: {path}\n"
             "create it from the template and fill in ansible_host, ansible_user, "
