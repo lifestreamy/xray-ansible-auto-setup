@@ -23,9 +23,11 @@ uv run --project python-client xrayvpn --help
 
 Inside `python-client/` (after `uv sync`) both `uv run xrayvpn ...` and `python -m xrayvpn` work.
 On Windows you can skip flags entirely: double-clicking `xrayvpn-deploy.pyw` (English UI) or
-`xrayvpn-deploy-ru.pyw` (Russian UI) opens a console and runs a local deploy; the window stays
-open until Enter and failures show an explicit message and exit code (the hyphen in the name is
-mandatory — a plain `xrayvpn.pyw` next to the package would hijack `import xrayvpn` on Windows).
+`xrayvpn-deploy-ru.pyw` (Russian UI) opens a console and starts the **interactive deploy
+wizard**: the CLI asks for the execution node, the VPS host and SSH auth, prints a deploy
+plan and waits for an explicit yes — nothing runs silently. The window stays open until Enter
+and failures show an explicit message and exit code (the hyphen in the name is mandatory —
+a plain `xrayvpn.pyw` next to the package would hijack `import xrayvpn` on Windows).
 
 ### The `xrayvpn` command on PATH
 
@@ -39,52 +41,66 @@ The install is editable — repository code changes apply immediately. Run it fr
 folder: the client locates `deploy.yml` and `config/settings.yml` by walking up from the current
 directory. Remove with `uv tool uninstall xrayvpn-client`.
 
-## Two execution models
+## Where the deploy goes and where ansible runs
 
-- **remote** (`--execution remote`) — the client bootstraps the VPS over SSH itself:
-  environment setup, repo uploaded as a tarball (the server never needs GitHub), the playbook,
-  then it fetches the generated client configs.
-- **local** (`--execution local`) — the playbook runs on this machine: directly on Linux,
-  through WSL on Windows (the client finds/creates `uv` and a venv inside the distro;
-  default venv `~/xray-venv`).
+The target is **always a remote VPS**. `--execution` only picks the node where
+ansible itself runs:
+
+- **remote** (default) — the client bootstraps the VPS over SSH itself: environment
+  setup, repo uploaded as a tarball (the server never needs GitHub), the playbook on the
+  server, then it fetches the generated client configs. On a very small VPS the bootstrap
+  and apt may hit the RAM limit (a built-in swap-guard covers this).
+- **local** — the ansible control node is your own machine: directly on Linux/macOS
+  (venv/PATH, default `~/xray-venv`), through WSL on Windows. The target stays the same
+  VPS over SSH (creds: `--host/--user/--port/--pkey/--pass` flags or the personal
+  `inventory.yml` via `--use-inventory`); generated configs are pulled back with the same
+  ansible-fetch over SSH. Useful on weak VPSes where Ansible cannot run on the server
+  itself. Password auth additionally requires `sshpass`.
 - Without `--execution` the CLI asks in the terminal (default: remote).
+
+Before any real run the client prints a **deploy plan** (node, target, auth — a password
+is shown only as `******`, overrides, a warning when `--rotate` is set, where the configs
+land) and asks for consent; `--no-interactive` skips all prompts for scripts/CI (missing
+required values then fail). `--dry-run` needs no confirmation (it changes nothing).
 
 ## Examples
 
 ```bash
 # VPS by IP: the password is prompted with hidden input (or pass --pkey ~/.ssh/id_ed25519)
-uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4
+uv run --project python-client xrayvpn deploy --host 1.2.3.4
 
 # connection parameters from the personal inventory.yml
-uv run --project python-client xrayvpn deploy --execution remote --use-inventory
+uv run --project python-client xrayvpn deploy --use-inventory
 
-# local run, no WARP, no forced rotation
-uv run --project python-client xrayvpn deploy --execution local --no-warp --no-rotate
+# ansible on your own machine against the same VPS, no WARP, no forced rotation
+uv run --project python-client xrayvpn deploy --execution local --host 1.2.3.4 --no-warp --no-rotate
 
 # the remote deploy plan without connecting anywhere
-uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 --dry-run
+uv run --project python-client xrayvpn deploy --host 1.2.3.4 --dry-run
 ```
 
 ## `deploy` flags
 
-- Mode: `--execution local|remote`.
+- Execution node: `--execution remote|local` (the target is always the VPS; no flag asks, default remote).
+- Non-interactive: `--no-interactive` — no prompts and no plan confirmation (for CI/scripts).
 - Language: `--ru` — fully Russian interface (prompts, messages, errors, `--help`);
   works in any argument position, alternative — the `XRAYVPN_LANG=ru` environment variable.
 - Server overrides (otherwise taken from `config/settings.yml`): `--runtime native|docker`,
   `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`,
   `--rotate/--no-rotate` (regenerate the REALITY key and UUIDs / keep them),
   `--manage-ufw/--no-ufw`.
-- Inventory: `--inventory PATH` — local only, an existing file instead of the generated one;
-  `--use-inventory` — remote only, reads connection vars from the personal `inventory.yml`
+- Inventory: `--inventory PATH` — `--execution local` only: the ssh-inventory to run with
+  (by default `.xrayvpn-inventory.yml` is generated from flags/inventory.yml, 0600, removed after the run);
+  `--use-inventory` — reads connection vars from the personal `inventory.yml` in both nodes
   (overrides the host/key flags with a warning).
-- Connection (remote): `--host`/`-H`, `--user`/`-u` (default `root`), `--port`/`-p` (default 22),
+- Connection (the VPS target, both nodes): `--host`/`-H`, `--user`/`-u` (default `root`), `--port`/`-p` (default 22),
   `--pkey FILE` (preferred), `--pass TEXT` (plain password, worse than a key; omit both and
   it prompts, hidden).
 - Output: `--clients-dir PATH` — where client configs are saved
   (default `<repo>/downloaded-clients/`, fetched from the server's `/root/vpn-configs`).
 - Server-side cleanup (remote): by default the staging dir is removed, the venv stays;
   `--full-cleanup` removes the venv too, `--no-cleanup` leaves everything.
-- Diagnostics: `--dry-run` (local: ansible `--check`; remote: plan without connecting),
+- Diagnostics: `--dry-run` (local node: ansible `--check`; remote node: printed plan without connecting),
   `--debug` / `--verbose` (Ansible -vvv/-vvvv; mutually exclusive, as are `--pkey` with `--pass`).
 
 Full list: `xrayvpn deploy --help`.

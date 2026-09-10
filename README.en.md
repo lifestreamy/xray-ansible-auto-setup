@@ -91,7 +91,7 @@ No `uv`? One-line install: Windows — `powershell -ExecutionPolicy ByPass -c "i
 
 Want to type `xrayvpn` without the `uv run` prefix? Install the command onto PATH: `uv tool install --editable python-client` from the repository root; run it from the repository folder (details in [`python-client/README.en.md`](python-client/README.en.md)).
 
-The rest (`--pkey`, local mode, client scenarios) — in [`python-client/README.en.md`](python-client/README.en.md).
+The rest (`--pkey`, ansible node `--execution local|remote`, the deploy-plan confirmation, client scenarios) — in [`python-client/README.en.md`](python-client/README.en.md).
 
 </details>
 
@@ -236,7 +236,8 @@ These are ways to pass connection parameters. The rest of the configuration (num
 
 ## Repository layout
 
-- `python-client/` — the main client (Python, `xrayvpn` CLI): local and remote modes.
+- `python-client/` — the main client (Python, `xrayvpn` CLI): always deploys to a VPS; ansible
+  runs on the server (default) or on your own machine (`--execution local`).
 - `shell-clients/` — alternative shell clients: Bash and PowerShell (supported, but no longer developed).
 - `scripts/` — developer tooling: test environment setup and local tests.
 - `config/`, `roles/`, `deploy.yml` — the Ansible project (configuration, role, playbook entry point).

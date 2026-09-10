@@ -54,6 +54,7 @@ def _run_cli(args: list[str], env: dict[str, str] | None = None) -> str:
         timeout=120,
         check=False,
         cwd=str(CLIENT_ROOT),
+        input="",
     )
     return (result.stdout or "") + (result.stderr or "")
 
@@ -84,9 +85,24 @@ def test_default_output_stays_english() -> None:
 
 
 def test_ru_inventory_guard_translation() -> None:
-    result = runner.invoke(app, ["deploy", "--ru", "--execution", "local", "--use-inventory"])
+    result = runner.invoke(app, ["deploy", "--ru", "--inventory", "x.yml"])
     assert result.exit_code == 2
-    assert "применим только к --execution remote" in _output(result)
+    assert "применим только к --execution local" in _output(result)
+
+
+def test_confirmation_guard_error_is_russian() -> None:
+    out = _run_cli(
+        ["deploy", "--ru", "--execution", "local", "-H", "203.0.113.7",
+         "--pkey", "pyproject.toml"]
+    )
+    assert "ошибка: подтверждение требует терминала" in out
+
+
+def test_confirmation_guard_error_english_by_default() -> None:
+    out = _run_cli(
+        ["deploy", "--execution", "local", "-H", "203.0.113.7", "--pkey", "pyproject.toml"]
+    )
+    assert "confirmation needs a terminal" in out
 
 
 def test_preinit_detects_ru_in_any_argv_position() -> None:
@@ -147,14 +163,15 @@ def test_help_is_russian_with_ru_flag_after_command() -> None:
     out = _run_cli(["deploy", "--ru", "--help"])
     assert "Использование:" in out
     assert "Опции" in out
-    assert "Режим исполнения" in out
+    assert "Узел ansible" in out
     assert "Показать это сообщение и выйти." in out
+    assert "--no-interactive" in out
 
 
 def test_help_is_russian_with_ru_flag_before_command() -> None:
     out = _run_cli(["--ru", "deploy", "--help"])
     assert "Использование:" in out
-    assert "Запуск playbook развёртывания" in out
+    assert "Развёртывание VPN на VPS" in out
 
 
 def test_help_is_russian_via_lang_env() -> None:
@@ -235,7 +252,7 @@ def test_help_stays_english_by_default() -> None:
     out = _run_cli(["deploy", "--help"])
     assert "Usage:" in out
     assert "Options" in out
-    assert "Execution mode:" in out
+    assert "Ansible control node:" in out
 
 
 def test_completion_options_are_gone() -> None:

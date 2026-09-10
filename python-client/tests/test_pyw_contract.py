@@ -19,7 +19,7 @@ import pytest
 import typer.main
 
 from xrayvpn import __version__
-from xrayvpn.cli.main import EXECUTION_MODES, app
+from xrayvpn.cli.main import app
 
 CLIENT_ROOT = Path(__file__).resolve().parents[1]
 LAUNCHERS: dict[Path, bool] = {
@@ -94,11 +94,12 @@ def test_launcher_flags_exist_in_cli(path: Path) -> None:
 
 
 @pytest.mark.parametrize("path", sorted(LAUNCHERS), ids=lambda p: p.name)
-def test_launcher_execution_mode_is_valid(path: Path) -> None:
+def test_launchers_stay_interactive_and_safe(path: Path) -> None:
     command = _pyw_command(path)
-    if "--execution" in command:
-        value = command[command.index("--execution") + 1]
-        assert value in EXECUTION_MODES, f"bad --execution value: {value!r}"
+    assert command[0] == "deploy"
+    assert "--no-interactive" not in command, "double-click must never skip the plan confirmation"
+    assert "--execution" not in command, "the wizard asks; nothing may default silently"
+    assert "--rotate" not in command, "double-click may never rotate REALITY keys"
 
 
 @pytest.mark.parametrize("path", sorted(LAUNCHERS), ids=lambda p: p.name)

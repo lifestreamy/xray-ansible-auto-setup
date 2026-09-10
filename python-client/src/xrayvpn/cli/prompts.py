@@ -5,16 +5,18 @@ from __future__ import annotations
 import sys
 
 
-def _interactive() -> bool:
+def is_interactive() -> bool:
     try:
         return sys.stdin.isatty()
     except OSError:
         return False
 
 
+
+
 def select(title: str, choices: list[str], default: str | None = None) -> str | None:
     """Arrow-key selection inside the terminal; returns `default` when not interactive."""
-    if not _interactive():
+    if not is_interactive():
         return default
     try:
         from InquirerPy import inquirer
@@ -28,7 +30,7 @@ def select(title: str, choices: list[str], default: str | None = None) -> str | 
 
 def confirm(title: str, default: bool = False) -> bool:
     """Yes/no prompt; returns `default` when not interactive."""
-    if not _interactive():
+    if not is_interactive():
         return default
     try:
         from InquirerPy import inquirer
@@ -40,7 +42,7 @@ def confirm(title: str, default: bool = False) -> bool:
 
 def text(title: str, default: str | None = None) -> str | None:
     """Prompt for a text value; returns `default` when not interactive."""
-    if not _interactive():
+    if not is_interactive():
         return default
     try:
         from InquirerPy import inquirer

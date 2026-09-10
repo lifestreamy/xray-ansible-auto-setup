@@ -1,10 +1,12 @@
-"""Двойной клик: `xrayvpn deploy` в локальном режиме (русский интерфейс).
+"""Двойной клик: интерактивный `xrayvpn deploy` (русский интерфейс).
 
-Открывает консоль, выполняет команду из COMMAND ниже и держит окно открытым
-до нажатия Enter. Английский вариант — рядом: `xrayvpn-deploy.pyw`. Дефис в
-имени обязателен: обычный `xrayvpn.pyw` перехватывал бы `import xrayvpn` на
-Windows. Синхронность COMMAND с `xrayvpn deploy --help` контролирует
-tests/test_pyw_contract.py (статически и реальным запуском обоих файлов).
+Открывает консоль и запускает мастер деплоя: CLI спросит узел исполнения,
+хост VPS и SSH-аутентификацию, покажет план и перед любыми действиями
+дождётся явного согласия. Английский вариант — рядом: `xrayvpn-deploy.pyw`.
+Дефис в имени обязателен: обычный `xrayvpn.pyw` перехватывал бы
+`import xrayvpn` на Windows. Синхронность COMMAND с `xrayvpn deploy --help`
+контролирует tests/test_pyw_contract.py (статически и реальным запуском
+обоих файлов).
 """
 
 from __future__ import annotations
@@ -15,8 +17,6 @@ from _pywlaunch import run
 
 COMMAND: list[str] = [
     "deploy",
-    "--execution", "local",
-    "--no-rotate",
     "--verbose",
     "--ru",
 ]

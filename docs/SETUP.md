@@ -66,10 +66,11 @@
 
 Основной клиент — `python-client/` (команда `xrayvpn deploy`). Принимает:
 
-- `--execution {local|remote}` — режим исполнения (по умолчанию `remote`; без флага — интерактивный выбор, дефолт `remote`).
-- Малая память VPS: при RAM < 1024 МБ и отсутствии swap клиент перед деплоем предложит создать swap-файл 1 ГБ (явный opt-in-вопрос; существующие настройки swap не трогаются).
-- Параметры подключения (remote): `--host/-H`, `--user/-u` (root), `--port/-p` (22), `--pkey` / `--pass` (взаимоисключающие; если ни один не задан — скрытый запрос пароля), `--use-inventory` (параметры и vars из личного `inventory.yml`).
-- `--inventory <path>` — готовый inventory-файл вместо генерируемого (только local-режим; в remote используйте `--use-inventory`).
+- `--execution {remote|local}` — узел, где выполняется ansible (цель всегда VPS): по умолчанию `remote` (плейбук на сервере); `local` — прогон с вашей машины против VPS по SSH (Windows — через WSL; пригодится на совсем слабых VPS). Без флага — интерактивный выбор, дефолт `remote`.
+- Подтверждение: перед реальным прогодом печатается план (узел, цель, аутентификация — пароль показывается как `******`, override'ы, предупреждение при `--rotate`, папка конфигов) и запрашивается согласие; `--no-interactive` — без вопросов и подтверждения (CI/скрипты).
+- Малая память VPS: при RAM < 1024 МБ и отсутствии swap клиент перед деплоем предложит создать swap-файл 1 ГБ (явный opt-in-вопрос; существующие настройки swap не трогаются). Если и с swap тяжело — гоняйте ansible через `--execution local`.
+- Параметры подключения (цель-VPS, оба узла): `--host/-H`, `--user/-u` (root), `--port/-p` (22), `--pkey` / `--pass` (взаимоисключающие; если ни один не задан — скрытый запрос пароля), `--use-inventory` (параметры и vars из личного `inventory.yml`).
+- `--inventory <path>` — ssh-inventory для `--execution local` вместо генерируемого (в remote используйте `--use-inventory`).
 - `--clients-dir <path>` — куда сохранять клиентские конфиги (по умолчанию `downloaded-clients/`).
 - `--cleanup` (по умолчанию) / `--full-cleanup` / `--no-cleanup` — удаление временных данных на сервере после запуска. `--cleanup` оставляет venv-кэш для следующего запуска, `--full-cleanup` удаляет и его.
 - Override'ы: `--runtime {native|docker}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-ufw/--no-ufw`, `--ru` (полностью русскоязычный интерфейс, включая `--help`; альтернатива — `XRAYVPN_LANG=ru`).
@@ -79,14 +80,14 @@
 Примеры:
 
 ```bash
-uv run --project python-client xrayvpn deploy --execution local --no-warp
+uv run --project python-client xrayvpn deploy --execution local --host 1.2.3.4 --no-warp
 uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 --pkey ~/.ssh/id_rsa --runtime native
-uv run --project python-client xrayvpn deploy --execution remote --use-inventory --no-warp
+uv run --project python-client xrayvpn deploy --use-inventory --no-warp
 ```
 
 Хотите голый `xrayvpn` в PATH без префикса `uv run` — `uv tool install --editable python-client` из корня репозитория (подробности — [python-client/README.md](../python-client/README.md)).
 
-Сгенерированный локальный inventory `.xrayvpn-inventory.yml` (gitignored) содержит только переданные override'ы; остальное по-прежнему берётся из `config/settings.yml`. В удалённом режиме inventory собирается на самом сервере, а личный `inventory.yml` на него не загружается никогда.
+В режиме local для прогона генерируется ssh-inventory `.xrayvpn-inventory.yml` (gitignored, права 0600, удаляется после прогона) с параметрами VPS из флагов/личного inventory и переданными override'ами; остальное по-прежнему берётся из `config/settings.yml`. В режиме remote inventory собирается на самом сервере, а личный `inventory.yml` на него не загружается никогда.
 
 Альтернативные shell-клиенты (`shell-clients/`) принимают только параметры подключения плюс cleanup и verbosity — подробности в их `--help`.
 

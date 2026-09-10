@@ -66,10 +66,11 @@ To switch runtime, change `xray_runtime` in `config/settings.yml` and rerun the 
 
 The main client is `python-client/` (the `xrayvpn deploy` command). It accepts:
 
-- `--execution {local|remote}` — execution mode (default `remote`; without the flag — interactive choice, defaulting to `remote`).
-- Low-memory VPS: with < 1024 MB RAM and no swap, the client offers to create a 1 GB swapfile before the deploy (explicit opt-in prompt; an existing swap configuration is never touched).
-- Connection parameters (remote): `--host/-H`, `--user/-u` (root), `--port/-p` (22), `--pkey` / `--pass` (mutually exclusive; if neither is set — hidden password prompt), `--use-inventory` (connection params and vars from your personal `inventory.yml`).
-- `--inventory <path>` — use an existing inventory file instead of the generated one (local mode only; in remote mode use `--use-inventory`).
+- `--execution {remote|local}` — the node where ansible runs (the target is always the VPS): default `remote` (playbook on the server); `local` — run it from your own machine against the VPS over SSH (through WSL on Windows; useful on very weak VPSes). Without the flag — interactive choice, default `remote`.
+- Confirmation: before any real run the client prints a deploy plan (node, target, auth — a password shown only as `******`, overrides, a warning when `--rotate` is on, configs destination) and asks for consent; `--no-interactive` — no prompts and no confirmation (CI/scripts).
+- Low-memory VPS: with < 1024 MB RAM and no swap, the client offers to create a 1 GB swapfile before the deploy (explicit opt-in prompt; an existing swap configuration is never touched). If it is still too heavy — run ansible via `--execution local`.
+- Connection parameters (the VPS target, both nodes): `--host/-H`, `--user/-u` (root), `--port/-p` (22), `--pkey` / `--pass` (mutually exclusive; if neither is set — hidden password prompt), `--use-inventory` (connection params and vars from your personal `inventory.yml`).
+- `--inventory <path>` — ssh-inventory to use with `--execution local` instead of the generated one (in remote mode use `--use-inventory`).
 - `--clients-dir <path>` — where generated client configs are saved (default `downloaded-clients/`).
 - `--cleanup` (default) / `--full-cleanup` / `--no-cleanup` — remove server-side temporary data after the run. `--cleanup` keeps the venv cache for the next run, `--full-cleanup` removes it too.
 - Overrides: `--runtime {native|docker}`, `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`, `--rotate/--no-rotate`, `--manage-ufw/--no-ufw`, `--ru` (fully Russian interface, `--help` included; alternative — `XRAYVPN_LANG=ru`).
@@ -79,14 +80,14 @@ The main client is `python-client/` (the `xrayvpn deploy` command). It accepts:
 Examples:
 
 ```bash
-uv run --project python-client xrayvpn deploy --execution local --no-warp
+uv run --project python-client xrayvpn deploy --execution local --host 1.2.3.4 --no-warp
 uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 --pkey ~/.ssh/id_rsa --runtime native
-uv run --project python-client xrayvpn deploy --execution remote --use-inventory --no-warp
+uv run --project python-client xrayvpn deploy --use-inventory --no-warp
 ```
 
 Want plain `xrayvpn` on PATH without the `uv run` prefix — `uv tool install --editable python-client` from the repository root (details in [python-client/README.en.md](../python-client/README.en.md)).
 
-The generated local inventory `.xrayvpn-inventory.yml` (gitignored) contains only the passed overrides; everything else still comes from `config/settings.yml`. In remote mode the inventory is assembled on the server itself, and your personal `inventory.yml` is never uploaded.
+In local mode the run uses a generated ssh-inventory `.xrayvpn-inventory.yml` (gitignored, mode 0600, removed after the run) holding the VPS parameters from flags/personal inventory plus passed overrides; everything else still comes from `config/settings.yml`. In remote mode the inventory is assembled on the server itself, and your personal `inventory.yml` is never uploaded.
 
 The alternative shell clients (`shell-clients/`) accept only connection parameters plus cleanup and verbosity — see their `--help` for details.
 

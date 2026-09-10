@@ -91,7 +91,7 @@ uv run --project python-client xrayvpn deploy --execution remote --use-inventory
 
 Хотите вводить `xrayvpn` без префикса `uv run`? Установите команду в PATH: `uv tool install --editable python-client` из корня репозитория; запускать из папки репозитория (подробности — [`python-client/README.md`](python-client/README.md)).
 
-Остальное (`--pkey`, локальный режим, сценарии клиента) — в [`python-client/README.md`](python-client/README.md).
+Остальное (`--pkey`, узел выполнения ansible `--execution local|remote`, confirmation-план, сценарии клиента) — в [`python-client/README.md`](python-client/README.md).
 
 </details>
 
@@ -236,7 +236,8 @@ CLI-режим (`-H` без `--use-inventory`) файл `inventory.yml` не и�
 
 ## Структура репозитория
 
-- `python-client/` — основной клиент (Python, CLI `xrayvpn`): локальный и удалённый режимы.
+- `python-client/` — основной клиент (Python, CLI `xrayvpn`): деплой всегда на VPS; ansible
+  выполняется на сервере (default) или на вашей машине (`--execution local`).
 - `shell-clients/` — альтернативные shell-клиенты: Bash и PowerShell (поддерживаются, но не развиваются).
 - `scripts/` — инструменты разработчика: настройка тестового окружения и локальные тесты.
 - `config/`, `roles/`, `deploy.yml` — Ansible-проект (конфигурация, роль, точка входа playbook).

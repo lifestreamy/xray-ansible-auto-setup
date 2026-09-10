@@ -1,9 +1,11 @@
 """Inventory generation (PyYAML, no regex).
 
-One builder serves both execution modes:
-- local:  `ansible_connection=local` (the playbook runs on the current host);
-- remote: generated *on the server* with `ansible_connection=local` and the
-  bootstrap venv's interpreter (inventory.yml is never uploaded — ADR-008).
+One builder covers both shapes, always with a VPS as the target:
+- remote execution: generated *on the server* with `ansible_connection=local`
+  and the bootstrap venv's interpreter (ADR-008 keeps the personal
+  inventory.yml off the wire);
+- local execution: generated on the control node with `ansible_connection=ssh`
+  and explicit connection params for the VPS.
 
 The generated file uses its own gitignored name so the user's personal
 `inventory.yml` is never touched or overwritten.
@@ -25,9 +27,12 @@ def build_inventory(
     connection: str = "local",
     host: str = "vpn",
     python_interpreter: str | None = None,
+    host_params: dict[str, str] | None = None,
 ) -> str:
     """Render a one-host inventory YAML. `python_interpreter=None` lets Ansible discover it."""
     host_vars: dict[str, Any] = {"ansible_connection": connection}
+    if host_params:
+        host_vars.update(host_params)
     if python_interpreter is not None:
         host_vars["ansible_python_interpreter"] = python_interpreter
     body: dict[str, Any] = {"all": {"hosts": {host: host_vars}, "vars": vars}}

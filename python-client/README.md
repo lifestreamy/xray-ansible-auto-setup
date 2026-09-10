@@ -23,9 +23,11 @@ uv run --project python-client xrayvpn --help
 
 Внутри `python-client/` (после `uv sync`) работают и `uv run xrayvpn ...`, и `python -m xrayvpn`.
 На Windows можно вообще без флагов: двойной клик по `xrayvpn-deploy.pyw` (английский интерфейс)
-или `xrayvpn-deploy-ru.pyw` (русский интерфейс) открывает консоль и запускает локальное
-развертывание; окно держится открытым до Enter, ошибки и код возврата видны явно (имя через
-дефис обязательно — `xrayvpn.pyw` рядом с пакетом перехватывал бы `import xrayvpn` на Windows).
+или `xrayvpn-deploy-ru.pyw` (русский интерфейс) открывает консоль и запускает **интерактивный
+мастер деплоя**: CLI спросит узел исполнения, хост VPS и SSH-аутентификацию, покажет план и
+дождётся явного согласия — молча не выполняется ничего. Окно держится открытым до Enter,
+ошибки и код возврата видны явно (имя через дефис обязательно — `xrayvpn.pyw` рядом с пакетом
+перехватывал бы `import xrayvpn` на Windows).
 
 ### Команда `xrayvpn` в PATH
 
@@ -39,52 +41,68 @@ uv tool install --editable python-client
 репозитория: клиент ищет `deploy.yml` и `config/settings.yml` вверх от текущей директории.
 Удаление — `uv tool uninstall xrayvpn-client`.
 
-## Две схемы исполнения
+## Куда ставится и где выполняется ansible
 
-- **remote** (`--execution remote`) — клиент сам поднимает окружение на VPS по SSH:
-  бустрап, загрузка репозитория tarball'ом (GitHub серверу не нужен), playbook, забор
-  готовых конфигов клиентов.
-- **local** (`--execution local`) — playbook прогоняется на этой машине: на Linux напрямую,
-  на Windows — через WSL (`uv` и venv на стороне дистрибутива клиент находит/создаёт сам,
-  вenv по умолчанию `~/xray-venv`).
+Цель деплоя — **всегда удалённый VPS**. `--execution` выбирает лишь узел, где
+выполняется сам ansible:
+
+- **remote** (по умолчанию) — окружение поднимается на VPS по SSH: бустрап,
+  загрузка репозитория tarball'ом (GitHub серверу не нужен), playbook на сервере,
+  забор готовых клиентских конфигов. На слабом VPS бутстрап и apt могут упираться
+  в память (для этого встроен swap-guard).
+- **local** — ansible-контроллер на вашей машине: на Linux/macOS напрямую
+  (venv/PATH, по умолчанию `~/xray-venv`), на Windows — через WSL. Цель та же —
+  VPS по SSH (creds: флаги `--host/--user/--port/--pkey/--pass` или личный
+  `inventory.yml` через `--use-inventory`), конфиги после прогона подтягиваются тем
+  же ansible-fetch по SSH. Полезно на очень слабых VPS, где Ansible на самом
+  сервере работать не может. Парольная аутентификация требует `sshpass`.
 - Без `--execution` — вопрос в терминале (по умолчанию remote).
+
+Перед любым реальным прогодом клиент показывает **план деплоя** (узел, цель,
+аутентификация — пароль только `******`, изменения, предупреждение при `--rotate`,
+куда лягут конфиги) и спрашивает согласие; `--no-interactive` отключает вопросы
+для скриптов/CI (недостающие обязательные значения тогда — ошибка). `--dry-run`
+план не подтверждает (он ничего не меняет).
 
 ## Примеры
 
 ```bash
 # VPS по IP: пароль спросит скрыто (или заранее --pkey ~/.ssh/id_ed25519)
-uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4
+uv run --project python-client xrayvpn deploy --host 1.2.3.4
 
 # параметры подключения из личного inventory.yml
-uv run --project python-client xrayvpn deploy --execution remote --use-inventory
+uv run --project python-client xrayvpn deploy --use-inventory
 
-# локально, без WARP и без принудительной ротации
-uv run --project python-client xrayvpn deploy --execution local --no-warp --no-rotate
+# ansible с вашей машины против того же VPS, без WARP и без ротации
+uv run --project python-client xrayvpn deploy --execution local --host 1.2.3.4 --no-warp --no-rotate
 
 # план remote-развертывания без какого-либо подключения
-uv run --project python-client xrayvpn deploy --execution remote --host 1.2.3.4 --dry-run
+uv run --project python-client xrayvpn deploy --host 1.2.3.4 --dry-run
 ```
 
 ## Флаги `deploy`
 
-- Режим: `--execution local|remote`.
+- Узел выполнения: `--execution remote|local` (цель всегда VPS; без флага — вопрос, дефолт remote).
+- Неинтерактивно: `--no-interactive` — без вопросов и подтверждения плана (для CI/скриптов).
 - Язык: `--ru` — полностью русский интерфейс (промпты, сообщения, ошибки, `--help`);
   работает в любой позиции аргументов, альтернатива — переменная окружения `XRAYVPN_LANG=ru`.
 - Переопределения сервера (иначе берётся из `config/settings.yml`): `--runtime native|docker`,
   `--xray-port`, `--num-clients`, `--camouflage-domain`, `--warp/--no-warp`,
   `--rotate/--no-rotate` (перегенерация ключа REALITY и UUID / оставить как есть),
   `--manage-ufw/--no-ufw`.
-- Инвентарь: `--inventory PATH` — только local, готовый файл вместо генерируемого;
-  `--use-inventory` — только remote, читает подключение и переменные из личного `inventory.yml`
+- Инвентарь: `--inventory PATH` — только local, ssh-inventory для прогона (по умолчанию
+  генерируется `.xrayvpn-inventory.yml` с параметрами VPS из флагов/inventory, 0600,
+  после прогона удаляется);
+  `--use-inventory` — читает подключение и переменные из личного `inventory.yml`
   (перекрывает host/key-флаги с предупреждением).
-- Подключение (remote): `--host`/`-H`, `--user`/`-u` (default `root`), `--port`/`-p` (default 22),
+- Подключение (цель-VPS, оба узла): `--host`/`-H`, `--user`/`-u` (default `root`), `--port`/`-p` (default 22),
   `--pkey FILE` (предпочтительно), `--pass TEXT` (пароль в открытом виде, хуже ключа; без него —
   скрытый запрос).
 - Результат: `--clients-dir PATH` — куда сохранить конфиги клиентов
   (default `<repo>/downloaded-clients/`, забираются с сервера из `/root/vpn-configs`).
 - Уборка на сервере (remote): по умолчанию staging-каталог удаляется, venv остаётся;
   `--full-cleanup` — снести и venv, `--no-cleanup` — оставить всё.
-- Диагностика: `--dry-run` (local: ansible `--check`; remote: план без подключения),
+- Диагностика: `--dry-run` (узел local: ansible `--check`; узел remote: напечатанный план без подключения),
   `--debug` / `--verbose` (Ansible -vvv/-vvvv; вместе нельзя, как и `--pkey` с `--pass`).
 
 Полная афиша: `xrayvpn deploy --help`.
