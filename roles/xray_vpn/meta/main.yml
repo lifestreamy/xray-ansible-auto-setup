@@ -9,7 +9,11 @@ galaxy_info:
   platforms:
     - name: Ubuntu
       versions:
+        - jammy
         - noble
+    - name: Debian
+      versions:
+        - bookworm
   galaxy_tags: [vpn, xray, vless, reality]
 # `dependencies:` intentionally omitted (roles_path resolution breaks syntax-check);
 # install community.general separately — see README / setup script.
