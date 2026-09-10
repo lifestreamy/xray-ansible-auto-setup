@@ -29,9 +29,9 @@ CONFIG_SOURCE = "/root/vpn-configs"
 SSH_ARGS = "-o StrictHostKeyChecking=accept-new"
 
 VENV_HINT = (
-    "create it: python3 -m venv ~/xray-venv && ~/xray-venv/bin/pip install "
-    "'ansible-core==2.21.3' (Debian/Ubuntu also need: sudo apt-get install "
-    "python3-venv sshpass) — or use --execution remote instead"
+    "create it from the repository root: python3 scripts/dev/setup_test_env.py "
+    "(makes ~/xray-venv with ansible-core; password auth additionally needs "
+    "sshpass) — or use --execution remote instead"
 )
 SSHPASS_HINT = (
     "local execution with a password needs sshpass on the control node "
