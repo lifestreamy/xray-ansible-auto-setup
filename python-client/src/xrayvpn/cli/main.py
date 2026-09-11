@@ -118,7 +118,7 @@ def main(
 ) -> None:
     """xrayvpn — one client, two execution modes (local / remote)."""
     if ru:
-        i18n.set_ru(True)
+        repl.set_session_lang("ru")
     if ctx.invoked_subcommand is None:
         if repl.session_requested():
             raise typer.Exit(repl.start(_repl_dispatch, update_hint=_update_hint))
@@ -614,7 +614,7 @@ def deploy(
 ) -> None:
     """Run the deploy playbook against a remote VPS."""
     if ru:
-        i18n.set_ru(True)
+        repl.set_session_lang("ru")
     if debug and verbose:
         typer.echo(
             i18n.t(

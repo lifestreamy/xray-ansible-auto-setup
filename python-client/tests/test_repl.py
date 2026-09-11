@@ -235,11 +235,44 @@ def test_no_hint_without_provider() -> None:
     assert "UPDATE-HINT" not in out
 
 
-def test_start_applies_ru_when_locale_suggests() -> None:
+def test_start_applies_ru_when_locale_suggests(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     with Restore():
+        monkeypatch.delenv(i18n.LANG_ENV, raising=False)
         _, _, out = _run(["exit"], locale_ru=True)
         assert "Просто начни:" in out
         assert i18n.is_ru()
+
+
+def test_explicit_lang_env_beats_locale_detect(monkeypatch: pytest.MonkeyPatch) -> None:
+    with Restore():
+        monkeypatch.setenv(i18n.LANG_ENV, "en")
+        _, _, out = _run(["exit"], locale_ru=True)
+        assert "Just start:" in out
+        assert i18n.is_ru() is False
+
+
+def test_global_flags_in_session_do_not_nest(monkeypatch: pytest.MonkeyPatch) -> None:
+    with Restore():
+        monkeypatch.delenv(i18n.LANG_ENV, raising=False)
+        rc, calls, out = _run(["--ru", "--version", "--bogus-flag", "exit"])
+        assert rc == 0
+        assert calls == []
+        assert "Просто начни:" in out
+        assert "xrayvpn 9.9.9" in out
+        assert "--bogus-flag" in out
+
+
+def test_dispatched_ru_flag_switches_full_session(capsys: pytest.CaptureFixture) -> None:
+    with Restore():
+        rc = main_mod._repl_dispatch(
+            ["deploy", "--dry-run", "--no-interactive", "--host", "127.0.0.1", "--ru"]
+        )
+        assert rc == 0
+        assert i18n.is_ru()
+        assert l10n_typer._BACKUP
+        assert "[превью] remote-деплой" in capsys.readouterr().out
 
 
 # --- screen/guard strings ----------------------------------------------------

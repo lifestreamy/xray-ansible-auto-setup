@@ -9,6 +9,7 @@ import time and the RU built-ins are patched before the app is built
 from __future__ import annotations
 
 import os
+import re
 import subprocess
 import sys
 from pathlib import Path
@@ -43,7 +44,9 @@ def _run_cli(args: list[str], env: dict[str, str] | None = None) -> str:
         **os.environ,
         "COLUMNS": "200",
         **(env or {}),
+        "NO_COLOR": "1",
     }
+    full_env.pop("FORCE_COLOR", None)
     result = subprocess.run(
         [sys.executable, "-m", "xrayvpn", *args],
         capture_output=True,
@@ -56,7 +59,19 @@ def _run_cli(args: list[str], env: dict[str, str] | None = None) -> str:
         cwd=str(CLIENT_ROOT),
         input="",
     )
-    return (result.stdout or "") + (result.stderr or "")
+    return _strip_ansi((result.stdout or "") + (result.stderr or ""))
+
+
+def _strip_ansi(text: str) -> str:
+    """GitHub POSIX runners force color despite NO_COLOR, and rich splits an
+    option like `--no-interactive` into separate SGR runs (``…\\x1b[36m-`` +
+    ``-no`` + ``-interactive``), which breaks literal substring assertions.
+    Stripping SGR re-joins the runs without merging table columns (those stay
+    separated by plain spaces)."""
+    return _ANSI_RE.sub("", text)
+
+
+_ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 
 def test_t_switch() -> None:

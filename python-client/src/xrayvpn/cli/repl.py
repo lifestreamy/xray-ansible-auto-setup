@@ -178,7 +178,8 @@ def start(
     update_hint: Callable[[], str | None] | None = None,
 ) -> int:
     """Session loop; the process exit code is the last dispatched command's rc."""
-    if not i18n.is_ru() and locale_suggests_ru():
+    explicit_lang = (os.environ.get(i18n.LANG_ENV) or "").strip()
+    if not explicit_lang and not i18n.is_ru() and locale_suggests_ru():
         set_session_lang("ru")
     print(welcome_screen(version))
     if update_hint is not None:
@@ -214,6 +215,23 @@ def start(
         command = tokens[0].lower()
         if command in _EXIT_WORDS:
             return last_rc
+        options = {token.lower() for token in tokens}
+        if all(token.startswith("-") for token in options):
+            if "--ru" in options:
+                set_session_lang("ru")
+                print(welcome_screen(version))
+            if "--version" in options:
+                print(f"xrayvpn {version}")
+            unknown = options - {"--ru", "--version"}
+            if unknown:
+                joined = ", ".join(sorted(unknown))
+                print(
+                    i18n.t(
+                        f"unknown option: {joined} (help — command list)",
+                        f"неизвестная опция: {joined} (help — список команд)",
+                    )
+                )
+            continue
         try:
             if command == "help":
                 print(help_text())
