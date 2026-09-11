@@ -154,16 +154,33 @@ def test_preflight_windows_requires_wsl(monkeypatch: pytest.MonkeyPatch) -> None
         executor.preflight(password_auth=False)
 
 
-def test_fetch_playbook_targets_ssh_stage_dirs(tmp_path: Path) -> None:
+def test_fetch_playbook_targets_ssh_stage_dirs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(wsl, "is_windows", lambda: False)
     executor = LocalExecutor()
-    text = executor.fetch_playbook_text(tmp_path / "clients")
+    clients = tmp_path / "clients"
+    text = executor.fetch_playbook_text(clients)
     assert "hosts: vpn" in text
-    assert "/tmp/xrayvpn-fetch" in text
+    assert "xrayvpn-fetch." in text
     assert "/root/vpn-configs" in text
     assert "fetch:" in text
     assert "flat: true" in text
     assert "{{ item.path }}" in text
-    assert tmp_path.as_posix() in text
+    assert "staged.matched > 0" in text
+    assert "state: directory" in text
+    assert "mode: 0700" in text
+    assert "state: absent" in text
+    assert clients.as_posix() in text
+
+
+def test_fetch_playbook_dest_uses_wsl_paths(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(wsl, "is_windows", lambda: True)
+    monkeypatch.setattr(wsl, "to_wsl_path", lambda value: "/mnt/z/clients")
+    text = LocalExecutor().fetch_playbook_text(tmp_path / "clients")
+    assert 'dest: "/mnt/z/clients/"' in text
 
 
 def test_fetch_argv_uses_playbook(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

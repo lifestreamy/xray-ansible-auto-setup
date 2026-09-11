@@ -216,6 +216,74 @@ def _confirm_deploy(plan: list[str], *, no_interactive: bool) -> None:
         raise typer.Exit(0)
 
 
+def _inventory_creds(
+    workspace: Path,
+    payload: Path,
+    *,
+    host: str | None,
+    user: str,
+    port: int,
+    pkey: Path | None,
+    password: str | None,
+) -> tuple[dict[str, str], dict[str, object]]:
+    """Parse + validate personal inventory.yml; shared by both execution modes."""
+    if host is not None or pkey is not None or password is not None or user != "root" or port != 22:
+        typer.echo(
+            i18n.t(
+                "warning: --use-inventory overrides connection/auth flags",
+                "предупреждение: --use-inventory переопределяет флаги подключения/аутентификации",
+            ),
+            err=True,
+        )
+    try:
+        connection, user_vars = parse_user_inventory(workspace, example_dir=payload)
+    except (RuntimeError, TypeError) as exc:
+        typer.echo(i18n.t(f"error: {exc}", f"ошибка: {exc}"), err=True)
+        raise typer.Exit(2) from exc
+    problems = validate_connection(connection)
+    if problems:
+        personal_inventory = str(workspace / runtime_paths.PERSONAL_INVENTORY_NAME)
+        typer.echo(
+            i18n.t(
+                f"error: {personal_inventory} is not ready for deploy:",
+                f"ошибка: {personal_inventory} не готов к деплою:",
+            ),
+            err=True,
+        )
+        for problem in problems:
+            typer.echo(f"  - {problem}", err=True)
+        typer.echo(
+            i18n.t(
+                "  fill the keys under all.hosts.<host> as in inventory.yml.example",
+                "  заполните ключи в all.hosts.<host> как в inventory.yml.example",
+            ),
+            err=True,
+        )
+        raise typer.Exit(2)
+    if not (
+        connection.get("ansible_ssh_private_key_file") or connection.get("ansible_ssh_pass")
+    ):
+        typer.echo(
+            i18n.t(
+                "note: no auth key in inventory.yml; the SSH password will be "
+                "requested at run time (or set ansible_ssh_private_key_file)",
+                "заметка: в inventory.yml нет ключа аутентификации; SSH-пароль будет "
+                "запрошен во время запуска (или укажите ansible_ssh_private_key_file)",
+            ),
+            err=True,
+        )
+    return connection, user_vars
+
+
+def _redact_secrets(values: dict[str, object]) -> dict[str, object]:
+    """Plan-display masking of credential-ish overrides (the -e args stay intact)."""
+    redacted: dict[str, object] = {}
+    for key, value in values.items():
+        low = key.lower()
+        redacted[key] = "******" if "pass" in low or "private_key" in low else value
+    return redacted
+
+
 def _plan_lines(
     mode: str,
     *,
@@ -243,7 +311,8 @@ def _plan_lines(
         i18n.t(f"auth: {auth_desc}", f"аутентификация: {auth_desc}"),
     ]
     if overrides:
-        lines.append(i18n.t(f"overrides: {overrides}", f"переопределения: {overrides}"))
+        display = _redact_secrets(overrides)
+        lines.append(i18n.t(f"overrides: {display}", f"переопределения: {display}"))
     if overrides.get("xray_reality_rotate") is True:
         lines.append(
             i18n.t(
@@ -659,7 +728,7 @@ def deploy(
     )
 
 
-def _swap_guard(remote: FabricRemote) -> None:
+def _swap_guard(remote: FabricRemote, *, no_interactive: bool) -> None:
     """Low-memory guard: opt-in 1G swapfile before bootstrap (never silent)."""
     detect_mem, detect_swap = swap_status_commands()
     mem = remote.run(detect_mem, warn=True)
@@ -680,6 +749,17 @@ def _swap_guard(remote: FabricRemote) -> None:
         ),
         err=True,
     )
+    if no_interactive or not prompts.is_interactive():
+        typer.echo(
+            i18n.t(
+                "[remote] swap-guard: cannot ask without a terminal — proceeding "
+                "WITHOUT swap; add a swapfile or free RAM if the deploy dies",
+                "[remote] swap-guard: вопрос невозможен без терминала — продолжаю "
+                "БЕЗ swap; добавьте swap-файл или освободите RAM, если деплой упадёт",
+            ),
+            err=True,
+        )
+        return
     if not prompts.confirm(
         i18n.t(
             "Create a 1 GB swapfile /swapfile on the server?",
@@ -736,52 +816,15 @@ def _run_remote(
     user_vars: dict[str, object] = {}
     connection: dict[str, str] = {}
     if use_inventory:
-        if host is not None or pkey is not None or password is not None or user != "root" or port != 22:
-            typer.echo(
-                i18n.t(
-                    "warning: --use-inventory overrides connection/auth flags",
-                    "предупреждение: --use-inventory переопределяет флаги подключения/аутентификации",
-                ),
-                err=True,
-            )
-        try:
-            connection, user_vars = parse_user_inventory(workspace, example_dir=payload)
-        except (RuntimeError, TypeError) as exc:
-            typer.echo(i18n.t(f"error: {exc}", f"ошибка: {exc}"), err=True)
-            raise typer.Exit(2) from exc
-        problems = validate_connection(connection)
-        if problems:
-            personal_inventory = str(workspace / runtime_paths.PERSONAL_INVENTORY_NAME)
-            typer.echo(
-                i18n.t(
-                    f"error: {personal_inventory} is not ready for remote deploy:",
-                    f"ошибка: {personal_inventory} не готов к remote-деплою:",
-                ),
-                err=True,
-            )
-            for problem in problems:
-                typer.echo(f"  - {problem}", err=True)
-            typer.echo(
-                i18n.t(
-                    "  fill the keys under all.hosts.<host> as in inventory.yml.example",
-                    "  заполните ключи в all.hosts.<host> как в inventory.yml.example",
-                ),
-                err=True,
-            )
-            raise typer.Exit(2)
-        if not (
-            connection.get("ansible_ssh_private_key_file")
-            or connection.get("ansible_ssh_pass")
-        ):
-            typer.echo(
-                i18n.t(
-                    "note: no auth key in inventory.yml; the SSH password will be "
-                    "requested at run time (or set ansible_ssh_private_key_file)",
-                    "заметка: в inventory.yml нет ключа аутентификации; SSH-пароль будет "
-                    "запрошен во время запуска (или укажите ansible_ssh_private_key_file)",
-                ),
-                err=True,
-            )
+        connection, user_vars = _inventory_creds(
+            workspace,
+            payload,
+            host=host,
+            user=user,
+            port=port,
+            pkey=pkey,
+            password=password,
+        )
         extra_vars = merge_overrides(user_vars, overrides)
         resolved_host = connection.get("ansible_host")
         resolved_user = connection.get("ansible_user", "root")
@@ -806,6 +849,15 @@ def _run_remote(
         return
 
     if not resolved_host:
+        if no_interactive:
+            typer.echo(
+                i18n.t(
+                    "error: --host is required in remote mode",
+                    "ошибка: --host обязателен в remote-режиме",
+                ),
+                err=True,
+            )
+            raise typer.Exit(2)
         selected = prompts.text(i18n.t("VPS host (IP or hostname)", "Хост VPS (IP или hostname)"))
         if not selected:
             typer.echo(
@@ -857,7 +909,7 @@ def _run_remote(
             user=str(resolved_user),
             port=int(resolved_port),
             auth_desc=_auth_descriptor(resolved_pkey, resolved_password),
-            overrides=overrides,
+            overrides=extra_vars,
             clients_dir=Path(clients_dir or workspace / "downloaded-clients"),
             cleanup=cleanup,
         ),
@@ -889,7 +941,7 @@ def _run_remote(
         key_filename=str(key_path) if resolved_pkey else None,
         password=resolved_password,
     ) as remote:
-        _swap_guard(remote)
+        _swap_guard(remote, no_interactive=no_interactive)
         executor = RemoteExecutor(remote, cleanup=cleanup)
         rc = executor.deploy(request, extra_vars=extra_vars)
     raise typer.Exit(rc)
@@ -968,32 +1020,15 @@ def _run_local(
     """Local control-node mode: ansible runs here, the target over SSH is the VPS."""
     user_vars: dict[str, object] = {}
     if use_inventory:
-        if host is not None or pkey is not None or password is not None:
-            typer.echo(
-                i18n.t(
-                    "warning: --use-inventory overrides connection/auth flags",
-                    "предупреждение: --use-inventory переопределяет флаги подключения/аутентификации",
-                ),
-                err=True,
-            )
-        try:
-            connection, user_vars = parse_user_inventory(workspace, example_dir=payload)
-        except (RuntimeError, TypeError) as exc:
-            typer.echo(i18n.t(f"error: {exc}", f"ошибка: {exc}"), err=True)
-            raise typer.Exit(2) from exc
-        problems = validate_connection(connection)
-        if problems:
-            personal_inventory = str(workspace / runtime_paths.PERSONAL_INVENTORY_NAME)
-            typer.echo(
-                i18n.t(
-                    f"error: {personal_inventory} is not ready for remote deploy:",
-                    f"ошибка: {personal_inventory} не готов к remote-деплою:",
-                ),
-                err=True,
-            )
-            for problem in problems:
-                typer.echo(f"  - {problem}", err=True)
-            raise typer.Exit(2)
+        connection, user_vars = _inventory_creds(
+            workspace,
+            payload,
+            host=host,
+            user=user,
+            port=port,
+            pkey=pkey,
+            password=password,
+        )
         resolved_host = connection.get("ansible_host")
         resolved_user = connection.get("ansible_user", "root")
         resolved_port = int(connection.get("ansible_port", "22"))
@@ -1009,7 +1044,37 @@ def _run_local(
     extra_vars = merge_overrides(user_vars, overrides)
     request.overrides = extra_vars
 
+    if request.dry_run:
+        typer.echo(
+            i18n.t(
+                f"[preview] local ansible on this machine → target "
+                f"{resolved_user}@{resolved_host or '<host>'}:{resolved_port} over SSH",
+                f"[превью] локальный ansible на этой машине → цель "
+                f"{resolved_user}@{resolved_host or '<host>'}:{resolved_port} по SSH",
+            )
+        )
+        if wsl.is_windows():
+            typer.echo(
+                i18n.t(
+                    "[preview] transport: WSL control node (venv --wsl-venv, distro --wsl-distro)",
+                    "[превью] транспорт: узел WSL (venv --wsl-venv, дистрибутив --wsl-distro)",
+                )
+            )
+        typer.echo(
+            f"[preview] $ {LocalExecutor(wsl_venv=wsl_venv).venv_binary()} deploy.yml -i <inventory> …"
+        )
+        return
+
     if not resolved_host:
+        if no_interactive:
+            typer.echo(
+                i18n.t(
+                    "error: --host is required unless provided by the inventory",
+                    "ошибка: --host обязателен, если не задан в inventory",
+                ),
+                err=True,
+            )
+            raise typer.Exit(2)
         selected = prompts.text(i18n.t("VPS host (IP or hostname)", "Хост VPS (IP или hostname)"))
         if not selected:
             typer.echo(
@@ -1053,23 +1118,6 @@ def _run_local(
         resolved_password = getpass.getpass(i18n.t("SSH password: ", "SSH-пароль: "))
 
     runner_pkey = _key_for_runner(resolved_pkey) if resolved_pkey else None
-
-    if request.dry_run:
-        typer.echo(
-            i18n.t(
-                f"[preview] local ansible on this machine → target {resolved_user}@{resolved_host}:{resolved_port} over SSH",
-                f"[превью] локальный ansible на этой машине → цель {resolved_user}@{resolved_host}:{resolved_port} по SSH",
-            )
-        )
-        if wsl.is_windows():
-            typer.echo(
-                i18n.t(
-                    "[preview] transport: WSL control node (venv --wsl-venv, distro --wsl-distro)",
-                    "[превью] транспорт: узел WSL (venv --wsl-venv, дистрибутив --wsl-distro)",
-                )
-            )
-        typer.echo(f"[preview] $ {LocalExecutor(wsl_venv=wsl_venv).venv_binary()} deploy.yml -i <inventory> …")
-        return
 
     _confirm_deploy(
         _plan_lines(
@@ -1115,7 +1163,18 @@ def _run_local(
         rc = executor.deploy(request, inventory)
         if rc != 0:
             raise typer.Exit(rc)
-        executor.fetch_configs(request, inventory)
+        fetch_rc = executor.fetch_configs(request, inventory)
+        if fetch_rc:
+            typer.echo(
+                i18n.t(
+                    f"error: fetching client configs failed (rc={fetch_rc}); "
+                    "the server-side deploy itself finished",
+                    f"ошибка: загрузка клиентских конфигов не удалась (rc={fetch_rc}); "
+                    "развёртывание на сервере при этом завершено",
+                ),
+                err=True,
+            )
+            raise typer.Exit(fetch_rc)
     finally:
         if temp_inventory is not None:
             temp_inventory.unlink(missing_ok=True)

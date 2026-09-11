@@ -24,7 +24,7 @@ from xrayvpn.core.execution.base import DeployRequest, extra_var_args
 
 DEFAULT_WSL_VENV = "~/xray-venv"
 COLLECTIONS_DIR = "xrayvpn-collections"
-SERVER_FETCH_DIR = "/tmp/xrayvpn-fetch"
+SERVER_FETCH_PREFIX = "xrayvpn-fetch."
 CONFIG_SOURCE = "/root/vpn-configs"
 SSH_ARGS = "-o StrictHostKeyChecking=accept-new"
 
@@ -44,6 +44,8 @@ def venv_hint(*, frozen: bool | None = None) -> str:
     """Venv-repair hint for the current install shape."""
     is_packaged = runtime_paths.is_frozen() if frozen is None else frozen
     return VENV_HINT_BINARY if is_packaged else VENV_HINT
+
+
 SSHPASS_HINT = (
     "local execution with a password needs sshpass on the control node "
     "(`sudo apt-get install sshpass` in WSL / your package manager elsewhere) "
@@ -52,23 +54,39 @@ SSHPASS_HINT = (
 
 _WINDOWS_PATH = re.compile(r"^[A-Za-z]:[\\/]")
 
+# Staging must be private (fresh mktemp per run, 0700, removed at the end):
+# a fixed world-readable /tmp dir would leak generated client credentials on
+# multi-user VPSes and survive the deploy silently.
 FETCH_PLAYBOOK = """- name: Fetch client configs
   hosts: vpn
   gather_facts: false
   tasks:
-    - name: Stage generated configs world-readable
-      ansible.builtin.shell: >
-        mkdir -p {stage_dir};
-        cp {config_source}/*.json {config_source}/*.yaml {stage_dir}/ 2>/dev/null;
-        chmod -R a+rX {stage_dir}
+    - name: Create private staging dir for the generated configs
+      ansible.builtin.tempfile:
+        path: /tmp
+        prefix: "{fetch_prefix}"
+        state: directory
+        mode: 0700
+      register: stage
       become: true
+    - name: Copy generated configs into staging
+      ansible.builtin.shell: >
+        cp {config_source}/*.json {config_source}/*.yaml "{{{{ stage.path }}}}" 2>/dev/null;
+        true
       changed_when: false
-      failed_when: false
+      become: true
     - name: Find staged configs
       ansible.builtin.find:
-        paths: "{stage_dir}"
+        paths: "{{{{ stage.path }}}}"
         patterns: ["*.json", "*.yaml"]
+      become: true
       register: staged
+    - name: Fail when the server produced no client configs to fetch
+      ansible.builtin.assert:
+        that: staged.matched > 0
+        fail_msg: "no client configs under {config_source}: check the deploy
+          and whether --user ({config_source} is root-owned, become is required)"
+      become: true
     - name: Copy configs to the control node
       ansible.builtin.fetch:
         src: "{{{{ item.path }}}}"
@@ -77,6 +95,12 @@ FETCH_PLAYBOOK = """- name: Fetch client configs
       loop: "{{{{ staged.files }}}}"
       loop_control:
         label: "{{{{ item.path }}}}"
+      become: true
+    - name: Remove the private staging dir
+      ansible.builtin.file:
+        path: "{{{{ stage.path }}}}"
+        state: absent
+      become: true
 """
 
 
@@ -139,11 +163,16 @@ class LocalExecutor:
     def fetch_argv(self, inventory: Path, playbook: Path) -> list[str]:
         return [self.venv_binary_for_run(), "-i", str(inventory), str(playbook)]
 
+    def _fetch_dest(self, clients_dir: Path) -> str:
+        if wsl.is_windows():
+            return wsl.to_wsl_path(str(clients_dir))
+        return clients_dir.as_posix()
+
     def fetch_playbook_text(self, clients_dir: Path) -> str:
         return FETCH_PLAYBOOK.format(
-            stage_dir=SERVER_FETCH_DIR,
+            fetch_prefix=SERVER_FETCH_PREFIX,
             config_source=CONFIG_SOURCE,
-            dest=clients_dir.as_posix(),
+            dest=self._fetch_dest(clients_dir),
         )
 
     def build_wsl_script(self, argv: list[str], repo_root: Path) -> str:
@@ -228,13 +257,13 @@ class LocalExecutor:
     def deploy(self, request: DeployRequest, inventory: Path) -> int:
         return self.run(self.deploy_argv(request, inventory), request)
 
-    def fetch_configs(self, request: DeployRequest, inventory: Path) -> None:
+    def fetch_configs(self, request: DeployRequest, inventory: Path) -> int:
         clients = request.resolved_clients_dir()
         clients.mkdir(parents=True, exist_ok=True)
         playbook = request.resolved_workspace() / ".xrayvpn-fetch-playbook.yml"
         playbook.write_text(self.fetch_playbook_text(clients), encoding="utf-8")
         try:
-            self.run(self.fetch_argv(inventory, playbook), request)
+            return self.run(self.fetch_argv(inventory, playbook), request)
         finally:
             playbook.unlink(missing_ok=True)
 

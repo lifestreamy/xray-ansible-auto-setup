@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 from typing import ClassVar
 
 from typer.testing import CliRunner
@@ -180,3 +181,78 @@ def test_mutual_exclusions_keep_working() -> None:
     result = runner.invoke(app, ["deploy", "--runtime", "podman"])
     assert result.exit_code == 2
     assert "--runtime must be one of" in _output(result)
+
+
+def test_plan_shows_merged_inventory_vars_and_redacts_secrets(monkeypatch, tmp_path) -> None:
+    _stub_local_mode(monkeypatch, tmp_path)
+    (tmp_path / "inventory.yml").write_text(
+        "all:\n"
+        "  hosts:\n"
+        "    vps:\n"
+        "      ansible_host: 203.0.113.7\n"
+        "      ansible_user: root\n"
+        "      ansible_port: 22\n"
+        "      ansible_ssh_pass: hostpw\n"
+        "  vars:\n"
+        "    num_clients: 3\n"
+        "    gateway_password: topsecret\n",
+        encoding="utf-8",
+    )
+    result = runner.invoke(
+        app,
+        ["deploy", "--execution", "local", "--use-inventory", "--no-interactive"],
+    )
+    assert result.exit_code == 0
+    out = _output(result)
+    assert "num_clients" in out
+    assert "topsecret" not in out
+    assert "hostpw" not in out
+    assert "******" in out
+
+
+def test_local_dry_run_needs_no_input(monkeypatch, tmp_path) -> None:
+    _stub_local_mode(monkeypatch, tmp_path)
+
+    def explode(*args: object, **kwargs: object) -> None:
+        raise AssertionError("dry-run must not prompt")
+
+    monkeypatch.setattr(main_mod.prompts, "text", explode)
+    monkeypatch.setattr(main_mod.prompts, "confirm", explode)
+    result = runner.invoke(
+        app, ["deploy", "--execution", "local", "--dry-run", "--no-interactive"]
+    )
+    assert result.exit_code == 0
+    out = _output(result)
+    assert "[preview] local ansible" in out
+    assert "<host>" in out
+
+
+def test_remote_no_interactive_requires_host_without_prompting(monkeypatch) -> None:
+    monkeypatch.setattr(main_mod, "load_settings", lambda root: {})
+
+    def explode(*args: object, **kwargs: object) -> None:
+        raise AssertionError("--no-interactive must not prompt")
+
+    monkeypatch.setattr(main_mod.prompts, "text", explode)
+    result = runner.invoke(app, ["deploy", "--no-interactive"])
+    assert result.exit_code == 2
+    assert "--host is required in remote mode" in _output(result)
+
+
+def test_swap_guard_no_interactive_is_explicit(monkeypatch, capsys) -> None:
+    class StubRemote:
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def run(self, command: str, **kwargs: object) -> SimpleNamespace:
+            self.calls.append(command)
+            stdout = "512000" if len(self.calls) == 1 else "0"
+            return SimpleNamespace(stdout=stdout, failed=False, return_code=0)
+
+    def explode(*args: object, **kwargs: object) -> None:
+        raise AssertionError("swap-guard must not ask when prompts are unavailable")
+
+    monkeypatch.setattr(main_mod.prompts, "confirm", explode)
+    monkeypatch.setattr(main_mod.prompts, "is_interactive", lambda: False)
+    main_mod._swap_guard(StubRemote(), no_interactive=True)
+    assert "WITHOUT swap" in capsys.readouterr().err
