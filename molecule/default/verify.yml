@@ -62,6 +62,24 @@
       register: client_yaml
       failed_when: not client_yaml.stat.exists
 
+    - name: Slurp clash profile for the anti-hairpin assert
+      ansible.builtin.slurp:
+        src: "{{ xray_client_configs_dir }}/clash_client_0.yaml"
+      register: clash_profile
+      changed_when: false
+
+    - name: Assert clash profile pins its own server DIRECT (anti-hairpin)
+      ansible.builtin.assert:
+        that:
+          - clash_text is search('IP-CIDR,' ~ server_host ~ '/32,DIRECT') or
+            clash_text is search('IP-CIDR6,' ~ server_host ~ '/128,DIRECT') or
+            clash_text is search('DOMAIN,' ~ server_host ~ ',DIRECT')
+        fail_msg: "clash profile lost the anti-hairpin rule for {{ server_host }}"
+      vars:
+        clash_text: "{{ clash_profile.content | b64decode }}"
+        server_host: >-
+          {{ clash_text | regex_search('server: "([^"]+)"', '\1') | first }}
+
     - name: Run mihomo end-to-end handshake (only when xray_e2e_enabled is true)
       ansible.builtin.import_tasks: e2e.yml
       when: xray_e2e_enabled | default(false)
