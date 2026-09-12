@@ -5,7 +5,12 @@ Works the same on Windows, Linux and macOS; two execution models behind one CLI.
 
 ## Install and run
 
-Requires [uv](https://docs.astral.sh/uv/) (or Python 3.12+):
+The simplest option is the standalone binary with no Python: download the build for your
+platform from [Releases](https://github.com/lifestreamy/xray-ansible-auto-setup/releases)
+(first run and file layout — [../docs/SETUP.en.md](../docs/SETUP.en.md), "Standalone binary"
+section). To build the binary yourself (Nuitka onefile, debug mode, smoke) — [BUILD.en.md](BUILD.en.md).
+
+Working with the sources in the repository requires [uv](https://docs.astral.sh/uv/) (or Python 3.12+):
 
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"   # Windows
@@ -40,6 +45,13 @@ uv tool install --editable python-client
 The install is editable — repository code changes apply immediately. Run it from the repository
 folder: the client locates `deploy.yml` and `config/settings.yml` by walking up from the current
 directory. Remove with `uv tool uninstall xrayvpn-client`.
+
+## Console session (REPL)
+
+`xrayvpn` with no arguments (or `xrayvpn repl`) opens a console session: commands use the exact
+CLI syntax without the prefix. `deploy` still asks for the missing pieces and confirms the plan;
+`help` lists the built-ins (`version`, `lang ru|en`, `exit`); `deploy --help` shows every flag of
+the deploy command. Double-clicking the binary and the `.pyw` launchers are this very mode.
 
 ## Where the deploy goes and where ansible runs
 

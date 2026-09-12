@@ -5,7 +5,12 @@
 
 ## Установка и запуск
 
-Нужен [uv](https://docs.astral.sh/uv/) (или Python 3.12+):
+Самый простой вариант — готовый standalone-бинарь без Python: скачайте сборку своей платформы
+из [Releases](https://github.com/lifestreamy/xray-ansible-auto-setup/releases) (первый запуск и
+раскладка файлов — в [../docs/SETUP.md](../docs/SETUP.md), раздел «Standalone-бинарь»).
+Как собрать бинарь самому (Nuitka onefile, режим отладки, smoke) — [BUILD.md](BUILD.md).
+
+Для работы с исходниками в репозитории нужен [uv](https://docs.astral.sh/uv/) (или Python 3.12+):
 
 ```powershell
 powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"   # Windows
@@ -40,6 +45,13 @@ uv tool install --editable python-client
 Установка editable — изменения кода в репозитории применяются сразу. Запускать из папки
 репозитория: клиент ищет `deploy.yml` и `config/settings.yml` вверх от текущей директории.
 Удаление — `uv tool uninstall xrayvpn-client`.
+
+## Консольная сессия (REPL)
+
+`xrayvpn` без аргументов (или `xrayvpn repl`) открывает консольную сессию: команды внутри —
+ тем же синтаксисом, что CLI, без префикса. `deploy` спросит недостающее и покажет план как
+обычно; `help` перечисляет встроенное (`version`, `lang ru|en`, `exit`); `deploy --help` —
+полный список флагов развёртывания. Двойной клик по бинарю и `.pyw`-обёртки — это тот же режим.
 
 ## Куда ставится и где выполняется ansible
 

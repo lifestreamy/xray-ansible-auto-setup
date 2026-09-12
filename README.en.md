@@ -1,4 +1,4 @@
-**Version:** v0.4.0 · **Last updated:** 2026-09-09
+**Version:** v0.4.0 · **Last updated:** 2026-09-12
 
 [![Русский](https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-808080?style=flat)](README.md)
 [![English](https://img.shields.io/badge/English-00a693?style=flat)](README.en.md)
@@ -58,11 +58,13 @@ But if I missed something, something broke for you, it doesn't start at all, or 
 
 ## Quick start
 
-Parameters are optional: the client can be run with no arguments at all — `xrayvpn deploy` interactively asks for the execution mode (default `remote`) and the VPS IP, then requests the password with hidden input. The minimal case — just the VPS IP.
+The simplest path is the standalone binary — no Python, no Ansible: download the build for your platform (`xrayvpn-windows-x64.exe`, `xrayvpn-linux-x64`, `xrayvpn-linux-arm64`, `xrayvpn-macos-arm64`) from the [Releases section](https://github.com/lifestreamy/xray-ansible-auto-setup/releases), put it in a regular folder (not a synced drive) and run it — on Windows just double-click. A console assistant opens: type `deploy`, it interactively asks for the VPS IP and (hidden) password; `ru` switches the interface to Russian. Configuration files (`config/settings.yml`, `inventory.yml`) may live next to the binary — see [`docs/SETUP.en.md`](docs/SETUP.en.md), the "Standalone binary" section.
+
+For those who work with the repository there are three clients and a direct playbook run. Parameters are optional: the client can be run with no arguments at all — `xrayvpn deploy` interactively asks for the execution mode (default `remote`) and the VPS IP, then requests the password with hidden input. The minimal case — just the VPS IP.
 
 You can run it with one of three clients, or with none:
 
-- `xrayvpn` (Python) — [`python-client/`](python-client/README.en.md) — Windows, Linux and macOS; recommended;
+- `xrayvpn` (Python) — [`python-client/`](python-client/README.en.md) — Windows, Linux and macOS; recommended among the script clients;
 - Bash — [`shell-clients/bash/provision-vpn.sh`](shell-clients/bash/provision-vpn.sh) — Linux / WSL (supported, not developed further);
 - PowerShell — [`shell-clients/powershell/Provision-VPN.ps1`](shell-clients/powershell/Provision-VPN.ps1) — Windows + WSL;
 - Ansible directly — `ansible-playbook -i inventory.yml deploy.yml`, no client.

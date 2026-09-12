@@ -1,4 +1,4 @@
-> **Document:** `docs/SETUP.en.md` · **Location:** `docs/` · **Version:** v0.4.0 · **Last updated:** 2026-09-09
+> **Document:** `docs/SETUP.en.md` · **Location:** `docs/` · **Version:** v0.4.0 · **Last updated:** 2026-09-12
 >
 > [Main README](../README.en.md) — project overview and quick start
 
@@ -91,6 +91,22 @@ In local mode the run uses a generated ssh-inventory `.xrayvpn-inventory.yml` (g
 
 The alternative shell clients (`shell-clients/`) accept only connection parameters plus cleanup and verbosity — see their `--help` for details.
 
+## Standalone binary
+
+The simplest way to use the tool is a single executable from [Releases](https://github.com/lifestreamy/xray-ansible-auto-setup/releases): `xrayvpn-windows-x64.exe`, `xrayvpn-linux-x64`, `xrayvpn-linux-arm64`, `xrayvpn-macos-arm64`. It embeds the same client and the bundled roles/playbooks (`xrayvpn/payload/…`), so no repository clone and no Python are needed.
+
+- First run: Windows — SmartScreen "More info → Run anyway" (builds are unsigned); macOS — `chmod +x`, and with Gatekeeper open once via right-click → Open.
+- Double-click (or running with no arguments) opens the console assistant: `deploy` asks for the host and password (hidden), `ru`/`en` switch the language, `help` and `deploy --help` show the rest.
+- Configuration files live next to the binary: `config/settings.yml` and `inventory.yml` (from the same-folder `inventory.yml.example`) behave exactly as in a clone.
+- Workspace resolution order (where the generated inventory, downloaded configs and staging are written): `XRAYVPN_HOME` → the binary's folder (if writable) → per-user state folder (Windows `%LOCALAPPDATA%\xrayvpn`, Linux `~/.local/share/xrayvpn`, macOS `~/Library/Application Support/xrayvpn`) → current folder. Do not put the binary into OneDrive/Google Drive or other synced folders — working files will fight the sync client.
+- Environment variables:
+
+| Variable | Meaning |
+|---|---|
+| `XRAYVPN_LANG` | `ru` / `en` for interface and `--help` (flag `--ru` does the same); falls back to the system locale. |
+| `XRAYVPN_HOME` | explicit workspace folder — overrides the order above. |
+| `XRAYVPN_UPDATE_CHECK` | update check is on by default in binary builds (at most once per day, silent on failures); in source runs it is opt-in via `1`. Pre-releases never appear in the hint until a stable release exists. |
+
 ## About the project
 
 This is a utility that uses Ansible to deploy an Xray VLESS + REALITY VPN server on a remote VPS. It generates client configs for Clash Verge / FlClash (Mihomo Meta YAML) and Amnezia VPN (JSON). Clash Verge and FlClash are the main recommended and tested clients. Amnezia works but isn't recommended because of instability. Platform wrappers: PowerShell and Bash. The PowerShell wrapper runs the Bash client through WSL.
@@ -119,6 +135,8 @@ nc -zv <VPS_IP> 443                           # port listening; replace <VPS_IP>
 ```
 
 Then connect with at least one real client (Clash Verge / FlClash / Amnezia) and verify traffic goes through it. The role's built-in checks don't replace this.
+
+In the generated Clash/Mihomo profiles (Clash Verge, FlClash) the server IP is pinned by a DIRECT rule — traffic to the VPS itself must not go through the tunnel (anti-hairpin). If the server IP changes, regenerate the config instead of editing the rule by hand.
 
 ## Adding more clients without rotation
 

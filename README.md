@@ -1,4 +1,4 @@
-**Version:** v0.4.0 · **Last updated:** 2026-09-09
+**Version:** v0.4.0 · **Last updated:** 2026-09-12
 
 [![English](https://img.shields.io/badge/English-808080?style=flat)](README.en.md)
 [![Русский](https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-00a693?style=flat)](README.md)
@@ -58,11 +58,13 @@
 
 ## Быстрый старт
 
-Параметры не обязательны: клиент можно запустить вообще без аргументов — `xrayvpn deploy` интерактивно спросит режим исполнения (по умолчанию `remote`) и IP VPS, затем скрыто запросит пароль. Минимальный случай — только IP VPS.
+Самый простой путь — standalone-бинарь, без Python и Ansible: скачайте сборку своей платформы (`xrayvpn-windows-x64.exe`, `xrayvpn-linux-x64`, `xrayvpn-linux-arm64`, `xrayvpn-macos-arm64`) из [раздела Releases](https://github.com/lifestreamy/xray-ansible-auto-setup/releases), положите в обычную папку (не в синхронизируемый диск) и запустите — на Windows просто двойным кликом. Откроется консольный помощник: достаточно набрать `deploy`, интерактивно спросится IP VPS и (скрыто) пароль; `ru` включает русский интерфейс. Файлы конфигурации (`config/settings.yml`, `inventory.yml`) можно положить рядом с бинарём — подробности в [`docs/SETUP.md`](docs/SETUP.md), раздел «Standalone-бинарь».
+
+Тем, кто работает с репозиторием, доступны три клиента и прямой запуск playbook. Параметры не обязательны: клиент можно запустить вообще без аргументов — `xrayvpn deploy` интерактивно спросит режим исполнения (по умолчанию `remote`) и IP VPS, затем скрыто запросит пароль. Минимальный случай — только IP VPS.
 
 Запустить можно тремя клиентами или вообще без них:
 
-- `xrayvpn` (Python) — [`python-client/`](python-client/README.md) — Windows, Linux и macOS; рекомендуется;
+- `xrayvpn` (Python) — [`python-client/`](python-client/README.md) — Windows, Linux и macOS; рекомендуется из скриптовых клиентов;
 - Bash — [`shell-clients/bash/provision-vpn.sh`](shell-clients/bash/provision-vpn.sh) — Linux / WSL (поддерживается, но не развивается);
 - PowerShell — [`shell-clients/powershell/Provision-VPN.ps1`](shell-clients/powershell/Provision-VPN.ps1) — Windows + WSL;
 - напрямую Ansible — `ansible-playbook -i inventory.yml deploy.yml`, без клиента.
