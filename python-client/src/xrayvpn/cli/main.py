@@ -80,6 +80,23 @@ app = typer.Typer(
 )
 
 
+def _settings_for_help() -> dict[str, object]:
+    try:
+        return load_settings(runtime_paths.payload_root())
+    except Exception:  # noqa: BLE001 - help must render without a settings file
+        return {}
+
+
+_HELP_DEFAULTS = _settings_for_help()
+
+
+def _d(key: str) -> str:
+    value = _HELP_DEFAULTS.get(key)
+    if isinstance(value, bool):
+        return str(value).lower()
+    return "settings.yml" if value is None else str(value)
+
+
 def _version_callback(value: bool) -> None:
     if value:
         typer.echo(f"xrayvpn {__version__}")
@@ -376,9 +393,20 @@ def _collect_overrides(args: dict) -> dict[str, object]:
 @app.command(
     help=i18n.t(
         "Deploy the VPN to a VPS (target is always remote). By default ansible "
-        "runs on the VPS; --execution local runs the playbook from this machine.",
+        "runs on the VPS; --execution local runs the playbook from this machine.\n\n"
+        "examples:\n"
+        "  xrayvpn deploy -H 203.0.113.7\n"
+        "  xrayvpn deploy -H 203.0.113.7 --runtime docker --no-warp\n"
+        "  xrayvpn deploy --dry-run --no-interactive -H 203.0.113.7\n\n"
+        "every override flag is optional; unset flags keep the config/settings.yml defaults.",
         "Развёртывание VPN на VPS (цель всегда удалённая). По умолчанию ansible "
-        "выполняется на VPS; --execution local запускает плейбук с этой машины.",
+        "выполняется на VPS; --execution local запускает плейбук с этой машины.\n\n"
+        "примеры:\n"
+        "  xrayvpn deploy -H 203.0.113.7\n"
+        "  xrayvpn deploy -H 203.0.113.7 --runtime docker --no-warp\n"
+        "  xrayvpn deploy --dry-run --no-interactive -H 203.0.113.7\n\n"
+        "каждый переопределяющий флаг необязателен: без него действует значение "
+        "из config/settings.yml.",
     )
 )
 def deploy(
@@ -399,8 +427,9 @@ def deploy(
         typer.Option(
             "--runtime",
             help=i18n.t(
-                f"xray_runtime override ({', '.join(SUPPORTED_RUNTIMES)})",
-                f"Переопределение xray_runtime ({', '.join(SUPPORTED_RUNTIMES)})",
+                f"xray_runtime override ({', '.join(SUPPORTED_RUNTIMES)}; default: {_d('xray_runtime')})",
+                f"Переопределение xray_runtime ({', '.join(SUPPORTED_RUNTIMES)}; "
+                f"по умолчанию: {_d('xray_runtime')})",
             ),
         ),
     ] = None,
@@ -409,8 +438,8 @@ def deploy(
         typer.Option(
             "--xray-port",
             help=i18n.t(
-                "VLESS inbound TCP port override",
-                "Переопределение TCP-порта входящего VLESS",
+                f"VLESS inbound TCP port override (default: {_d('xray_port')})",
+                f"Переопределение TCP-порта входящего VLESS (по умолчанию: {_d('xray_port')})",
             ),
         ),
     ] = None,
@@ -419,8 +448,8 @@ def deploy(
         typer.Option(
             "--num-clients",
             help=i18n.t(
-                "Number of client configs to generate",
-                "Сколько клиентских конфигов генерировать",
+                f"Number of client configs to generate (default: {_d('num_clients')})",
+                f"Сколько клиентских конфигов генерировать (по умолчанию: {_d('num_clients')})",
             ),
         ),
     ] = None,
@@ -429,8 +458,9 @@ def deploy(
         typer.Option(
             "--camouflage-domain",
             help=i18n.t(
-                "REALITY camouflage/SNI domain override",
-                "Переопределение домена маскировки REALITY (SNI)",
+                f"REALITY camouflage/SNI domain (default: {_d('reality_camouflage_domain')})",
+                f"Переопределение домена маскировки REALITY (SNI) (по умолчанию: "
+                f"{_d('reality_camouflage_domain')})",
             ),
         ),
     ] = None,
@@ -439,8 +469,9 @@ def deploy(
         typer.Option(
             "--warp/--no-warp",
             help=i18n.t(
-                "Enable/disable Cloudflare WARP outbound",
-                "Включить/выключить исходящий туннель Cloudflare WARP",
+                f"Enable/disable Cloudflare WARP outbound (default: {_d('warp_enabled')})",
+                f"Включить/выключить исходящий туннель Cloudflare WARP "
+                f"(по умолчанию: {_d('warp_enabled')})",
             ),
         ),
     ] = None,
@@ -449,8 +480,10 @@ def deploy(
         typer.Option(
             "--rotate/--no-rotate",
             help=i18n.t(
-                "Force REALITY key + UUID regeneration / keep existing state",
-                "Принудительно перегенерировать ключ REALITY и UUID / сохранить текущее состояние",
+                f"Force REALITY key + UUID regeneration / keep existing state "
+                f"(default: {_d('xray_reality_rotate')} = keep)",
+                f"Принудительно перегенерировать ключ REALITY и UUID / сохранить "
+                f"текущее состояние (по умолчанию: {_d('xray_reality_rotate')} — не перегенерировать)",
             ),
         ),
     ] = None,
@@ -459,8 +492,10 @@ def deploy(
         typer.Option(
             "--manage-ufw/--no-ufw",
             help=i18n.t(
-                "Enable/disable ufw allow-rule management (disable on WSL test hosts)",
-                "Включить/выключить управление правилами ufw (отключайте на тестовых хостах WSL)",
+                f"Enable/disable ufw allow-rule management "
+                f"(default: {_d('xray_manage_ufw')}; disable on WSL test hosts)",
+                f"Включить/выключить управление правилами ufw "
+                f"(по умолчанию: {_d('xray_manage_ufw')}; отключайте на тестовых хостах WSL)",
             ),
         ),
     ] = None,

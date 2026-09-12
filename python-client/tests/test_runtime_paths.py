@@ -181,7 +181,9 @@ def test_workspace_root_packaged_falls_to_exe_folder(tmp_path: Path) -> None:
 def test_workspace_root_packaged_falls_to_cwd(tmp_path: Path) -> None:
     empty = tmp_path / "empty"
     empty.mkdir()
-    workspace = runtime_paths.workspace_root(cwd=empty, frozen=True, env={}, argv=[""])
+    workspace = runtime_paths.workspace_root(
+        cwd=empty, frozen=True, env={}, argv=[""], home=tmp_path / "home"
+    )
     assert workspace == empty.resolve()
 
 

@@ -209,11 +209,12 @@ def test_lang_command_ru_en_round_trip_is_clean() -> None:
         assert "commands:" in out
 
 
-def test_bare_word_language_switch_renders_screen() -> None:
+def test_bare_word_language_switch_confirms_in_one_line() -> None:
     with Restore():
         _, _, out = _run(["рус", "en", "exit"])
-        assert "Просто начни:" in out
-        assert "Just start:" in out
+        assert "язык интерфейса: русский" in out
+        assert "interface language: English" in out
+        assert out.count("Just start:") == 1
         assert i18n.is_ru() is False
         assert not l10n_typer._BACKUP
 
@@ -259,7 +260,8 @@ def test_global_flags_in_session_do_not_nest(monkeypatch: pytest.MonkeyPatch) ->
         rc, calls, out = _run(["--ru", "--version", "--bogus-flag", "exit"])
         assert rc == 0
         assert calls == []
-        assert "Просто начни:" in out
+        assert "язык интерфейса: русский" in out
+        assert "рус/англ" in help_text()
         assert "xrayvpn 9.9.9" in out
         assert "--bogus-flag" in out
 
@@ -284,17 +286,50 @@ def test_welcome_and_help_strings_guards_en_ru() -> None:
         en_screen = welcome_screen("1.2.3")
         assert "Just start:" in en_screen
         assert "REALITY" in en_screen and "type RU" in en_screen and "v1.2.3" in en_screen
-        assert "command list" in welcome_screen("1.2.3")
+        assert "command list" in en_screen and "deploy --help" in en_screen
+        assert "all flags" in en_screen
         assert "this list" in help_text()
         set_session_lang("ru")
         ru_screen = welcome_screen("1.2.3")
         assert "Разворачивает собственный VPN-сервер Xray VLESS + REALITY" in ru_screen
         assert "Просто начни:" in ru_screen and "type EN" in ru_screen
+        assert "deploy --help — все флаги" in ru_screen
         ru_help = help_text()
         assert "тот же синтаксис" in ru_help
         assert "фиксируется при запуске процесса" in ru_help
         set_session_lang("en")
         assert not l10n_typer._BACKUP
+
+
+def test_lang_notice_renders_in_new_language_each_way() -> None:
+    with Restore():
+        i18n.set_ru(False)
+        assert repl_mod.lang_notice() == "interface language: English"
+        set_session_lang("ru")
+        assert repl_mod.lang_notice() == "язык интерфейса: русский"
+        set_session_lang("en")
+
+
+def test_cancel_rc_130_keeps_session_with_note() -> None:
+    def dispatch(tokens: list[str]) -> int:
+        return 130 if "--abort" in tokens else 0
+
+    rc, _, out = _run(["deploy --abort", "exit"], dispatch=dispatch)
+    assert rc == 0
+    assert "[cancel] command aborted" in out
+
+
+def test_deploy_help_carries_settings_defaults_and_examples() -> None:
+    result = runner.invoke(main_mod.app, ["deploy", "--help"])
+    assert result.exit_code == 0
+    dense = "".join(ch for ch in result.output.split() if not set(ch) & set("│─┌┐└┘"))
+    assert "examples:" in result.output
+    assert "default:native" in dense
+    assert "default:443" in dense
+    assert "default:3" in dense
+    assert "default:dl.google.com" in dense
+    assert "default:true" in dense
+    assert "default:false" in dense
 
 
 # --- l10n_typer symmetry ------------------------------------------------------

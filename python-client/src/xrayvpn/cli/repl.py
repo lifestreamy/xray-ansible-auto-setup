@@ -113,6 +113,11 @@ def _box(lines: list[str]) -> str:
     return f"{top}\n{body}\n{top}"
 
 
+def lang_notice() -> str:
+    """One-line confirmation in the NEW language; the welcome box prints once."""
+    return i18n.t("interface language: English", "язык интерфейса: русский")
+
+
 def welcome_screen(version: str = __version__) -> str:
     """Screen 0: what this does, the just-start path, and the language threshold."""
     threshold = i18n.t(
@@ -129,8 +134,8 @@ def welcome_screen(version: str = __version__) -> str:
     )
     start_line = i18n.t("Just start:", "Просто начни:")
     keys = i18n.t(
-        "help — command list   version — version   exit — leave",
-        "help — список команд   version — версия   exit — выход",
+        "help — command list   deploy --help — all flags   version — version   exit — leave",
+        "help — список команд   deploy --help — все флаги   version — версия   exit — выход",
     )
     return _box([title, f"v{version}", purpose, "", start_line, "  deploy", "", keys, "", threshold])
 
@@ -210,7 +215,7 @@ def start(
             lang = normalize_lang(tokens[0])
             if lang is not None:
                 set_session_lang(lang)
-                print(welcome_screen(version))
+                print(lang_notice())
                 continue
         command = tokens[0].lower()
         if command in _EXIT_WORDS:
@@ -219,7 +224,7 @@ def start(
         if all(token.startswith("-") for token in options):
             if "--ru" in options:
                 set_session_lang("ru")
-                print(welcome_screen(version))
+                print(lang_notice())
             if "--version" in options:
                 print(f"xrayvpn {version}")
             unknown = options - {"--ru", "--version"}
@@ -246,6 +251,12 @@ def start(
                 ))
             else:
                 last_rc = dispatch(tokens)
+                if last_rc == 130:
+                    print(i18n.t(
+                        "[cancel] command aborted; the session continues",
+                        "[отмена] команда прервана; сессия продолжает работу",
+                    ))
+                    last_rc = 0
         except KeyboardInterrupt:
             print(i18n.t(
                 "[interrupted] command aborted; the session continues",
@@ -259,4 +270,4 @@ def _switch_lang(args: Sequence[str]) -> None:
         print(i18n.t("usage: lang ru|en", "использование: lang ru|en"))
         return
     set_session_lang(lang)
-    print(welcome_screen())
+    print(lang_notice())
