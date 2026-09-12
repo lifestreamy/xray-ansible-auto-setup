@@ -1,0 +1,103 @@
+name: release-binaries
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Ref to build (preview mode; push runs use the tag)
+        default: staging
+      tag:
+        description: Version source (a v-tag; empty = project version)
+        default: ""
+
+permissions:
+  contents: read
+
+env:
+  UV_VERSION: "0.12.10"
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            artifact: xrayvpn-windows-x64.exe
+          - os: ubuntu-22.04
+            artifact: xrayvpn-linux-x64
+          - os: ubuntu-22.04-arm
+            artifact: xrayvpn-linux-arm64
+          - os: macos-latest
+            artifact: xrayvpn-macos-arm64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      RAW_REV: ${{ github.event_name == 'push' && github.ref_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@34e114876b0b11c69e3ffa41ee652cc36245c427 # v6.0.2
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || inputs.ref }}
+      - uses: astral-sh/setup-uv@dde576740972c5904b09b10092d1f1ae23989c47 # v6.0.2
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Resolve version
+        id: version
+        working-directory: python-client
+        run: |
+          if ($env:RAW_REV -match '^v(.+?)(_(experimental|stable))?$') {
+            $v = $Matches[1]
+          } else {
+            $v = (uv run python -c "import xrayvpn; print(xrayvpn.__version__)").Trim()
+          }
+          "value=$v" >> $env:GITHUB_OUTPUT
+      - name: Sync build group
+        working-directory: python-client
+        run: uv sync --frozen --group build
+      - name: Build
+        working-directory: python-client
+        run: uv run --group build python build_binary.py --version "${{ steps.version.outputs.value }}"
+      - name: Smoke from a neutral cwd
+        working-directory: python-client
+        env:
+          XRAYVPN_UPDATE_CHECK: "0"
+        run: |
+          $ErrorActionPreference = "Stop"
+          $artifact = "${{ matrix.artifact }}"
+          $version = "${{ steps.version.outputs.value }}"
+          $fixture = Join-Path ([IO.Path]::GetTempPath()) ("bin-smoke-" + [guid]::NewGuid().ToString("N"))
+          New-Item -ItemType Directory -Path $fixture | Out-Null
+          Copy-Item (Join-Path "dist-binary" $artifact) -Destination $fixture
+          $exe = Join-Path $fixture ("./" + $artifact)
+          if ($IsLinux -or $IsMacOS) { chmod +x $exe }
+          pushd $fixture
+          try {
+            $out = (& $exe --version | Out-String)
+            $head = ($out -split "`r?`n")[0].Trim()
+            if ($head -ne "xrayvpn $version") { throw "--version check failed: '$head'" }
+            $dry = (& $exe deploy --dry-run --no-interactive --host 127.0.0.1 | Out-String)
+            if ($LASTEXITCODE -ne 0) { throw "dry-run failed (rc=$LASTEXITCODE)" }
+            foreach ($marker in @("deploy.yml", "roles/", "config/")) {
+              if (-not $dry.Contains($marker.TrimEnd('/'))) { throw "bundle missing: $marker" }
+            }
+            $env:XRAYVPN_LANG = "ru"
+            $ru = (& $exe deploy --dry-run --no-interactive --host 127.0.0.1 | Out-String)
+            if (-not $ru.Contains("[превью]")) { throw "RU locale sentinel missing in frozen build" }
+            $env:XRAYVPN_REPL_SELFTEST = "1"
+            $repl = "deploy --dry-run --no-interactive --host 127.0.0.1`nexit" | & $exe repl | Out-String
+            if ($LASTEXITCODE -ne 0) { throw "REPL selftest failed via binary (rc=$LASTEXITCODE)" }
+            if (-not $repl.Contains("[превью]")) { throw "REPL selftest produced no deploy preview" }
+          } finally {
+            popd
+            Remove-Item -Recurse -Force $fixture -ErrorAction SilentlyContinue
+          }
+      - uses: actions/upload-artifact@330a80a2a216371195056eb380486c0df05cbd70 # v5.0.8
+        with:
+          name: ${{ matrix.artifact }}
+          path: python-client/dist-binary/${{ matrix.artifact }}
+          if-no-files-found: error
