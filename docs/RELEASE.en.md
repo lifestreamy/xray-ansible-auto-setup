@@ -1,4 +1,4 @@
-> **Document:** `docs/RELEASE.en.md` · **Location:** `docs/` · **Version:** v0.4.1 · **Last updated:** 2026-09-12
+> **Document:** `docs/RELEASE.en.md` · **Location:** `docs/` · **Version:** v0.4.1 · **Last updated:** 2026-09-13
 >
 > [Main README](../README.en.md) — project overview and quick start
 
@@ -60,7 +60,7 @@ The short sha is the verified code; its runs are visible in the repository's Act
 | Release | Verified code | Checked by CI | Status |
 |---|---|---|---|
 | v0.3 | `cf98f0b` | distro matrix (ubuntu 22.04 / 24.04, debian 12), firewall job, CLI tests and lint — 2026-09-05 | `v0.3_experimental` |
-| v0.4.1 | staging finalize commit | distro matrix (ubuntu 22.04 / 24.04, debian 12), firewall job, mihomo e2e; CLI tests and lint on ubuntu / windows / macos; four-platform binary build in the release workflow | `v0.4.1_experimental` |
+| v0.4.1 | staging finalize commit (`d2604f5c`) | distro matrix (ubuntu 22.04 / 24.04, debian 12), firewall job, mihomo e2e; CLI tests and lint on ubuntu / windows / macos; four-platform binary build in the release workflow | **in preparation** — tag/release published manually at the end of the 0.4.x line |
 
 Note (2026-09-12): v0.4.0 was never released — its scope and the work after it were merged into v0.4.1; the v0.4.0 row above was replaced by the v0.4.1 row. Note (2026-09-09): the promotion criteria changed — the calendar check "not before 2026-09-20" for v0.3 is void; v0.3 stays experimental; the format moved to three components.
 

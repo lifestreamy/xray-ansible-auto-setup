@@ -13,8 +13,9 @@ Format:
 
 ## v0.4.1 — 2026-09-12
 
-Status: experimental (promotion criteria — `docs/RELEASE.en.md`). This section merges the never
-released v0.4.0 with everything built after it; there was no v0.4.0 release.
+Status: in preparation (development finished on `staging`; publication is manual, at the end of the
+0.4.x line). This section merges the never released v0.4.0 with everything built after it; there was
+no v0.4.0 release.
 
 ### Added
 - Console session (REPL): running `xrayvpn` with no arguments opens the same interactive wizard
