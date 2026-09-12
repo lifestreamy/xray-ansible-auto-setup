@@ -27,6 +27,10 @@ Thumbs.db
 .ruff_cache/
 .pytest_cache/
 
+# --- Binary builds ---
+python-client/build/
+python-client/dist-binary/
+
 # --- Env files (any project) ---
 .env
 .env.local
