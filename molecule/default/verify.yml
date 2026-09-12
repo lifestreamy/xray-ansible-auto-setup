@@ -80,6 +80,57 @@
         server_host: >-
           {{ clash_text | regex_search('server: "([^"]+)"', '\1') | first }}
 
+    - name: Assert journald retention drop-in exists
+      ansible.builtin.stat:
+        path: /etc/systemd/journald.conf.d/60-xray-ansible.conf
+      register: journald_dropin
+      failed_when: not journald_dropin.stat.exists
+
+    - name: Slurp journald drop-in
+      ansible.builtin.slurp:
+        src: /etc/systemd/journald.conf.d/60-xray-ansible.conf
+      register: journald_dropin_content
+      changed_when: false
+
+    - name: Assert journald drop-in pins persistent storage and caps
+      ansible.builtin.assert:
+        that:
+          - dropin is search('Storage=persistent')
+          - dropin is search('SystemMaxUse=')
+          - dropin is search('MaxRetentionSec=')
+        fail_msg: "journald drop-in is missing required keys"
+      vars:
+        dropin: "{{ journald_dropin_content.content | b64decode }}"
+
+    - name: Assert systemd-journald is active after restart
+      ansible.builtin.command:
+        cmd: systemctl is-active systemd-journald
+      register: journald_active
+      changed_when: false
+      failed_when: journald_active.stdout | trim != 'active'
+
+    - name: Slurp xray config for the log-settings assert
+      ansible.builtin.slurp:
+        src: "{{ xray_config_dir }}/config.json"
+      register: xray_cfg_content
+      changed_when: false
+
+    - name: Assert xray log block keeps logs in stdout/journald
+      ansible.builtin.assert:
+        that:
+          - cfg_text is search('"loglevel"')
+          - cfg_text is not search('"error": *"/')
+        fail_msg: "xray log config drifted from the journald-only design"
+      vars:
+        cfg_text: "{{ xray_cfg_content.content | b64decode }}"
+
+    - name: Assert access log switch off renders "access": "none"
+      ansible.builtin.assert:
+        that:
+          - xray_cfg_content.content | b64decode is search('"access": "none"')
+        fail_msg: 'access log should default to "none" (journald-only privacy default)'
+      when: not (xray_log_access | default(false) | bool)
+
     - name: Run mihomo end-to-end handshake (only when xray_e2e_enabled is true)
       ansible.builtin.import_tasks: e2e.yml
       when: xray_e2e_enabled | default(false)

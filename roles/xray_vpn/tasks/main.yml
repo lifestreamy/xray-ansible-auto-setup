@@ -17,6 +17,10 @@
   ansible.builtin.import_tasks: "runtime_{{ xray_runtime }}.yml"
   tags: runtime
 
+- name: Include log retention setup
+  ansible.builtin.import_tasks: logs.yml
+  tags: logs
+
 - name: Include REALITY keys
   ansible.builtin.import_tasks: keys.yml
   tags: keys

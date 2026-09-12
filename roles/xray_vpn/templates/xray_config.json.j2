@@ -1,6 +1,9 @@
 {
   "log": {
-    "loglevel": "info"
+    "loglevel": "{{ xray_log_level | default('warning') }}"
+{%- if not (xray_log_access | default(false) | bool) %},
+    "access": "none"
+{%- endif %}
   },
   "inbounds": [
     {
