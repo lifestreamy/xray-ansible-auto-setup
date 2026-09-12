@@ -156,6 +156,10 @@
     msg: "VPN config files exported to {{ xray_client_configs_dir }}/"
   tags: config
 
+- name: Include xray-obs black-box timer
+  ansible.builtin.import_tasks: obs.yml
+  tags: obs
+
 - name: Run smoke checks
   ansible.builtin.import_tasks: smoke.yml
   tags: smoke,always

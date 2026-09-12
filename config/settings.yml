@@ -63,6 +63,7 @@ xray_log_level: warning  # xray verbosity (warning|error|info); logs stay in jou
 xray_log_access: false  # xray access log (per-connection): off by default; true -> also journald
 xray_journal_max_use: "120M"  # disk cap of the whole host journal (system-wide by design)
 xray_journal_retention_days: 3  # journal history depth (whole host), days
+xray_obs_timer: true  # "black box": ~10-min read-only snapshot of host/service state into journald
 # ---
 
 # Role behavior 

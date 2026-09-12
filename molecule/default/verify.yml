@@ -131,6 +131,44 @@
         fail_msg: 'access log should default to "none" (journald-only privacy default)'
       when: not (xray_log_access | default(false) | bool)
 
+    - name: Assert xray-obs-snapshot timer is enabled and active
+      when: xray_obs_timer | default(true) | bool
+      block:
+        - name: Check xray-obs-snapshot timer enabled state
+          ansible.builtin.command:
+            cmd: systemctl is-enabled xray-obs-snapshot.timer
+          register: obs_timer_enabled
+          changed_when: false
+          failed_when: obs_timer_enabled.stdout | trim != 'enabled'
+
+        - name: Check xray-obs-snapshot timer active
+          ansible.builtin.command:
+            cmd: systemctl is-active xray-obs-snapshot.timer
+          register: obs_timer_active
+          changed_when: false
+          failed_when: obs_timer_active.stdout | trim != 'active'
+
+        - name: Slurp obs snapshot script
+          ansible.builtin.slurp:
+            src: /usr/local/bin/xray-obs-snapshot
+          register: obs_script
+
+        - name: Assert obs script tags the journal
+          ansible.builtin.assert:
+            that:
+              - obs_script.content | b64decode is search('logger -t xray-obs')
+            fail_msg: "xray-obs-snapshot lost its journal tagging"
+      tags: obs
+
+    - name: Assert xray-obs-snapshot artifacts are absent when disabled
+      ansible.builtin.stat:
+        path: /usr/local/bin/xray-obs-snapshot
+      register: obs_absent_check
+      failed_when:
+        - obs_absent_check.stat.exists
+        - not (xray_obs_timer | default(true) | bool)
+      tags: obs
+
     - name: Run mihomo end-to-end handshake (only when xray_e2e_enabled is true)
       ansible.builtin.import_tasks: e2e.yml
       when: xray_e2e_enabled | default(false)
