@@ -29,6 +29,7 @@ Thumbs.db
 
 # --- Binary builds ---
 python-client/build/
+python-client/dist/
 python-client/dist-binary/
 
 # --- Env files (any project) ---

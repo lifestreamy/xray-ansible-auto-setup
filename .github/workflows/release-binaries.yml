@@ -101,3 +101,85 @@ jobs:
           name: ${{ matrix.artifact }}
           path: python-client/dist-binary/${{ matrix.artifact }}
           if-no-files-found: error
+
+  dist:
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@34e114876b0b11c69e3ffa41ee652cc36245c427 # v6.0.2
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || inputs.ref }}
+      - uses: astral-sh/setup-uv@dde576740972c5904b09b10092d1f1ae23989c47 # v6.0.2
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+      - name: Build wheel and sdist
+        working-directory: python-client
+        run: |
+          uv build --wheel
+          uv build --sdist
+      - name: Smoke-install the wheel repo-free
+        working-directory: python-client
+        env:
+          XRAYVPN_UPDATE_CHECK: "0"
+        run: |
+          set -euo pipefail
+          wheel="$(ls dist/*.whl | head -n1)"
+          uv tool install --force "$wheel"
+          tmp="$(mktemp -d)"
+          trap 'rm -rf "$tmp"; uv tool uninstall xrayvpn >/dev/null 2>&1 || true' EXIT
+          first="$( cd "$tmp" && xrayvpn --version | head -n1 )"
+          dry="$( cd "$tmp" && xrayvpn deploy --dry-run --no-interactive --host 127.0.0.1 )"
+          grep -q 'deploy\.yml' <<<"$dry"
+          grep -q 'roles' <<<"$dry"
+          grep -q 'config' <<<"$dry"
+          [[ "$first" == xrayvpn* ]]
+      - uses: actions/upload-artifact@330a80a2a216371195056eb380486c0df05cbd70 # v5.0.8
+        with:
+          name: python-dist
+          path: python-client/dist/
+          if-no-files-found: error
+
+  release:
+    needs: [build, dist]
+    if: github.event_name == 'push'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@34e114876b0b11c69e3ffa41ee652cc36245c427 # v6.0.2
+        with:
+          ref: ${{ github.event_name == 'push' && github.ref || inputs.ref }}
+      - uses: actions/download-artifact@85b33142143d8d70e61a4ad1f2283cfb1485ed98 # v5.0.0
+        with:
+          pattern: "*"
+          path: assets
+          merge-multiple: true
+      - name: Checksums and update manifest
+        working-directory: assets
+        env:
+          TAG: ${{ github.ref_name }}
+          REPOSITORY: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          sha256sum xrayvpn* > SHA256SUMS.txt
+          python3 ../scripts/ci/make_release_manifest.py --dir . --release "$REPOSITORY" --tag "$TAG"
+      - name: Draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          flags=(--draft --title "$TAG")
+          if [[ "$TAG" == *_experimental ]]; then
+            flags+=(--prerelease)
+          elif [[ "$TAG" != *_stable ]]; then
+            echo "unknown release suffix for $TAG" >&2
+            exit 1
+          fi
+          gh release create "${flags[@]}" --notes "Pre-built by the release-binaries workflow from tag ${TAG}. Binaries: four platform onefile builds plus wheel/sdist; see SHA256SUMS.txt and latest.json." -- assets/*
