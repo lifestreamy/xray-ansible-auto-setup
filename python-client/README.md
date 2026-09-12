@@ -44,7 +44,7 @@ uv tool install --editable python-client
 
 Установка editable — изменения кода в репозитории применяются сразу. Запускать из папки
 репозитория: клиент ищет `deploy.yml` и `config/settings.yml` вверх от текущей директории.
-Удаление — `uv tool uninstall xrayvpn-client`.
+Удаление — `uv tool uninstall xrayvpn`.
 
 ## Консольная сессия (REPL)
 

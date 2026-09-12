@@ -1,4 +1,4 @@
-> **Document:** `docs/RELEASE.en.md` · **Location:** `docs/` · **Version:** v0.4.0 · **Last updated:** 2026-09-09
+> **Document:** `docs/RELEASE.en.md` · **Location:** `docs/` · **Version:** v0.4.1 · **Last updated:** 2026-09-12
 >
 > [Main README](../README.en.md) — project overview and quick start
 
@@ -44,12 +44,12 @@ A calendar soak period is not a criterion (decision 2026-09-09): a deploy either
 One release per version — after the whole planned version scope is done; no intermediate pre-releases for partially finished work (decision 2026-09-09).
 
 1. The version scope (work waves) is complete in `staging`; each wave is pushed and verified by a green CI run before the next one starts.
-2. `staging` is pushed manually; a green full GitHub Actions run is awaited on the head commit: workflow `molecule` (syntax, distro matrix, firewall job) and workflow `python-client` (CLI tests and lint). On failures — fix in separate commits and re-run until green.
+2. `staging` is pushed manually; a green full GitHub Actions run is awaited on the head commit: workflow `molecule` (syntax, distro matrix, firewall job), workflow `python-client` (CLI tests and lint) and — on the PR into main — the smoke binary build of workflow `release-binaries` (path-filtered). On failures — fix in separate commits and re-run until green.
 3. One `docs: finalize vX.Y.Z` commit: `docs/PLANNED.*`, both CHANGELOG halves, `Version` / `Last updated` stamps of the public docs, the README summary, the statuses table row below and the python-client package version bump (`pyproject.toml`, `src/xrayvpn/__init__.py`, `uv.lock`) to the release version.
 4. The maintainer performs a successful manual deployment of the release content on a real VPS — the release is published only after that.
 5. The PR from `staging` into `main` is merged with **Create a merge commit** (web rebase is prohibited — it recreates commits and strips signatures and dates).
-6. The signed annotated tag `vX.Y.Z_experimental` is created on the merge node and pushed (by hand).
-7. A GitHub Release is created: title — the tag name; body — the matching CHANGELOG section; experimental releases are marked pre-release, stable promotions — latest. Release assets are public files only; configs with keys never go into a release.
+6. The signed annotated tag `vX.Y.Z_experimental` is created on the merge node and pushed (by hand). Pushing the tag launches the build workflow: it builds the four platform binaries and dists, computes `SHA256SUMS.txt` and `latest.json`, and creates the GitHub release as a draft (pre-release) — the assets never block the tag: if the build leg fails, the release can still be published without them and the assets rebuilt later by rerunning the workflow on the tag.
+7. A GitHub Release is created: title — the tag name; body — the matching CHANGELOG section; experimental releases are marked pre-release, stable promotions — latest. If the workflow already produced a draft, it is simply published (the body can be extended by hand). Release assets are public files only; configs with keys never go into a release.
 
 Tagging an unverified (not CI-green) commit is prohibited by the policy.
 
@@ -60,9 +60,9 @@ The short sha is the verified code; its runs are visible in the repository's Act
 | Release | Verified code | Checked by CI | Status |
 |---|---|---|---|
 | v0.3 | `cf98f0b` | distro matrix (ubuntu 22.04 / 24.04, debian 12), firewall job, CLI tests and lint — 2026-09-05 | `v0.3_experimental` |
-| v0.4.0 | `9aab48e` | distro matrix (ubuntu 22.04 / 24.04, debian 12), firewall job, CLI tests and lint on ubuntu / windows / macos — run expected after push | `v0.4.0_experimental` |
+| v0.4.1 | staging finalize commit | distro matrix (ubuntu 22.04 / 24.04, debian 12), firewall job, mihomo e2e; CLI tests and lint on ubuntu / windows / macos; four-platform binary build in the release workflow | `v0.4.1_experimental` |
 
-Note (2026-09-09): the promotion criteria changed — the calendar check "not before 2026-09-20" for v0.3 is void; v0.3 stays experimental, the next release is v0.4.0 (three-component format).
+Note (2026-09-12): v0.4.0 was never released — its scope and the work after it were merged into v0.4.1; the v0.4.0 row above was replaced by the v0.4.1 row. Note (2026-09-09): the promotion criteria changed — the calendar check "not before 2026-09-20" for v0.3 is void; v0.3 stays experimental; the format moved to three components.
 
 ## CHANGELOG
 

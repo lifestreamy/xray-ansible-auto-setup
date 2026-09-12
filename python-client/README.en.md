@@ -44,7 +44,7 @@ uv tool install --editable python-client
 
 The install is editable — repository code changes apply immediately. Run it from the repository
 folder: the client locates `deploy.yml` and `config/settings.yml` by walking up from the current
-directory. Remove with `uv tool uninstall xrayvpn-client`.
+directory. Remove with `uv tool uninstall xrayvpn`.
 
 ## Console session (REPL)
 

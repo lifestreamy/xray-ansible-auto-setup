@@ -11,20 +11,29 @@ Format:
 - Entries are built from commit messages and land in the release commit; no auto-bump.
 - The RU/EN pair is updated in the same commit; section structure is mirrored.
 
-## v0.4.0 — 2026-09-09
+## v0.4.1 — 2026-09-12
 
-Status: experimental (promotion criteria — `docs/RELEASE.en.md`).
+Status: experimental (promotion criteria — `docs/RELEASE.en.md`). This section merges the never
+released v0.4.0 with everything built after it; there was no v0.4.0 release.
 
 ### Added
-- `--ru` (global and on `deploy`) and the `XRAYVPN_LANG` environment variable: a fully Russian
-  CLI interface — prompts, messages, errors and `--help`; the flag works in any argument position.
-- The `xrayvpn-deploy-ru.pyw` launcher (double-click, Russian interface) next to
-  `xrayvpn-deploy.pyw` (English): the console stays open until Enter, errors and the exit code
-  are shown explicitly.
-- Installing the command onto PATH: `uv tool install --editable python-client` — plain `xrayvpn`
-  without the `uv run` prefix (documented in the READMEs and `docs/SETUP.en.md`).
-- Rotation flags in the shell wrappers: `--rotate`/`--no-rotate` (bash) and
-  `-Rotate`/`-NoRotate` (PowerShell) — parity with the python CLI.
+- Console session (REPL): running `xrayvpn` with no arguments opens the same interactive wizard
+  as a session — `deploy`/`help`/`version`/`lang ru|en`/`exit`, CLI syntax without the prefix;
+  a selftest mode drives it in CI smokes.
+- Standalone binaries in Releases (Windows x64, Linux x64/arm64, macOS arm64): Nuitka onefile
+  with the embedded payload (roles/playbooks/config template), unpacked into a stable cache
+  folder — the client works without Python, uv or a repository clone; Windows file-version
+  metadata is stamped into the exe.
+- The Python wheel now ships the payload inside (`xrayvpn/payload/…`): a fresh-environment
+  install gives a working `deploy --dry-run` outside any repository.
+- New-release checks in binary builds (at most once a day, silent on failures and silent until a
+  stable release exists); disable with `XRAYVPN_UPDATE_CHECK=0`.
+- Binary/dist workflow: a four-platform build matrix with smokes from a neutral directory,
+  release artifacts, `SHA256SUMS.txt` and `latest.json` (a manifest for a future self-update
+  command), and a draft release on tag push.
+- Anti-hairpin: generated Clash/Mihomo profiles pin the server IP with a DIRECT rule so the
+  tunnel never intercepts the client's own connection to the VPS.
+- Crash net for packaged builds: a fatal double-click error stays on screen until Enter.
 
 ### Changed
 - **Breaking**: `xrayvpn deploy` now defaults to `--execution remote` (was `local`): a no-argument
@@ -36,14 +45,29 @@ Status: experimental (promotion criteria — `docs/RELEASE.en.md`).
 - The role no longer installs `ufw`: the allow rule for `xray_port`/tcp is added only when `ufw`
   already exists on the server. The `xray_manage_firewall` variable and CLI flag renamed to
   `xray_manage_ufw` / `--manage-ufw/--no-ufw`.
+- `--ru` (global and on `deploy`) and the `XRAYVPN_LANG` environment variable: a fully Russian
+  CLI interface — prompts, messages, errors and `--help`; the flag works in any argument position.
+  Windows double-click launchers in English and Russian (`xrayvpn-deploy.pyw` /
+  `xrayvpn-deploy-ru.pyw`) keep the console open until Enter; they start the interpreter directly
+  without a `pwsh -c` wrapper, so the exit code is not swallowed.
+- Installing the command onto PATH: `uv tool install --editable python-client` — plain `xrayvpn`
+  without the `uv run` prefix; the distribution is renamed to `xrayvpn` (install/uninstall by
+  this name).
+- Rotation and key parameters are forwarded into the shell wrappers: `--rotate`/`--no-rotate`,
+  `--runtime`, `-Warp/-NoWarp`, `-Rotate/-NoRotate`, port and client-count flags.
+- `deploy --help` now shows the effective defaults from `config/settings.yml` plus examples;
+  switching languages replies with one line in the new language; interrupting a command (Ctrl-C)
+  no longer closes the session.
+- Author contact links moved to the korelov.dev domain (the GitHub repository path is unchanged).
+- Client tests run on Windows and macOS in CI too; uv is version-pinned.
 
 ### Fixed
 - Double-clicking `xrayvpn-deploy.pyw` on Windows failed (cmd quote escaping inside the
   launcher): direct interpreter launch without cmd, an honest exit code, explicit diagnostics
   when `.venv`/`uv` are missing; the launcher contract in the tests now verifies a real launch,
   not just static flags.
-- The python-client package version is synced with the release (`xrayvpn --version` → 0.4.0);
-  the finalize-bump rule is codified in `docs/RELEASE.en.md`.
+- `set -e` no longer kills dry-runs and interactive prompts in the shell wrappers; the
+  dry-run preview works with no inventory at all and never touches the personal `inventory.yml`.
 
 ### Removed
 - The `podman` runtime (experimental stub, never left experimental; not covered by molecule

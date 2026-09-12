@@ -1,4 +1,4 @@
-> **Document:** `docs/GLOSSARY.md` · **Location:** `docs/` · **Version:** v0.4.0 · **Last updated:** 2026-09-09
+> **Document:** `docs/GLOSSARY.md` · **Location:** `docs/` · **Version:** v0.4.1 · **Last updated:** 2026-09-09
 >
 > [Главный README](../README.md) — обзор проекта и быстрый старт
 

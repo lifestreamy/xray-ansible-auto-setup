@@ -1,4 +1,4 @@
-> **Document:** `docs/SETUP.en.md` · **Location:** `docs/` · **Version:** v0.4.0 · **Last updated:** 2026-09-12
+> **Document:** `docs/SETUP.en.md` · **Location:** `docs/` · **Version:** v0.4.1 · **Last updated:** 2026-09-12
 >
 > [Main README](../README.en.md) — project overview and quick start
 
