@@ -3,6 +3,18 @@ name: release-binaries
 on:
   push:
     tags: ["v*"]
+  pull_request:
+    branches: [main]
+    paths:
+      - ".github/workflows/release-binaries.yml"
+      - "python-client/build-binary.*"
+      - "python-client/build_binary.py"
+      - "python-client/build_support.py"
+      - "python-client/hatch_build.py"
+      - "python-client/xrayvpn.spec"
+      - "python-client/pyproject.toml"
+      - "python-client/uv.lock"
+      - "scripts/ci/make_release_manifest.py"
   workflow_dispatch:
     inputs:
       ref:
@@ -41,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c69e3ffa41ee652cc36245c427 # v6.0.2
         with:
-          ref: ${{ github.event_name == 'push' && github.ref || inputs.ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || '' }}
       - uses: astral-sh/setup-uv@dde576740972c5904b09b10092d1f1ae23989c47 # v6.0.2
         with:
           version: ${{ env.UV_VERSION }}
@@ -110,7 +122,7 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c69e3ffa41ee652cc36245c427 # v6.0.2
         with:
-          ref: ${{ github.event_name == 'push' && github.ref || inputs.ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || '' }}
       - uses: astral-sh/setup-uv@dde576740972c5904b09b10092d1f1ae23989c47 # v6.0.2
         with:
           version: ${{ env.UV_VERSION }}
@@ -154,7 +166,7 @@ jobs:
     steps:
       - uses: actions/checkout@34e114876b0b11c69e3ffa41ee652cc36245c427 # v6.0.2
         with:
-          ref: ${{ github.event_name == 'push' && github.ref || inputs.ref }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.ref || '' }}
       - uses: actions/download-artifact@85b33142143d8d70e61a4ad1f2283cfb1485ed98 # v5.0.0
         with:
           pattern: "*"
