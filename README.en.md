@@ -26,7 +26,7 @@
 
 ## Hi!
 
-Hi, I'm [Tim Korelov](https://github.com/lifestreamy). Here is my solution for deploying a personal VPN that you can use freely and free of charge (solely to protect your personal data, naturally, and in accordance with all laws). Don't forget to check the license terms.
+Hi, I'm [Tim Korelov](https://korelov.dev). Here is my solution for deploying a personal VPN that you can use freely and free of charge (solely to protect your personal data, naturally, and in accordance with all laws). Don't forget to check the license terms.
 
 > [!TIP]
 > Want to jump straight in? — [Quick start](#quick-start).
@@ -269,7 +269,7 @@ Full text — in [`LICENSE`](LICENSE) (English). A short summary in Russian — 
 
 ## Author and contacts
 
-Tim Korelov — https://github.com/lifestreamy
+Tim Korelov — https://korelov.dev
 
 Email: **tim.korelov@yandex.com**
 Telegram: **@timkore** (work) — about this project, with proposals to work together, invitations, etc.

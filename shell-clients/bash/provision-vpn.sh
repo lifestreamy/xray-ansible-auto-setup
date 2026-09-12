@@ -4,7 +4,7 @@ set -euo pipefail
 VERSION="v2026-09-04" # YYYY-MM-DD
 LICENSE="AGPL-3.0 + commercial-use restriction"
 AUTHOR="Tim Korelov"
-CONTACT_URL="https://github.com/lifestreamy"
+CONTACT_URL="https://korelov.dev"
 
 show_banner() {
     echo "=== Xray VPN Provisioning Script (Clash Verge, FlClash, Amnezia) (${VERSION}) ==="

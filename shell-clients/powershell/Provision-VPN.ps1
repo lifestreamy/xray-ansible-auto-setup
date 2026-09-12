@@ -26,7 +26,7 @@ hidden input, specify neither -Pass nor -PKey.
 +--------------------------------------------------------------+
 | Release: v2026-09-04                                         |
 | Author:  Tim Korelov                                         |
-| Contact: https://github.com/lifestreamy                      |
+| Contact: https://korelov.dev                                 |
 | License: AGPL-3.0 + commercial-use restriction                |
 +--------------------------------------------------------------+
 
@@ -224,7 +224,7 @@ $title = "Xray VPN Provisioning Wrapper (Clash Verge / FlClash / Amnezia)"
 $version = 'v2026-09-04'
 $license = 'AGPL-3.0 + commercial-use restriction'
 $author = 'Tim Korelov'
-$contact = 'https://github.com/lifestreamy'
+$contact = 'https://korelov.dev'
 
 function Write-LogDefault([string]$Message) {
     if ($LogLevel -in @('Default', 'Verbose')) {
