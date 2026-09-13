@@ -157,6 +157,10 @@ def help_text() -> str:
                 "  deploy [флаги]   тот же синтаксис, что у xrayvpn deploy --help",
             ),
             i18n.t(
+                "  service status|restart|logs|reboot --help — recovery actions",
+                "  service status|restart|logs|reboot --help — диагностика и восстановление",
+            ),
+            i18n.t(
                 "  lang ru|en       switch interface language now (рус/англ ok)",
                 "  lang ru|en       переключить язык интерфейса (рус/англ тоже)",
             ),

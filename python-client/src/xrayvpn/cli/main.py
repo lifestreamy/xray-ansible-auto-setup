@@ -26,7 +26,7 @@ from typing import Annotated
 import typer
 
 from xrayvpn import __version__, i18n
-from xrayvpn.cli import l10n_typer, prompts, repl
+from xrayvpn.cli import l10n_typer, prompts, repl, service
 from xrayvpn.core import runtime_paths, update_check, wsl
 from xrayvpn.core.config import find_repo_root, load_settings, merge_overrides
 from xrayvpn.core.execution.base import DeployRequest
@@ -147,6 +147,9 @@ def main(
 def repl_command() -> None:
     """Open the interactive session (default on a TTY without arguments)."""
     raise typer.Exit(repl.start(_repl_dispatch, update_hint=_update_hint))
+
+
+app.add_typer(service.service_app, name="service")
 
 
 def _repl_dispatch(tokens: list[str]) -> int:

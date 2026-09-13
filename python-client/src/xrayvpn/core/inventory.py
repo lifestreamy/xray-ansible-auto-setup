@@ -86,6 +86,18 @@ def validate_connection(connection: dict[str, str]) -> list[str]:
     return problems
 
 
+def user_inventory_hosts(workspace: Path) -> list[str]:
+    """Host names declared in the personal inventory.yml (read-only)."""
+    path = workspace / PERSONAL_INVENTORY_NAME
+    if not path.is_file():
+        raise RuntimeError(f"inventory file not found: {path}")
+    with path.open("r", encoding="utf-8") as handle:
+        data = yaml.safe_load(handle) or {}
+    all_section = data.get("all", {}) if isinstance(data, dict) else {}
+    hosts = all_section.get("hosts", {}) if isinstance(all_section, dict) else {}
+    return [str(name) for name in hosts]
+
+
 def parse_user_inventory(
     workspace: Path, *, example_dir: Path | None = None
 ) -> tuple[dict[str, str], dict[str, Any]]:
@@ -125,8 +137,8 @@ def parse_user_inventory(
                 continue
             for key, value in host_vars.items():
                 if key in CONNECTION_KEYS:
-                    # empty YAML scalars (None) stay unset — never str(None)="None"
-                    if value is not None and key not in connection:
+                    # empty YAML scalars (None and "") stay unset — parity for every consumer
+                    if value not in (None, "") and key not in connection:
                         connection[key] = str(value)
                 elif not key.startswith("ansible_"):
                     extra_vars[key] = value

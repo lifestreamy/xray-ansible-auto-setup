@@ -117,6 +117,15 @@ uv run --project python-client xrayvpn deploy --host 1.2.3.4 --dry-run
 
 Full list: `xrayvpn deploy --help`.
 
+## Service actions (`xrayvpn service`)
+
+Once the VPN is deployed and something degrades — point actions over SSH with the same
+connection flags (`-H/--pkey/--pass/--use-inventory`): `service status` (state, journal,
+listeners), `service restart` (restarts xray — WARP lives inside it), `service logs
+[--since 24h] [--out DIR]` (dumps the journal to your machine), `service reboot --yes`
+(last resort, requires the explicit `--yes`). The recovery sequence —
+[`docs/RUNBOOK.en.md`](../docs/RUNBOOK.en.md).
+
 ## Layout
 
 - `src/xrayvpn/` — the package (`cli/`, `core/`, `core/execution/`, `core/transport/`);
