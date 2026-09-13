@@ -27,15 +27,10 @@ def is_ru() -> bool:
     return _STATE["ru"]
 
 
-def t(en_or_key: str, ru: str | None = None, **fmt: object) -> str:
-    """Resolve a catalog entry by KEY; legacy `t(en, ru)` literal pairs still work."""
-    if en_or_key in MESSAGES:
-        entry = MESSAGES[en_or_key]
-        text = entry.ru if _STATE["ru"] else entry.en
-    elif ru is not None:
-        text = ru if _STATE["ru"] else en_or_key
-    else:
-        raise KeyError(f"i18n key not in catalog: {en_or_key!r}")
+def t(key: str, **fmt: object) -> str:
+    """Resolve a catalog key (xrayvpn.text.MESSAGES) in the active language."""
+    entry = MESSAGES[key]
+    text = entry.ru if _STATE["ru"] else entry.en
     return text.format(**fmt) if fmt else text
 
 

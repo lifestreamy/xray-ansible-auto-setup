@@ -75,9 +75,9 @@ _ANSI_RE = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 
 
 def test_t_switch() -> None:
-    assert i18n.t("yes", "да") == "yes"
+    assert i18n.t("MAIN_CONFIRM_START") == "Start the deploy?"
     i18n.set_ru(True)
-    assert i18n.t("yes", "да") == "да"
+    assert i18n.t("MAIN_CONFIRM_START") == "Начать деплой?"
     assert i18n.is_ru()
 
 

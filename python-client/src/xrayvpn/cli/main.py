@@ -70,10 +70,7 @@ if i18n.is_ru():
 
 app = typer.Typer(
     name="xrayvpn",
-    help=i18n.t(
-        "Provision an Xray VLESS + REALITY VPN server on a remote VPS.",
-        "Развёртывание VPN-сервера Xray VLESS + REALITY на удалённом VPS.",
-    ),
+    help=i18n.t("MAIN_APP_HELP"),
     no_args_is_help=False,
     invoke_without_command=True,
     add_completion=False,
@@ -119,17 +116,14 @@ def main(
             "--version",
             callback=_version_callback,
             is_eager=True,
-            help=i18n.t("Show the version and exit.", "Показать версию и выйти."),
+            help=i18n.t("MAIN_VERSION_OPT"),
         ),
     ] = False,
     ru: Annotated[
         bool,
         typer.Option(
             "--ru",
-            help=i18n.t(
-                "Russian interface output (prompts, messages, errors, help)",
-                "Русский вывод интерфейса (промпты, сообщения, ошибки, help)",
-            ),
+            help=i18n.t("MAIN_RU_OPT"),
         ),
     ] = False,
 ) -> None:
@@ -162,12 +156,7 @@ def _repl_dispatch(tokens: list[str]) -> int:
 
 
 def _pause_before_exit() -> None:
-    typer.echo(
-        i18n.t(
-            "Press Enter to close this window...",
-            "Нажмите Enter, чтобы закрыть окно...",
-        )
-    )
+    typer.echo(i18n.t("MAIN_PAUSE"))
     try:
         input()
     except (EOFError, OSError):
@@ -193,46 +182,28 @@ def run() -> None:
 def _resolve_execution(execution: str | None) -> str:
     if execution is None:
         selected = prompts.select(
-            i18n.t(
-                "Execution node (where ansible runs; the target is always the VPS)",
-                "Узел исполнения ansible (где запускается плейбук; цель — всегда VPS)",
-            ),
+            i18n.t("MAIN_EXEC_PROMPT"),
             list(EXECUTION_MODES),
             default="remote",
         )
         execution = selected or "remote"
     if execution not in EXECUTION_MODES:
-        typer.echo(
-            i18n.t(
-                f"error: unknown execution mode: {execution}",
-                f"ошибка: неизвестный режим исполнения: {execution}",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_EXEC_UNKNOWN", mode=execution), err=True)
         raise typer.Exit(2)
     return execution
 
 
 def _confirm_deploy(plan: list[str], *, no_interactive: bool) -> None:
-    typer.echo(i18n.t("deploy plan:", "план деплоя:"))
+    typer.echo(i18n.t("MAIN_PLAN_HEADER"))
     for line in plan:
         typer.echo(f"  {line}")
     if no_interactive:
         return
     if not prompts.is_interactive():
-        typer.echo(
-            i18n.t(
-                "error: confirmation needs a terminal; add --no-interactive to run without it",
-                "ошибка: подтверждение требует терминала; добавьте --no-interactive "
-                "для запуска без него",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_CONFIRM_TTY"), err=True)
         raise typer.Exit(2)
-    if not prompts.confirm(
-        i18n.t("Start the deploy?", "Начать деплой?"), default=False
-    ):
-        typer.echo(i18n.t("[abort] deploy cancelled", "[отмена] деплой отменён"))
+    if not prompts.confirm(i18n.t("MAIN_CONFIRM_START"), default=False):
+        typer.echo(i18n.t("MAIN_ABORT"))
         raise typer.Exit(0)
 
 
@@ -248,50 +219,24 @@ def _inventory_creds(
 ) -> tuple[dict[str, str], dict[str, object]]:
     """Parse + validate personal inventory.yml; shared by both execution modes."""
     if host is not None or pkey is not None or password is not None or user != "root" or port != 22:
-        typer.echo(
-            i18n.t(
-                "warning: --use-inventory overrides connection/auth flags",
-                "предупреждение: --use-inventory переопределяет флаги подключения/аутентификации",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_INV_OVERRIDES"), err=True)
     try:
         connection, user_vars = parse_user_inventory(workspace, example_dir=payload)
     except (RuntimeError, TypeError) as exc:
-        typer.echo(i18n.t(f"error: {exc}", f"ошибка: {exc}"), err=True)
+        typer.echo(i18n.t("COMMON_ERR", err=exc), err=True)
         raise typer.Exit(2) from exc
     problems = validate_connection(connection)
     if problems:
         personal_inventory = str(workspace / runtime_paths.PERSONAL_INVENTORY_NAME)
-        typer.echo(
-            i18n.t(
-                f"error: {personal_inventory} is not ready for deploy:",
-                f"ошибка: {personal_inventory} не готов к деплою:",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_INV_NOT_READY", path=personal_inventory), err=True)
         for problem in problems:
             typer.echo(f"  - {problem}", err=True)
-        typer.echo(
-            i18n.t(
-                "  fill the keys under all.hosts.<host> as in inventory.yml.example",
-                "  заполните ключи в all.hosts.<host> как в inventory.yml.example",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_INV_FILL"), err=True)
         raise typer.Exit(2)
     if not (
         connection.get("ansible_ssh_private_key_file") or connection.get("ansible_ssh_pass")
     ):
-        typer.echo(
-            i18n.t(
-                "note: no auth key in inventory.yml; the SSH password will be "
-                "requested at run time (or set ansible_ssh_private_key_file)",
-                "заметка: в inventory.yml нет ключа аутентификации; SSH-пароль будет "
-                "запрошен во время запуска (или укажите ansible_ssh_private_key_file)",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_INV_NOAUTH"), err=True)
     return connection, user_vars
 
 
@@ -316,62 +261,35 @@ def _plan_lines(
     cleanup: str,
 ) -> list[str]:
     if mode == "remote":
-        runner = i18n.t(
-            "ansible runs ON THE VPS (SSH bootstrap, server-side playbook)",
-            "ansible выполняется НА VPS (SSH-бутстрап, плейбук на сервере)",
-        )
+        runner = i18n.t("MAIN_PLAN_RUNNER_REMOTE")
     else:
-        runner = i18n.t(
-            "ansible runs ON THIS MACHINE (Windows: WSL) against the VPS over SSH",
-            "ansible выполняется НА ЭТОЙ МАШИНЕ (Windows: WSL), цель — VPS по SSH",
-        )
+        runner = i18n.t("MAIN_PLAN_RUNNER_LOCAL")
     lines = [
         runner,
-        i18n.t(f"target: {user}@{host}:{port}", f"цель: {user}@{host}:{port}"),
-        i18n.t(f"auth: {auth_desc}", f"аутентификация: {auth_desc}"),
+        i18n.t("MAIN_PLAN_TARGET", user=user, host=host, port=port),
+        i18n.t("MAIN_PLAN_AUTH", desc=auth_desc),
     ]
     if overrides:
         display = _redact_secrets(overrides)
-        lines.append(i18n.t(f"overrides: {display}", f"переопределения: {display}"))
+        lines.append(i18n.t("MAIN_PLAN_OVERRIDES", display=display))
     if overrides.get("xray_reality_rotate") is True:
-        lines.append(
-            i18n.t(
-                "WARNING: REALITY keys and client UUIDs will be regenerated — "
-                "existing client configs stop working",
-                "ВНИМАНИЕ: ключи REALITY и UUID клиентов будут пересозданы — "
-                "старые клиентские конфиги перестанут работать",
-            )
-        )
+        lines.append(i18n.t("MAIN_PLAN_ROTATE_WARN"))
     if mode == "remote":
         cleanup_text = {
-            "full-cleanup": i18n.t(
-                "cleanup on the server: staging + venv removed",
-                "уборка на сервере: удалить staging и venv",
-            ),
-            "no-cleanup": i18n.t(
-                "cleanup on the server: skipped (staging kept)",
-                "уборка на сервере: пропущена (staging остаётся)",
-            ),
-        }.get(cleanup, i18n.t(
-            "cleanup on the server: staging removed",
-            "уборка на сервере: удалить staging",
-        ))
+            "full-cleanup": i18n.t("MAIN_PLAN_CLEANUP_FULL"),
+            "no-cleanup": i18n.t("MAIN_PLAN_CLEANUP_SKIP"),
+        }.get(cleanup, i18n.t("MAIN_PLAN_CLEANUP_DEFAULT"))
         lines.append(cleanup_text)
-    lines.append(
-        i18n.t(
-            f"client configs will be written to: {clients_dir}",
-            f"клиентские конфиги будут сохранены в: {clients_dir}",
-        )
-    )
+    lines.append(i18n.t("MAIN_PLAN_DEST", path=clients_dir))
     return lines
 
 
 def _auth_descriptor(pkey: object, password: object) -> str:
     if pkey:
-        return i18n.t(f"SSH key: {pkey}", f"SSH-ключ: {pkey}")
+        return i18n.t("MAIN_AUTH_PKEY", pkey=pkey)
     if password:
-        return i18n.t("password ******", "пароль ******")
-    return i18n.t("none (ssh agent)", "нет (ssh-агент)")
+        return i18n.t("MAIN_AUTH_PASSWORD")
+    return i18n.t("MAIN_AUTH_AGENT")
 
 
 def _collect_overrides(args: dict) -> dict[str, object]:
@@ -393,36 +311,13 @@ def _collect_overrides(args: dict) -> dict[str, object]:
     return overrides
 
 
-@app.command(
-    help=i18n.t(
-        "Deploy the VPN to a VPS (target is always remote). By default ansible "
-        "runs on the VPS; --execution local runs the playbook from this machine.\n\n"
-        "examples:\n"
-        "  xrayvpn deploy -H 203.0.113.7\n"
-        "  xrayvpn deploy -H 203.0.113.7 --runtime docker --no-warp\n"
-        "  xrayvpn deploy --dry-run --no-interactive -H 203.0.113.7\n\n"
-        "every override flag is optional; unset flags keep the config/settings.yml defaults.",
-        "Развёртывание VPN на VPS (цель всегда удалённая). По умолчанию ansible "
-        "выполняется на VPS; --execution local запускает плейбук с этой машины.\n\n"
-        "примеры:\n"
-        "  xrayvpn deploy -H 203.0.113.7\n"
-        "  xrayvpn deploy -H 203.0.113.7 --runtime docker --no-warp\n"
-        "  xrayvpn deploy --dry-run --no-interactive -H 203.0.113.7\n\n"
-        "каждый переопределяющий флаг необязателен: без него действует значение "
-        "из config/settings.yml.",
-    )
-)
+@app.command(help=i18n.t("MAIN_DEPLOY_HELP"))
 def deploy(
     execution: Annotated[
         str | None,
         typer.Option(
             "--execution",
-            help=i18n.t(
-                f"Ansible control node: {'|'.join(EXECUTION_MODES)} "
-                "(remote default: playbook runs on the VPS)",
-                f"Узел ansible: {'|'.join(EXECUTION_MODES)} "
-                "(remote по умолчанию: плейбук выполняется на VPS)",
-            ),
+            help=i18n.t("MAIN_EXEC_OPT", modes="|".join(EXECUTION_MODES)),
         ),
     ] = None,
     runtime: Annotated[
@@ -430,9 +325,9 @@ def deploy(
         typer.Option(
             "--runtime",
             help=i18n.t(
-                f"xray_runtime override ({', '.join(SUPPORTED_RUNTIMES)}; default: {_d('xray_runtime')})",
-                f"Переопределение xray_runtime ({', '.join(SUPPORTED_RUNTIMES)}; "
-                f"по умолчанию: {_d('xray_runtime')})",
+                "MAIN_RUNTIME_OPT",
+                runtimes=", ".join(SUPPORTED_RUNTIMES),
+                d=_d("xray_runtime"),
             ),
         ),
     ] = None,
@@ -440,20 +335,14 @@ def deploy(
         int | None,
         typer.Option(
             "--xray-port",
-            help=i18n.t(
-                f"VLESS inbound TCP port override (default: {_d('xray_port')})",
-                f"Переопределение TCP-порта входящего VLESS (по умолчанию: {_d('xray_port')})",
-            ),
+            help=i18n.t("MAIN_PORT_OPT", d=_d("xray_port")),
         ),
     ] = None,
     num_clients: Annotated[
         int | None,
         typer.Option(
             "--num-clients",
-            help=i18n.t(
-                f"Number of client configs to generate (default: {_d('num_clients')})",
-                f"Сколько клиентских конфигов генерировать (по умолчанию: {_d('num_clients')})",
-            ),
+            help=i18n.t("MAIN_NUMCLIENTS_OPT", d=_d("num_clients")),
         ),
     ] = None,
     camouflage_domain: Annotated[
@@ -461,9 +350,7 @@ def deploy(
         typer.Option(
             "--camouflage-domain",
             help=i18n.t(
-                f"REALITY camouflage/SNI domain (default: {_d('reality_camouflage_domain')})",
-                f"Переопределение домена маскировки REALITY (SNI) (по умолчанию: "
-                f"{_d('reality_camouflage_domain')})",
+                "MAIN_CAMO_OPT", d=_d("reality_camouflage_domain")
             ),
         ),
     ] = None,
@@ -471,57 +358,35 @@ def deploy(
         bool | None,
         typer.Option(
             "--warp/--no-warp",
-            help=i18n.t(
-                f"Enable/disable Cloudflare WARP outbound (default: {_d('warp_enabled')})",
-                f"Включить/выключить исходящий туннель Cloudflare WARP "
-                f"(по умолчанию: {_d('warp_enabled')})",
-            ),
+            help=i18n.t("MAIN_WARP_OPT", d=_d("warp_enabled")),
         ),
     ] = None,
     rotate: Annotated[
         bool | None,
         typer.Option(
             "--rotate/--no-rotate",
-            help=i18n.t(
-                f"Force REALITY key + UUID regeneration / keep existing state "
-                f"(default: {_d('xray_reality_rotate')} = keep)",
-                f"Принудительно перегенерировать ключ REALITY и UUID / сохранить "
-                f"текущее состояние (по умолчанию: {_d('xray_reality_rotate')} — не перегенерировать)",
-            ),
+            help=i18n.t("MAIN_ROTATE_OPT", d=_d("xray_reality_rotate")),
         ),
     ] = None,
     manage_ufw: Annotated[
         bool | None,
         typer.Option(
             "--manage-ufw/--no-ufw",
-            help=i18n.t(
-                f"Enable/disable ufw allow-rule management "
-                f"(default: {_d('xray_manage_ufw')}; disable on WSL test hosts)",
-                f"Включить/выключить управление правилами ufw "
-                f"(по умолчанию: {_d('xray_manage_ufw')}; отключайте на тестовых хостах WSL)",
-            ),
+            help=i18n.t("MAIN_UFW_OPT", d=_d("xray_manage_ufw")),
         ),
     ] = None,
     inventory: Annotated[
         Path | None,
         typer.Option(
             "--inventory",
-            help=i18n.t(
-                "--execution local only: inventory file to deploy from "
-                "(default: generated .xrayvpn-inventory.yml)",
-                "только для --execution local: inventory-файл для деплоя "
-                "(по умолчанию генерируемый .xrayvpn-inventory.yml)",
-            ),
+            help=i18n.t("MAIN_INV_OPT"),
         ),
     ] = None,
     dry_run: Annotated[
         bool,
         typer.Option(
             "--dry-run",
-            help=i18n.t(
-                "Pass --check to ansible-playbook; no changes",
-                "Передать --check в ansible-playbook; без изменений",
-            ),
+            help=i18n.t("MAIN_DRYRUN_OPT"),
         ),
     ] = False,
     debug: Annotated[
@@ -536,20 +401,14 @@ def deploy(
         str | None,
         typer.Option(
             "--wsl-distro",
-            help=i18n.t(
-                "--execution local on Windows: WSL distro (default distro)",
-                "--execution local на Windows: дистрибутив WSL (по умолчанию)",
-            ),
+            help=i18n.t("MAIN_WSLOPTS_DISTRO"),
         ),
     ] = None,
     wsl_venv: Annotated[
         str,
         typer.Option(
             "--wsl-venv",
-            help=i18n.t(
-                "--execution local: control-node venv holding ansible-playbook",
-                "--execution local: venv узла с ansible-playbook",
-            ),
+            help=i18n.t("MAIN_WSLOPTS_VENV"),
         ),
     ] = DEFAULT_WSL_VENV,
     host: Annotated[
@@ -557,96 +416,65 @@ def deploy(
         typer.Option(
             "--host",
             "-H",
-            help=i18n.t(
-                "VPS host/IP (required unless provided by the inventory)",
-                "Хост/IP VPS (обязателен, если не взят из inventory)",
-            ),
+            help=i18n.t("MAIN_HOST_OPT"),
         ),
     ] = None,
     user: Annotated[
         str,
-        typer.Option(
-            "--user", "-u", help=i18n.t("SSH user", "SSH-пользователь")
-        ),
+        typer.Option("--user", "-u", help=i18n.t("COMMON_USER")),
     ] = "root",
     port: Annotated[
         int,
-        typer.Option(
-            "--port", "-p", help=i18n.t("SSH port", "SSH-порт")
-        ),
+        typer.Option("--port", "-p", help=i18n.t("COMMON_PORT")),
     ] = 22,
     pkey: Annotated[
         Path | None,
-        typer.Option(
-            "--pkey",
-            help=i18n.t("Path to an SSH private key", "Путь к приватному SSH-ключу"),
-        ),
+        typer.Option("--pkey", help=i18n.t("COMMON_PKEY")),
     ] = None,
     password: Annotated[
         str | None,
-        typer.Option(
-            "--pass",
-            help=i18n.t("SSH password (avoid, prefer --pkey)", "SSH-пароль (не рекомендуется, лучше --pkey)"),
-        ),
+        typer.Option("--pass", help=i18n.t("COMMON_PASS")),
     ] = None,
     use_inventory: Annotated[
         bool,
         typer.Option(
             "--use-inventory",
-            help=i18n.t(
-                "Read connection params and vars from the personal inventory.yml",
-                "Читать параметры подключения и переменные из личного inventory.yml",
-            ),
+            help=i18n.t("MAIN_USEINV_OPT"),
         ),
     ] = False,
     clients_dir: Annotated[
         Path | None,
         typer.Option(
             "--clients-dir",
-            help=i18n.t(
-                "Where generated client configs are saved",
-                "Куда сохранять сгенерированные клиентские конфиги",
-            ),
+            help=i18n.t("MAIN_CLIENTSDIR_OPT"),
         ),
     ] = None,
     full_cleanup: Annotated[
         bool,
         typer.Option(
             "--full-cleanup",
-            help=i18n.t(
-                "Remote cleanup: also remove the server-side venv",
-                "Уборка на сервере: удалить и серверный venv",
-            ),
+            help=i18n.t("MAIN_FULLCLEANUP_OPT"),
         ),
     ] = False,
     no_cleanup: Annotated[
         bool,
         typer.Option(
             "--no-cleanup",
-            help=i18n.t(
-                "Remote cleanup: keep the staging dir",
-                "Уборка на сервере: сохранить staging-каталог",
-            ),
+            help=i18n.t("MAIN_NOCLEANUP_OPT"),
         ),
     ] = False,
     ru: Annotated[
         bool,
         typer.Option(
             "--ru",
-            help=i18n.t(
-                "Russian interface output (prompts, messages, errors, help)",
-                "Русский вывод интерфейса (промпты, сообщения, ошибки, help)",
-            ),
+            help=i18n.t("MAIN_RU_OPT"),
         ),
     ] = False,
     no_interactive: Annotated[
         bool,
         typer.Option(
             "--no-interactive",
-            help=i18n.t(
-                "Skip all prompts including the deploy-plan confirmation (CI)",
-                "Пропустить все вопросы, включая подтверждение плана деплоя (CI)",
-            ),
+            help=i18n.t("MAIN_NOINT_OPT"),
         ),
     ] = False,
 ) -> None:
@@ -654,52 +482,25 @@ def deploy(
     if ru:
         repl.set_session_lang("ru")
     if debug and verbose:
-        typer.echo(
-            i18n.t(
-                "error: --debug and --verbose are mutually exclusive",
-                "ошибка: --debug и --verbose взаимоисключающие",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_ERR_DEBUG_VERBOSE"), err=True)
         raise typer.Exit(2)
     if full_cleanup and no_cleanup:
-        typer.echo(
-            i18n.t(
-                "error: --full-cleanup and --no-cleanup are mutually exclusive",
-                "ошибка: --full-cleanup и --no-cleanup взаимоисключающие",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_ERR_CLEANUP_FLAGS"), err=True)
         raise typer.Exit(2)
     if runtime is not None and runtime not in SUPPORTED_RUNTIMES:
         typer.echo(
-            i18n.t(
-                f"error: --runtime must be one of {', '.join(SUPPORTED_RUNTIMES)}",
-                f"ошибка: --runtime должен быть одним из {', '.join(SUPPORTED_RUNTIMES)}",
-            ),
+            i18n.t("MAIN_ERR_RUNTIME", runtimes=", ".join(SUPPORTED_RUNTIMES)),
             err=True,
         )
         raise typer.Exit(2)
     if pkey is not None and password is not None:
-        typer.echo(
-            i18n.t(
-                "error: --pkey and --pass are mutually exclusive",
-                "ошибка: --pkey и --pass взаимоисключающие",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_ERR_PKEY_PASS"), err=True)
         raise typer.Exit(2)
 
     mode = _resolve_execution(execution)
 
     if inventory is not None and mode != "local":
-        typer.echo(
-            i18n.t(
-                "error: --inventory applies to --execution local only",
-                "ошибка: --inventory применим только к --execution local",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_ERR_INV_LOCAL"), err=True)
         raise typer.Exit(2)
 
     if inventory is not None:
@@ -779,56 +580,24 @@ def _swap_guard(remote: FabricRemote, *, no_interactive: bool) -> None:
     if not swap_guard_needed(mem_kb, swap_entries):
         return
     typer.echo(
-        i18n.t(
-            f"[remote] low memory: {mem_kb // 1024} MB RAM and no active swap — "
-            "the deploy may be OOM-killed",
-            f"[remote] мало памяти: {mem_kb // 1024} МБ RAM и нет активного swap — "
-            "деплой может быть убит OOM-killer",
-        ),
+        i18n.t("MAIN_SWAP_LOW", mb=mem_kb // 1024),
         err=True,
     )
     if no_interactive or not prompts.is_interactive():
-        typer.echo(
-            i18n.t(
-                "[remote] swap-guard: cannot ask without a terminal — proceeding "
-                "WITHOUT swap; add a swapfile or free RAM if the deploy dies",
-                "[remote] swap-guard: вопрос невозможен без терминала — продолжаю "
-                "БЕЗ swap; добавьте swap-файл или освободите RAM, если деплой упадёт",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_SWAP_NO_TTY"), err=True)
         return
-    if not prompts.confirm(
-        i18n.t(
-            "Create a 1 GB swapfile /swapfile on the server?",
-            "Создать swap-файл 1 ГБ /swapfile на сервере?",
-        )
-    ):
-        typer.echo(
-            i18n.t(
-                "[remote] swap-guard declined; continuing without swap",
-                "[remote] swap-guard отклонён; продолжаю без swap",
-            ),
-            err=True,
-        )
+    if not prompts.confirm(i18n.t("MAIN_SWAP_PROMPT")):
+        typer.echo(i18n.t("MAIN_SWAP_DECLINED"), err=True)
         return
     for command in swap_guard_commands():
         result = remote.run(command, warn=True)
         if result.failed:
             typer.echo(
-                i18n.t(
-                    f"[remote] swap-guard failed: {command}\n{result.stderr}",
-                    f"[remote] swap-guard ошибка: {command}\n{result.stderr}",
-                ),
+                i18n.t("MAIN_SWAP_FAIL", command=command, err=result.stderr),
                 err=True,
             )
             raise typer.Exit(result.return_code or 1)
-    typer.echo(
-        i18n.t(
-            "[remote] swapfile created and enabled (fstab entry added)",
-            "[remote] swap-файл создан и включён (запись в fstab добавлена)",
-        )
-    )
+    typer.echo(i18n.t("MAIN_SWAP_DONE"))
 
 
 def _run_remote(
@@ -888,57 +657,27 @@ def _run_remote(
 
     if not resolved_host:
         if no_interactive:
-            typer.echo(
-                i18n.t(
-                    "error: --host is required in remote mode",
-                    "ошибка: --host обязателен в remote-режиме",
-                ),
-                err=True,
-            )
+            typer.echo(i18n.t("MAIN_ERR_HOST_REMOTE"), err=True)
             raise typer.Exit(2)
-        selected = prompts.text(i18n.t("VPS host (IP or hostname)", "Хост VPS (IP или hostname)"))
+        selected = prompts.text(i18n.t("COMMON_HOST_PROMPT"))
         if not selected:
-            typer.echo(
-                i18n.t(
-                    "error: --host is required in remote mode",
-                    "ошибка: --host обязателен в remote-режиме",
-                ),
-                err=True,
-            )
+            typer.echo(i18n.t("MAIN_ERR_HOST_REMOTE"), err=True)
             raise typer.Exit(2)
         resolved_host = selected
 
     if resolved_pkey is not None and resolved_password is not None:
-        typer.echo(
-            i18n.t(
-                "error: both a private key and a password are configured; use one",
-                "ошибка: указаны и приватный ключ, и пароль; используйте что-то одно",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_ERR_KEY_AND_PASS"), err=True)
         raise typer.Exit(2)
     if resolved_pkey is not None:
         key_path = Path(resolved_pkey).expanduser()
         if not key_path.is_file():
-            typer.echo(
-                i18n.t(
-                    f"error: private key not found: {key_path}",
-                    f"ошибка: приватный ключ не найден: {key_path}",
-                ),
-                err=True,
-            )
+            typer.echo(i18n.t("MAIN_ERR_KEY_NOT_FOUND", path=key_path), err=True)
             raise typer.Exit(2)
     elif resolved_password is None:
         if no_interactive:
-            typer.echo(
-                i18n.t(
-                    "error: --no-interactive requires --pkey, --pass or inventory auth",
-                    "ошибка: с --no-interactive нужны --pkey, --pass или аутентификация в inventory",
-                ),
-                err=True,
-            )
+            typer.echo(i18n.t("MAIN_ERR_NOAUTH_NOINTERACTIVE"), err=True)
             raise typer.Exit(2)
-        resolved_password = getpass.getpass(i18n.t("SSH password: ", "SSH-пароль: "))
+        resolved_password = getpass.getpass(i18n.t("COMMON_SSH_PASS_PROMPT"))
 
     _confirm_deploy(
         _plan_lines(
@@ -963,15 +702,7 @@ def _run_remote(
         debug=debug,
     )
     if cleanup == "full-cleanup":
-        typer.echo(
-            i18n.t(
-                "[remote] note: full-cleanup keeps the swapfile (if the swap-guard created "
-                "one); remove /swapfile and its fstab line manually if not needed",
-                "[remote] заметка: full-cleanup сохраняет swap-файл (если swap-guard его "
-                "создал); удалите /swapfile и строку в fstab вручную, если он не нужен",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_SWAP_KEPT_NOTE"), err=True)
     with FabricRemote(
         resolved_host,
         user=resolved_user,
@@ -994,23 +725,11 @@ def _preview_remote(
     debug: bool,
 ) -> None:
     """Remote dry-run: show the plan without connecting anywhere."""
-    typer.echo(
-        i18n.t(
-            f"[preview] remote deploy to {host or '<host>'}",
-            f"[превью] remote-деплой на {host or '<host>'}",
-        )
-    )
-    typer.echo(
-        i18n.t(
-            "[preview] swap-guard: detect RAM/swap; if RAM < 1024 MB and no swap — "
-            "offer an opt-in 1G /swapfile",
-            "[превью] swap-guard: детект RAM/swap; при RAM < 1024 МБ без swap — "
-            "opt-in вопрос про 1G /swapfile",
-        )
-    )
+    typer.echo(i18n.t("MAIN_PREVIEW_REMOTE", host=host or "<host>"))
+    typer.echo(i18n.t("MAIN_PREVIEW_SWAP_GUARD"))
     for command in bootstrap_commands():
         typer.echo(f"[preview] $ {command}")
-    typer.echo(i18n.t("[preview] upload tarball with (allowlist):", "[превью] загрузка tarball (allowlist):"))
+    typer.echo(i18n.t("MAIN_PREVIEW_UPLOAD"))
     from xrayvpn.core import manifest
 
     for entry in manifest.allowlist_entries(repo_root):
@@ -1085,19 +804,14 @@ def _run_local(
     if request.dry_run:
         typer.echo(
             i18n.t(
-                f"[preview] local ansible on this machine → target "
-                f"{resolved_user}@{resolved_host or '<host>'}:{resolved_port} over SSH",
-                f"[превью] локальный ansible на этой машине → цель "
-                f"{resolved_user}@{resolved_host or '<host>'}:{resolved_port} по SSH",
+                "MAIN_PREVIEW_LOCAL",
+                user=resolved_user,
+                host=resolved_host or "<host>",
+                port=resolved_port,
             )
         )
         if wsl.is_windows():
-            typer.echo(
-                i18n.t(
-                    "[preview] transport: WSL control node (venv --wsl-venv, distro --wsl-distro)",
-                    "[превью] транспорт: узел WSL (venv --wsl-venv, дистрибутив --wsl-distro)",
-                )
-            )
+            typer.echo(i18n.t("MAIN_PREVIEW_WSL"))
         typer.echo(
             f"[preview] $ {LocalExecutor(wsl_venv=wsl_venv).venv_binary()} deploy.yml -i <inventory> …"
         )
@@ -1105,55 +819,25 @@ def _run_local(
 
     if not resolved_host:
         if no_interactive:
-            typer.echo(
-                i18n.t(
-                    "error: --host is required unless provided by the inventory",
-                    "ошибка: --host обязателен, если не задан в inventory",
-                ),
-                err=True,
-            )
+            typer.echo(i18n.t("MAIN_ERR_HOST_LOCAL"), err=True)
             raise typer.Exit(2)
-        selected = prompts.text(i18n.t("VPS host (IP or hostname)", "Хост VPS (IP или hostname)"))
+        selected = prompts.text(i18n.t("COMMON_HOST_PROMPT"))
         if not selected:
-            typer.echo(
-                i18n.t(
-                    "error: --host is required unless provided by the inventory",
-                    "ошибка: --host обязателен, если не задан в inventory",
-                ),
-                err=True,
-            )
+            typer.echo(i18n.t("MAIN_ERR_HOST_LOCAL"), err=True)
             raise typer.Exit(2)
         resolved_host = selected
 
     if resolved_pkey is not None and resolved_password is not None:
-        typer.echo(
-            i18n.t(
-                "error: both a private key and a password are configured; use one",
-                "ошибка: указаны и приватный ключ, и пароль; используйте что-то одно",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_ERR_KEY_AND_PASS"), err=True)
         raise typer.Exit(2)
     if resolved_pkey is not None and not _key_exists_for_runner(resolved_pkey):
-        typer.echo(
-            i18n.t(
-                f"error: private key not found: {resolved_pkey}",
-                f"ошибка: приватный ключ не найден: {resolved_pkey}",
-            ),
-            err=True,
-        )
+        typer.echo(i18n.t("MAIN_ERR_KEY_NOT_FOUND", path=resolved_pkey), err=True)
         raise typer.Exit(2)
     if not resolved_pkey and not resolved_password:
         if no_interactive:
-            typer.echo(
-                i18n.t(
-                    "error: --no-interactive requires --pkey, --pass or inventory auth",
-                    "ошибка: с --no-interactive нужны --pkey, --pass или аутентификация в inventory",
-                ),
-                err=True,
-            )
+            typer.echo(i18n.t("MAIN_ERR_NOAUTH_NOINTERACTIVE"), err=True)
             raise typer.Exit(2)
-        resolved_password = getpass.getpass(i18n.t("SSH password: ", "SSH-пароль: "))
+        resolved_password = getpass.getpass(i18n.t("COMMON_SSH_PASS_PROMPT"))
 
     runner_pkey = _key_for_runner(resolved_pkey) if resolved_pkey else None
 
@@ -1196,7 +880,7 @@ def _run_local(
         try:
             executor.preflight(password_auth=bool(resolved_password))
         except RuntimeError as exc:
-            typer.echo(i18n.t(f"error: {exc}", f"ошибка: {exc}"), err=True)
+            typer.echo(i18n.t("COMMON_ERR", err=exc), err=True)
             raise typer.Exit(2) from exc
         rc = executor.deploy(request, inventory)
         if rc != 0:
@@ -1204,24 +888,14 @@ def _run_local(
         fetch_rc = executor.fetch_configs(request, inventory)
         if fetch_rc:
             typer.echo(
-                i18n.t(
-                    f"error: fetching client configs failed (rc={fetch_rc}); "
-                    "the server-side deploy itself finished",
-                    f"ошибка: загрузка клиентских конфигов не удалась (rc={fetch_rc}); "
-                    "развёртывание на сервере при этом завершено",
-                ),
+                i18n.t("MAIN_ERR_FETCH_CONFIGS", rc=fetch_rc),
                 err=True,
             )
             raise typer.Exit(fetch_rc)
     finally:
         if temp_inventory is not None:
             temp_inventory.unlink(missing_ok=True)
-    typer.echo(
-        i18n.t(
-            f"[done] configs written to {request.resolved_clients_dir()}",
-            f"[готово] конфиги записаны в {request.resolved_clients_dir()}",
-        )
-    )
+    typer.echo(i18n.t("MAIN_DONE_LOCAL", path=request.resolved_clients_dir()))
 
 
 if __name__ == "__main__":
