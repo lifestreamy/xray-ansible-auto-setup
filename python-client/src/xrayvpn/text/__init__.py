@@ -123,4 +123,67 @@ MESSAGES: Final[dict[str, Entry]] = {
         "[прервано] команда остановлена; сессия продолжает работу",
     ),
     "REPL_LANG_USAGE": Entry("usage: lang ru|en", "использование: lang ru|en"),
+    # --- service command ---
+    "SVC_HELP": Entry(
+        "Service status and point recovery over SSH (target is always the VPS).",
+        "Состояние сервиса и точечное восстановление по SSH (цель всегда VPS).",
+    ),
+    "SVC_HOST_OPT": Entry("VPS host/IP", "Хост/IP VPS"),
+    "SVC_INVENTORY_OPT": Entry(
+        "Read connection params from the personal inventory.yml",
+        "Читать параметры подключения из личного inventory.yml",
+    ),
+    "SVC_RU_OPT": Entry("Russian interface output", "Русский вывод интерфейса"),
+    "SVC_NOINT_OPT": Entry(
+        "Never prompt (CI/scripts)", "Никогда не спрашивать (CI/скрипты)"
+    ),
+    "SVC_SINCE_OPT": Entry(
+        "journal window for the dump: 30m | 24h | 7d (default 24h)",
+        "окно дампа журнала: 30m | 24h | 7d (по умолчанию 24h)",
+    ),
+    "SVC_OUT_OPT": Entry(
+        "where to save the dump (file or folder; default <workspace>/logs/)",
+        "куда сохранить дамп (файл или папка; по умолчанию <workspace>/logs/)",
+    ),
+    "SVC_YES_OPT": Entry(
+        "required confirmation: the host reboot really happens",
+        "обязательное подтверждение: reboot хоста реально выполнится",
+    ),
+    "SVC_SINCE_INVALID": Entry(
+        "invalid --since {value!r} (expected like 30m, 24h, 7d)",
+        "неверный --since {value!r} (ожидаётся формат вроде 30m, 24h, 7d)",
+    ),
+    "SVC_STATUS_TITLE": Entry(
+        "service xray@{host}:{port} — {active}",
+        "сервис xray@{host}:{port} — {active}",
+    ),
+    "SVC_STATUS_FACTS": Entry(
+        "restarts(NRestarts)={n} since={since} sub={sub}",
+        "рестартов(NRestarts)={n} с={since} под={sub}",
+    ),
+    "SVC_STATUS_STORM": Entry(
+        "outbound errors in the last 30 min: {count}",
+        "ошибок исходящего за последние 30 мин: {count}",
+    ),
+    "SVC_JOURNAL_TAIL": Entry("journal tail:", "хвост журнала:"),
+    "SVC_LISTENERS": Entry("listeners:", "слушатели:"),
+    "SVC_MEMORY": Entry("memory:", "память:"),
+    "SVC_RESTARTED": Entry(
+        "[done] xray restarted ({state}); clients reconnect in 10-15s",
+        "[готово] xray перезапущен ({state}); клиенты переподключатся за 10-15 с",
+    ),
+    "SVC_LOGS_SAVED": Entry(
+        "[done] journal ({since}) saved to {path}",
+        "[готово] журнал ({since}) сохранён в {path}",
+    ),
+    "SVC_REBOOT_NEED_YES": Entry(
+        "error: a full host reboot is a last resort (see docs/RUNBOOK first);"
+        " rerun with --yes to confirm",
+        "ошибка: полный reboot хоста — крайнее средство (сначала docs/RUNBOOK);"
+        " повторите с --yes для подтверждения",
+    ),
+    "SVC_REBOOTING": Entry(
+        "[ok] host {host} is rebooting; the VPN comes up with systemd (allow a minute)",
+        "[ок] хост {host} перезагружается; VPN поднимется вместе с systemd (минута)",
+    ),
 }

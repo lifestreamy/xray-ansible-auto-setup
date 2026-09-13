@@ -28,52 +28,49 @@ HOST_OPT = Annotated[
     str | None,
     typer.Option(
         "--host", "-H",
-        help=i18n.t("VPS host/IP", "Хост/IP VPS"),
+        help=i18n.t("SVC_HOST_OPT"),
     ),
 ]
 USER_OPT = Annotated[
     str,
-    typer.Option("--user", "-u", help=i18n.t("SSH user", "SSH-пользователь")),
+    typer.Option("--user", "-u", help=i18n.t("COMMON_USER")),
 ]
 PORT_OPT = Annotated[
     int,
-    typer.Option("--port", "-p", help=i18n.t("SSH port", "SSH-порт")),
+    typer.Option("--port", "-p", help=i18n.t("COMMON_PORT")),
 ]
 PKEY_OPT = Annotated[
     Path | None,
     typer.Option(
-        "--pkey", help=i18n.t("Path to an SSH private key", "Путь к приватному SSH-ключу")
+        "--pkey", help=i18n.t("COMMON_PKEY")
     ),
 ]
 PASS_OPT = Annotated[
     str | None,
     typer.Option(
         "--pass",
-        help=i18n.t("SSH password (avoid, prefer --pkey)", "SSH-пароль (не рекомендуется, лучше --pkey)"),
+        help=i18n.t("COMMON_PASS"),
     ),
 ]
 INVENTORY_OPT = Annotated[
     bool,
     typer.Option(
         "--use-inventory",
-        help=i18n.t(
-            "Read connection params from the personal inventory.yml",
-            "Читать параметры подключения из личного inventory.yml",
-        ),
+        help=i18n.t("SVC_INVENTORY_OPT"),
     ),
 ]
 RU_OPT = Annotated[
     bool,
     typer.Option(
         "--ru",
-        help=i18n.t("Russian interface output", "Русский вывод интерфейса"),
+        help=i18n.t("SVC_RU_OPT"),
     ),
 ]
 NO_INTERACTIVE_OPT = Annotated[
     bool,
     typer.Option(
         "--no-interactive",
-        help=i18n.t("Never prompt (CI/scripts)", "Никогда не спрашивать (CI/скрипты)"),
+        help=i18n.t("SVC_NOINT_OPT"),
     ),
 ]
 
@@ -81,53 +78,41 @@ SINCE_OPT = Annotated[
     str,
     typer.Option(
         "--since",
-        help=i18n.t(
-            "journal window for the dump: 30m | 24h | 7d (default 24h)",
-            "окно дампа журнала: 30m | 24h | 7d (по умолчанию 24h)",
-        ),
+        help=i18n.t("SVC_SINCE_OPT"),
     ),
 ]
 OUT_OPT = Annotated[
     Path | None,
     typer.Option(
         "--out",
-        help=i18n.t(
-            "where to save the dump (file or folder; default <workspace>/logs/)",
-            "куда сохранить дамп (файл или папка; по умолчанию <workspace>/logs/)",
-        ),
+        help=i18n.t("SVC_OUT_OPT"),
     ),
 ]
 YES_OPT = Annotated[
     bool,
     typer.Option(
         "--yes",
-        help=i18n.t(
-            "required confirmation: the host reboot really happens",
-            "обязательное подтверждение: reboot хоста реально выполнится",
-        ),
+        help=i18n.t("SVC_YES_OPT"),
     ),
 ]
 
 _SINCE_RE = re.compile(r"^-?(\d+)(m|h|d)$")
 
 service_app = typer.Typer(
-    help=i18n.t(
-        "Service status and point recovery over SSH (target is always the VPS).",
-        "Состояние сервиса и точечное восстановление по SSH (цель всегда VPS).",
-    ),
+    help=i18n.t("SVC_HELP"),
     no_args_is_help=True,
 )
 
 
 def _fail(message: str) -> NoReturn:
-    typer.echo(i18n.t(f"error: {message}", f"ошибка: {message}"), err=True)
+    typer.echo(i18n.t("COMMON_ERR", err=message), err=True)
     raise typer.Exit(2)
 
 
 def _normalize_since(value: str) -> str:
     match = _SINCE_RE.match(value.strip())
     if not match:
-        _fail(f"invalid --since {value!r} (expected like 30m, 24h, 7d)")
+        _fail(i18n.t("SVC_SINCE_INVALID", value=value))
     return f"{match.group(1)}{match.group(2)}"
 
 
@@ -157,8 +142,8 @@ def _resolve_conn(
             password=password,
             use_inventory=use_inventory,
             no_interactive=no_interactive,
-            ask_host=(lambda q: prompts.text(i18n.t("VPS host (IP or hostname)", "Хост VPS (IP или hostname)"))) if interactive else None,
-            ask_password=(lambda _q: getpass.getpass(i18n.t("SSH password: ", "SSH-пароль: "))) if interactive else None,
+            ask_host=(lambda q: prompts.text(i18n.t("COMMON_HOST_PROMPT"))) if interactive else None,
+            ask_password=(lambda _q: getpass.getpass(i18n.t("COMMON_SSH_PASS_PROMPT"))) if interactive else None,
         )
     except ConnResolveError as exc:
         _fail(str(exc))
@@ -221,24 +206,22 @@ def service_status(
     )
     storm = results[2].stdout.strip() or "?"
     typer.echo(i18n.t(
-        f"service xray@{conn.host}:{conn.port} — {active}",
-        f"сервис xray@{conn.host}:{conn.port} — {active}",
+        "SVC_STATUS_TITLE", host=conn.host, port=conn.port, active=active
     ))
     typer.echo(i18n.t(
-        f"restarts(NRestarts)={facts.get('NRestarts', '?')} since={facts.get('ActiveEnterTimestamp', '?')} sub={facts.get('SubState', '?')}",
-        f"рестартов(NRestarts)={facts.get('NRestarts', '?')} с={facts.get('ActiveEnterTimestamp', '?')} под={facts.get('SubState', '?')}",
+        "SVC_STATUS_FACTS",
+        n=facts.get("NRestarts", "?"),
+        since=facts.get("ActiveEnterTimestamp", "?"),
+        sub=facts.get("SubState", "?"),
     ))
-    typer.echo(i18n.t(
-        f"outbound errors in the last 30 min: {storm}",
-        f"ошибок исходящего за последние 30 мин: {storm}",
-    ))
-    typer.echo(i18n.t("journal tail:", "хвост журнала:"))
+    typer.echo(i18n.t("SVC_STATUS_STORM", count=storm))
+    typer.echo(i18n.t("SVC_JOURNAL_TAIL"))
     for line in results[3].stdout.splitlines()[-30:]:
         typer.echo(f"  {line}")
-    typer.echo(i18n.t("listeners:", "слушатели:"))
+    typer.echo(i18n.t("SVC_LISTENERS"))
     for line in results[4].stdout.splitlines():
         typer.echo(f"  {line}")
-    typer.echo(i18n.t("memory:", "память:"))
+    typer.echo(i18n.t("SVC_MEMORY"))
     for line in results[5].stdout.splitlines()[:3]:
         typer.echo(f"  {line}")
     raise typer.Exit(0 if active == "active" else 1)
@@ -265,10 +248,7 @@ def service_restart(
             if result.failed:
                 _fail(f"{cmd} → rc={result.return_code} {result.stderr.strip()[:200]}")
         after = remote.run(restart_commands()[2], warn=True).stdout.strip()
-    typer.echo(i18n.t(
-        f"[done] xray restarted ({after}); clients reconnect in 10-15s",
-        f"[готово] xray перезапущен ({after}); клиенты переподключатся за 10-15 с",
-    ))
+    typer.echo(i18n.t("SVC_RESTARTED", state=after))
     raise typer.Exit(0 if after == "active" else 1)
 
 
@@ -303,10 +283,7 @@ def service_logs(
         _fail(f"log read failed (rc={dump.return_code}) {dump.stderr.strip()[:200]}")
     local.parent.mkdir(parents=True, exist_ok=True)
     local.write_text(dump.stdout, encoding="utf-8")
-    typer.echo(i18n.t(
-        f"[done] journal ({since_norm}) saved to {local}",
-        f"[готово] журнал ({since_norm}) сохранён в {local}",
-    ))
+    typer.echo(i18n.t("SVC_LOGS_SAVED", since=since_norm, path=local))
 
 
 @service_app.command("reboot")
@@ -324,12 +301,7 @@ def service_reboot(
     """Reboot the HOST — the last resort; explicit --yes is mandatory."""
     _apply_ru(ru)
     if not yes:
-        typer.echo(i18n.t(
-            "error: a full host reboot is a last resort (see docs/RUNBOOK first);"
-            " rerun with --yes to confirm",
-            "ошибка: полный reboot хоста — крайнее средство (сначала docs/RUNBOOK);"
-            " повторите с --yes для подтверждения",
-        ), err=True)
+        typer.echo(i18n.t("SVC_REBOOT_NEED_YES"), err=True)
         raise typer.Exit(2)
     roots = _roots()
     conn = _resolve_conn(host, user, port, pkey, password, use_inventory, no_interactive, roots)
@@ -337,7 +309,4 @@ def service_reboot(
         result = remote.run(reboot_command(), warn=True)
     if result.failed:
         _fail(f"reboot failed (rc={result.return_code}) {result.stderr.strip()[:200]}")
-    typer.echo(i18n.t(
-        f"[ok] host {conn.host} is rebooting; the VPN comes up with systemd (allow a minute)",
-        f"[ок] хост {conn.host} перезагружается; VPN поднимется вместе с systemd (минута)",
-    ))
+    typer.echo(i18n.t("SVC_REBOOTING", host=conn.host))
