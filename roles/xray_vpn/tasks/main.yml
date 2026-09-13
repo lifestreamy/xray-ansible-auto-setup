@@ -160,6 +160,10 @@
   ansible.builtin.import_tasks: obs.yml
   tags: obs
 
+- name: Include xray-watchdog timer
+  ansible.builtin.import_tasks: watchdog.yml
+  tags: watchdog
+
 - name: Run smoke checks
   ansible.builtin.import_tasks: smoke.yml
   tags: smoke,always

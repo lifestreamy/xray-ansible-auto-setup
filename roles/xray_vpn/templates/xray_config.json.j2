@@ -35,6 +35,18 @@
         }
       }
     }
+{% if warp_enabled | default(false) and xray_watchdog_enabled | default(true) | bool %},
+    {
+      "tag": "probe",
+      "port": {{ xray_watchdog_probe_port | default(10820) }},
+      "protocol": "socks",
+      "listen": "127.0.0.1",
+      "settings": {
+        "auth": "noauth",
+        "ip": "127.0.0.1"
+      }
+    }
+{% endif %}
   ],
   "outbounds": [
     {% if warp_enabled | default(false) %}
@@ -72,5 +84,14 @@
       "protocol": "freedom",
       "tag": "direct"
     }
-  ]
+  ]{% if warp_enabled | default(false) and xray_watchdog_enabled | default(true) | bool %},
+  "routing": {
+    "rules": [
+      {
+        "inboundTag": ["probe"],
+        "outboundTag": "warp"
+      }
+    ]
+  }
+{% endif %}
 }

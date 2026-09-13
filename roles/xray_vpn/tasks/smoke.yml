@@ -86,3 +86,13 @@
     msg: "Xray journal error lines: {{ xray_journal.stdout_lines | select('search', 'error|ERROR|fail|FAIL|panic|PANIC') | list | length }}"
   when: xray_journal.stdout_lines is defined
   tags: smoke
+
+- name: Force a black-box snapshot for the post-deploy baseline
+  ansible.builtin.systemd_service:
+    name: xray-obs-snapshot.service
+    state: started
+  changed_when: false
+  failed_when: false
+  become: true
+  when: xray_obs_timer | default(true) | bool
+  tags: smoke

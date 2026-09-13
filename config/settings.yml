@@ -66,6 +66,14 @@ xray_journal_retention_days: 3  # journal history depth (whole host), days
 xray_obs_timer: true  # "black box": ~10-min read-only snapshot of host/service state into journald
 # ---
 
+# --- Egress watchdog ---
+xray_watchdog_enabled: true  # detect journal-storm / dead warp-egress probe -> restart xray.service only (never the host)
+xray_watchdog_storm_count: 20  # wireguard/outbound error lines within 5 min = storm trigger
+xray_watchdog_min_fail_cycles: 2  # consecutive dead probe cycles before restart
+xray_watchdog_max_restarts_per_hour: 3  # beyond the budget only an ALERT line is journalled
+xray_watchdog_probe_port: 10820  # loopback-only anonymous socks inbound forced through warp (added only when WARP is on)
+# ---
+
 # Role behavior 
 # Overrideable in inventory.yml (gitignored); for tests — in the molecule scenario.
 xray_manage_ufw: true  # Allow-if-present: ufw is never installed; the allow rule is added only when ufw already exists
