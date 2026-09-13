@@ -119,15 +119,15 @@
       ansible.builtin.assert:
         that:
           - cfg_text is search('"loglevel"')
-          - cfg_text is not search('"error": *"/')
+          - "cfg_text is not search('\"error\": *\"/')"
         fail_msg: "xray log config drifted from the journald-only design"
       vars:
         cfg_text: "{{ xray_cfg_content.content | b64decode }}"
 
-    - name: Assert access log switch off renders "access": "none"
+    - name: 'Assert access log switch off renders "access": "none"'
       ansible.builtin.assert:
         that:
-          - xray_cfg_content.content | b64decode is search('"access": "none"')
+          - "xray_cfg_content.content | b64decode is search('\"access\": \"none\"')"
         fail_msg: 'access log should default to "none" (journald-only privacy default)'
       when: not (xray_log_access | default(false) | bool)
 
@@ -252,7 +252,7 @@
         - /tmp/xray-config-render-check.json
         - /tmp/xray-config-plain-check.json
 
-    - name: Assert :443 listener is owned by the xray process (no :443 squatter)
+    - name: 'Assert :443 listener is owned by the xray process (no :443 squatter)'
       ansible.builtin.command:
         cmd: ss -tulpn '( sport = :{{ xray_port | default(443) }} )'
       register: port443_owner
@@ -304,7 +304,7 @@
     - name: Assert storm fixture triggers a dry restart line
       ansible.builtin.assert:
         that:
-          - wd_storm_run.stdout is search('restart xray: storm=')
+          - "wd_storm_run.stdout is search('restart xray: storm=')"
           - wd_storm_run.stdout is search('[[]DRY[]].*systemctl')
         fail_msg: "storm fixture did not trigger the watchdog as expected"
 
