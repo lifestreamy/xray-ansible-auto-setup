@@ -236,13 +236,18 @@
         xray_watchdog_enabled: true
       changed_when: false
 
+    - name: Read back the rendered plain config
+      ansible.builtin.slurp:
+        src: /tmp/xray-config-plain-check.json
+      register: plain_check
+
     - name: Assert no probe branch without warp
       ansible.builtin.assert:
         that:
           - '"probe" not in plain_text'
           - '"routing" not in plain_text'
       vars:
-        plain_text: "{{ lookup('file', '/tmp/xray-config-plain-check.json') }}"
+        plain_text: "{{ plain_check.content | b64decode }}"
 
     - name: Remove render-check files
       ansible.builtin.file:
