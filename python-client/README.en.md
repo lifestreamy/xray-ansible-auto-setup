@@ -1,5 +1,7 @@
 # `python-client/`
 
+> This is the English copy of [README.md](README.md); the Russian file is the base.
+
 The primary `xrayvpn` client (Python) — deploy, update and rotate an Xray server.
 Works the same on Windows, Linux and macOS; two execution models behind one CLI.
 
@@ -27,12 +29,15 @@ uv run --project python-client xrayvpn --help
 ```
 
 Inside `python-client/` (after `uv sync`) both `uv run xrayvpn ...` and `python -m xrayvpn` work.
-On Windows you can skip flags entirely: double-clicking `xrayvpn-deploy.pyw` (English UI) or
-`xrayvpn-deploy-ru.pyw` (Russian UI) opens a console and starts the **interactive deploy
-wizard**: the CLI asks for the execution node, the VPS host and SSH auth, prints a deploy
-plan and waits for an explicit yes — nothing runs silently. The window stays open until Enter
-and failures show an explicit message and exit code (the hyphen in the name is mandatory —
-a plain `xrayvpn.pyw` next to the package would hijack `import xrayvpn` on Windows).
+
+On Windows you can skip flags entirely. Double-click `xrayvpn-deploy.pyw` (English UI) or
+`xrayvpn-deploy-ru.pyw` (Russian UI): a console opens and the interactive deploy wizard starts.
+The CLI asks for the execution node, the VPS host and SSH auth, prints a deploy plan and waits
+for an explicit yes — nothing runs silently. The window stays open until Enter, so failures show
+an explicit message and exit code.
+
+The hyphen in the launcher name is mandatory: `xrayvpn-deploy.pyw` cannot shadow
+`import xrayvpn`, while a plain `xrayvpn.pyw` next to the package would.
 
 ### The `xrayvpn` command on PATH
 
