@@ -12,6 +12,8 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+import paramiko
+
 from xrayvpn.core.inventory import (
     parse_user_inventory,
     user_inventory_hosts,
@@ -21,6 +23,48 @@ from xrayvpn.core.inventory import (
 
 class ConnResolveError(RuntimeError):
     """Operator-facing connection problem; the CLI prints it as `error: …`."""
+
+
+def apply_ssh_config(
+    host: str,
+    user: str,
+    port: int,
+    *,
+    config_path: Path | str | None = None,
+) -> tuple[str, str, int, str | None]:
+    """OpenSSH-style alias resolution from ~/.ssh/config.
+
+    Maps a Host pattern onto HostName/User/Port/IdentityFile. user/port are
+    replaced only while they hold the defaults (root/22) — an explicit flag
+    wins. ProxyCommand/ProxyJump are not supported and ignored. Returns
+    (host, user, port, first-existing identityfile or None).
+    """
+    path = Path(config_path) if config_path is not None else Path.home() / ".ssh" / "config"
+    if not path.is_file():
+        return host, user, port, None
+    try:
+        with path.open(encoding="utf-8") as handle:
+            config = paramiko.SSHConfig.from_file(handle)
+    except OSError:
+        return host, user, port, None
+    lookup = config.lookup(host)
+    if not lookup:
+        return host, user, port, None
+    host = str(lookup.get("hostname", host))
+    if user == "root" and lookup.get("user"):
+        user = str(lookup["user"])
+    if port == 22 and lookup.get("port"):
+        try:
+            port = int(str(lookup["port"]))
+        except ValueError:
+            pass
+    identity: str | None = None
+    for candidate in lookup.get("identityfile") or []:
+        expanded = Path(os.path.expandvars(str(candidate))).expanduser()
+        if expanded.is_file():
+            identity = str(expanded)
+            break
+    return host, user, port, identity
 
 
 @dataclass(frozen=True)
@@ -45,6 +89,7 @@ def resolve_connection(
     no_interactive: bool = False,
     ask_host: Callable[[str], str | None] | None = None,
     ask_password: Callable[[str], str] | None = None,
+    ssh_config_path: Path | str | None = None,
 ) -> ResolvedConnection:
     """flags+inventory -> one usable SSH connection (single-host contract).
 
@@ -85,6 +130,10 @@ def resolve_connection(
         host = (ask_host("VPS host (IP or hostname)") or "").strip()
         if not host:
             raise ConnResolveError("--host is required")
+
+    host, user, port, alias_key = apply_ssh_config(host, user, port, config_path=ssh_config_path)
+    if pkey is None and not password and alias_key:
+        pkey = alias_key
 
     if pkey and password:
         raise ConnResolveError("both a private key and a password are configured; use one")
