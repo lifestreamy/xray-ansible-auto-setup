@@ -287,37 +287,42 @@
       changed_when: false
 
     - name: Create storm and quiet journal fixtures
-      ansible.builtin.copy:
-        dest: "/tmp/{{ item.key }}"
-        mode: '0644'
-        content: "{{ item.value }}"
-      loop:
-        - key: storm-fixture.log
-          value: "{{ (('proxy/wireguard failed to process outbound\\n') * 25) }}"
-        - key: quiet-fixture.log
-          value: "Xray 26.6.27 (Xray, Penetrates Everything.) started\n"
+      ansible.builtin.shell: |
+        for _ in $(seq 1 25); do
+          echo 'proxy/wireguard failed to process outbound'
+        done > /tmp/storm-fixture.log
+        echo 'Xray 26.6.27 (Xray, Penetrates Everything.) started' > /tmp/quiet-fixture.log
+      changed_when: false
 
     - name: Selftest watchdog on the storm fixture (dry-run)
       ansible.builtin.command:
         cmd: >-
           bash -c 'XRAY_WATCHDOG_FIXTURE=/tmp/storm-fixture.log
-          XRAY_WATCHDOG_DRY_RUN=1 /tmp/xray-watchdog-check.sh 2>&1'
+          XRAY_WATCHDOG_DRY_RUN=1
+          XRAY_WATCHDOG_STATE=/tmp/xray-watchdog-selftest-state /tmp/xray-watchdog-check.sh 2>&1'
       register: wd_storm_run
       changed_when: false
       failed_when: false
+
+    - name: Report storm selftest stdout
+      ansible.builtin.debug:
+        msg: "storm selftest: {{ wd_storm_run.stdout_lines }}"
 
     - name: Assert storm fixture triggers a dry restart line
       ansible.builtin.assert:
         that:
           - "wd_storm_run.stdout is search('restart xray: storm=')"
           - wd_storm_run.stdout is search('[[]DRY[]].*systemctl')
-        fail_msg: "storm fixture did not trigger the watchdog as expected"
+        fail_msg: >-
+          storm fixture did not trigger the watchdog as expected;
+          rc={{ wd_storm_run.rc }} stdout={{ wd_storm_run.stdout_lines }}
 
     - name: Selftest watchdog on the quiet fixture (dry-run)
       ansible.builtin.command:
         cmd: >-
           bash -c 'XRAY_WATCHDOG_FIXTURE=/tmp/quiet-fixture.log
-          XRAY_WATCHDOG_DRY_RUN=1 /tmp/xray-watchdog-check.sh 2>&1'
+          XRAY_WATCHDOG_DRY_RUN=1
+          XRAY_WATCHDOG_STATE=/tmp/xray-watchdog-selftest-state /tmp/xray-watchdog-check.sh 2>&1'
       register: wd_quiet_run
       changed_when: false
       failed_when: false
