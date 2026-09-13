@@ -18,6 +18,7 @@ The old local-target execution was a test bench and now lives in
 from __future__ import annotations
 
 import getpass
+import os
 import sys
 import traceback
 from pathlib import Path
@@ -46,7 +47,7 @@ from xrayvpn.core.inventory import (
     validate_connection,
     write_inventory,
 )
-from xrayvpn.core.transport.remote import FabricRemote
+from xrayvpn.core.transport.remote import FabricRemote, SshConnectError
 
 SUPPORTED_RUNTIMES = ("native", "docker")
 EXECUTION_MODES = ("remote", "local")
@@ -152,6 +153,9 @@ def _repl_dispatch(tokens: list[str]) -> int:
         app(args=tokens, prog_name="xrayvpn", standalone_mode=True)
     except SystemExit as exc:
         return int(exc.code or 0)
+    except Exception as exc:  # noqa: BLE001 - the session must survive any command failure
+        typer.echo(i18n.t("REPL_DISPATCH_ERROR", err=exc), err=True)
+        return 1
     return 0
 
 
@@ -669,7 +673,7 @@ def _run_remote(
         typer.echo(i18n.t("MAIN_ERR_KEY_AND_PASS"), err=True)
         raise typer.Exit(2)
     if resolved_pkey is not None:
-        key_path = Path(resolved_pkey).expanduser()
+        key_path = Path(os.path.expandvars(str(resolved_pkey))).expanduser()
         if not key_path.is_file():
             typer.echo(i18n.t("MAIN_ERR_KEY_NOT_FOUND", path=key_path), err=True)
             raise typer.Exit(2)
@@ -678,6 +682,9 @@ def _run_remote(
             typer.echo(i18n.t("MAIN_ERR_NOAUTH_NOINTERACTIVE"), err=True)
             raise typer.Exit(2)
         resolved_password = getpass.getpass(i18n.t("COMMON_SSH_PASS_PROMPT"))
+        if not resolved_password:
+            typer.echo(i18n.t("MAIN_ERR_EMPTY_PASSWORD"), err=True)
+            raise typer.Exit(2)
 
     _confirm_deploy(
         _plan_lines(
@@ -703,16 +710,20 @@ def _run_remote(
     )
     if cleanup == "full-cleanup":
         typer.echo(i18n.t("MAIN_SWAP_KEPT_NOTE"), err=True)
-    with FabricRemote(
-        resolved_host,
-        user=resolved_user,
-        port=resolved_port,
-        key_filename=str(key_path) if resolved_pkey else None,
-        password=resolved_password,
-    ) as remote:
-        _swap_guard(remote, no_interactive=no_interactive)
-        executor = RemoteExecutor(remote, cleanup=cleanup)
-        rc = executor.deploy(request, extra_vars=extra_vars)
+    try:
+        with FabricRemote(
+            resolved_host,
+            user=resolved_user,
+            port=resolved_port,
+            key_filename=str(key_path) if resolved_pkey else None,
+            password=resolved_password,
+        ) as remote:
+            _swap_guard(remote, no_interactive=no_interactive)
+            executor = RemoteExecutor(remote, cleanup=cleanup)
+            rc = executor.deploy(request, extra_vars=extra_vars)
+    except SshConnectError as exc:
+        typer.echo(i18n.t("COMMON_ERR", err=exc), err=True)
+        raise typer.Exit(2) from exc
     raise typer.Exit(rc)
 
 
@@ -795,7 +806,9 @@ def _run_local(
         resolved_host = (host or "").strip() or None
         resolved_user = user
         resolved_port = port
-        resolved_pkey = str(pkey.expanduser()) if pkey is not None else None
+        resolved_pkey = (
+            str(Path(os.path.expandvars(str(pkey))).expanduser()) if pkey is not None else None
+        )
         resolved_password = password
 
     extra_vars = merge_overrides(user_vars, overrides)
@@ -838,6 +851,9 @@ def _run_local(
             typer.echo(i18n.t("MAIN_ERR_NOAUTH_NOINTERACTIVE"), err=True)
             raise typer.Exit(2)
         resolved_password = getpass.getpass(i18n.t("COMMON_SSH_PASS_PROMPT"))
+        if not resolved_password:
+            typer.echo(i18n.t("MAIN_ERR_EMPTY_PASSWORD"), err=True)
+            raise typer.Exit(2)
 
     runner_pkey = _key_for_runner(resolved_pkey) if resolved_pkey else None
 

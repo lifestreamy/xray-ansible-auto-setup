@@ -123,6 +123,10 @@ MESSAGES: Final[dict[str, Entry]] = {
         "[прервано] команда остановлена; сессия продолжает работу",
     ),
     "REPL_LANG_USAGE": Entry("usage: lang ru|en", "использование: lang ru|en"),
+    "REPL_DISPATCH_ERROR": Entry(
+        "[error] command failed: {err}",
+        "[ошибка] команда завершилась сбоем: {err}",
+    ),
     # --- service command ---
     "SVC_HELP": Entry(
         "Service status and point recovery over SSH (target is always the VPS).",
@@ -461,6 +465,10 @@ MESSAGES: Final[dict[str, Entry]] = {
     "MAIN_ERR_HOST_LOCAL": Entry(
         "error: --host is required unless provided by the inventory",
         "ошибка: --host обязателен, если не задан в inventory",
+    ),
+    "MAIN_ERR_EMPTY_PASSWORD": Entry(
+        "error: empty SSH password; re-run and type it (or use --pkey)",
+        "ошибка: пустой SSH-пароль; повторите и введите его (или укажите --pkey)",
     ),
     "MAIN_ERR_FETCH_CONFIGS": Entry(
         "error: fetching client configs failed (rc={rc}); the server-side deploy itself finished",

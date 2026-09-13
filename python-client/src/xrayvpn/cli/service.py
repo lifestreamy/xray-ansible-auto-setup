@@ -5,6 +5,8 @@ from __future__ import annotations
 import getpass
 import re
 import time
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Annotated, NoReturn
 
@@ -22,7 +24,7 @@ from xrayvpn.core.service_actions import (
     restart_commands,
     status_commands,
 )
-from xrayvpn.core.transport.remote import FabricRemote
+from xrayvpn.core.transport.remote import FabricRemote, SshConnectError
 
 HOST_OPT = Annotated[
     str | None,
@@ -149,14 +151,19 @@ def _resolve_conn(
         _fail(str(exc))
 
 
-def _open(conn: ResolvedConnection) -> FabricRemote:  # pragma: no cover - thin
-    return FabricRemote(
-        conn.host,
-        user=conn.user,
-        port=conn.port,
-        key_filename=conn.pkey,
-        password=conn.password,
-    )
+@contextmanager
+def _open(conn: ResolvedConnection) -> Iterator[FabricRemote]:
+    try:
+        with FabricRemote(
+            conn.host,
+            user=conn.user,
+            port=conn.port,
+            key_filename=conn.pkey,
+            password=conn.password,
+        ) as remote:
+            yield remote
+    except SshConnectError as exc:
+        _fail(str(exc))
 
 
 def _settings_ports(roots: RunRoots, use_inventory: bool) -> tuple[int, int]:

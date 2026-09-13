@@ -7,6 +7,7 @@ migrates them here.
 
 from __future__ import annotations
 
+import os
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -89,7 +90,7 @@ def resolve_connection(
         raise ConnResolveError("both a private key and a password are configured; use one")
 
     if pkey:
-        key_path = Path(str(pkey)).expanduser()
+        key_path = Path(os.path.expandvars(str(pkey))).expanduser()
         if not key_path.is_file():
             raise ConnResolveError(f"private key not found: {key_path}")
         pkey = str(key_path)
@@ -100,5 +101,9 @@ def resolve_connection(
                 "(no password prompt in non-interactive mode)"
             )
         password = ask_password("SSH password: ")
+        if not (password or "").strip():
+            raise ConnResolveError(
+                "empty SSH password; re-run and type the password (or use --pkey)"
+            )
 
     return ResolvedConnection(host=host, user=user, port=port, pkey=pkey, password=password)
