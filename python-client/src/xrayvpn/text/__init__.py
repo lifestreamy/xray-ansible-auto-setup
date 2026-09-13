@@ -19,7 +19,8 @@ class Entry(NamedTuple):
 MESSAGES: Final[dict[str, Entry]] = {
     # --- shared prompts and error envelope ---
     "COMMON_HOST_PROMPT": Entry(
-        "VPS host (IP or hostname)", "Хост VPS (IP или hostname)"
+        "VPS host (IP, hostname or ~/.ssh/config alias)",
+        "Хост VPS (IP, hostname или алиас ~/.ssh/config)",
     ),
     "COMMON_SSH_PASS_PROMPT": Entry("SSH password: ", "SSH-пароль: "),
     "COMMON_ERR": Entry("error: {err}", "ошибка: {err}"),
@@ -132,7 +133,9 @@ MESSAGES: Final[dict[str, Entry]] = {
         "Service status and point recovery over SSH (target is always the VPS).",
         "Состояние сервиса и точечное восстановление по SSH (цель всегда VPS).",
     ),
-    "SVC_HOST_OPT": Entry("VPS host/IP", "Хост/IP VPS"),
+    "SVC_HOST_OPT": Entry(
+        "VPS host/IP or ~/.ssh/config alias", "Хост/IP VPS или алиас ~/.ssh/config"
+    ),
     "SVC_INVENTORY_OPT": Entry(
         "Read connection params from the personal inventory.yml",
         "Читать параметры подключения из личного inventory.yml",
@@ -349,8 +352,8 @@ MESSAGES: Final[dict[str, Entry]] = {
         "--execution local: venv узла с ansible-playbook",
     ),
     "MAIN_HOST_OPT": Entry(
-        "VPS host/IP (required unless provided by the inventory)",
-        "Хост/IP VPS (обязателен, если не взят из inventory)",
+        "VPS host/IP or ~/.ssh/config alias (required unless provided by the inventory)",
+        "Хост/IP VPS или алиас ~/.ssh/config (обязателен, если не взят из inventory)",
     ),
     "MAIN_USEINV_OPT": Entry(
         "Read connection params and vars from the personal inventory.yml",
