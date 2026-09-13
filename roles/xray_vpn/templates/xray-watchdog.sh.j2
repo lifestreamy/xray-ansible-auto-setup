@@ -9,9 +9,8 @@
 # Restarts are capped: <= {{ xray_watchdog_max_restarts_per_hour | default(3) }} per hour, beyond
 # that only an ALERT line is logged. Counters live in /run and reset on reboot (acceptable: the
 # service comes up fresh).
-# Selftest (XRAY_WATCHDOG_FIXTURE=file and/or XRAY_WATCHDOG_DRY_RUN=1): the storm is read from the
-# file, the probe is assumed alive, events print to stdout instead of journald and NO state file is
-# touched — a selftest run cannot spend the real restart budget or reset the failure counter.
+# Selftest: XRAY_WATCHDOG_FIXTURE=<journal-dump-file> XRAY_WATCHDOG_DRY_RUN=1 - storm from the file,
+# probe assumed ok, actions only printed.
 set -u
 
 STATE="${XRAY_WATCHDOG_STATE:-/run/xray-watchdog}"
@@ -22,22 +21,9 @@ MAX_RESTARTS_PER_HOUR={{ xray_watchdog_max_restarts_per_hour | default(3) }}
 PROBE_PORT={{ xray_watchdog_probe_port | default(10820) }}
 STORM_REGEX='proxy/wireguard.*(failed|timeout)'
 
-SELFTEST=0
-if [[ -n "${XRAY_WATCHDOG_FIXTURE:-}" || "${XRAY_WATCHDOG_DRY_RUN:-0}" = "1" ]]; then
-  SELFTEST=1
-fi
+mkdir -p "$STATE" 2>/dev/null
 
-if [[ "$SELFTEST" = "0" ]]; then
-  mkdir -p "$STATE" 2>/dev/null
-fi
-
-log() {
-  if [[ "$SELFTEST" = "1" ]]; then
-    printf '%s\n' "$*"
-  else
-    logger -t "$TAG" -- "$*"
-  fi
-}
+log() { logger -t "$TAG" -- "$*"; }
 
 STORM=0
 if [[ -n "${XRAY_WATCHDOG_FIXTURE:-}" ]]; then
@@ -64,11 +50,9 @@ fails_file="$STATE/probe_fail_cycles"
 prev_fails=$(cat "$fails_file" 2>/dev/null || echo 0)
 [[ "$prev_fails" =~ ^[0-9]+$ ]] || prev_fails=0
 if [[ "$PROBE_OK" -eq 1 ]]; then
-  FAILS=0
-  [[ "$SELFTEST" = "0" ]] && echo 0 > "$fails_file"
+  echo 0 > "$fails_file"; FAILS=0
 else
-  FAILS=$((prev_fails + 1))
-  [[ "$SELFTEST" = "0" ]] && echo "$FAILS" > "$fails_file"
+  FAILS=$((prev_fails + 1)); echo "$FAILS" > "$fails_file"
 fi
 
 trig=""
@@ -81,15 +65,13 @@ if [[ -z "$trig" ]]; then
 fi
 
 now=$(date +%s)
-budget_kept=""
+tmp="$STATE/restarts.tmp"
 n=0
 if [[ -f "$STATE/restarts" ]]; then
+  : > "$tmp"
   while read -r ts; do
     [[ "$ts" =~ ^[0-9]+$ ]] || continue
-    if (( now - ts < 3600 )); then
-      budget_kept+="$ts"$'\n'
-      n=$((n + 1))
-    fi
+    (( now - ts < 3600 )) && { echo "$ts" >> "$tmp"; n=$((n + 1)); }
   done < "$STATE/restarts"
 fi
 mem=$(free -m 2>/dev/null | awk '/^Mem:/ {print $3 "/" $2 " MB"}')
@@ -98,10 +80,8 @@ if (( n >= MAX_RESTARTS_PER_HOUR )); then
   log "[ALERT] $trig but restart budget spent ($n/$MAX_RESTARTS_PER_HOUR per hour); operator action needed (see docs/RUNBOOK)"
   exit 0
 fi
-if [[ "$SELFTEST" = "0" ]]; then
-  printf '%s%s\n' "$budget_kept" "$now" > "$STATE/restarts" 2>/dev/null
-  echo 0 > "$fails_file"
-fi
+echo "$now" >> "$tmp"; mv "$tmp" "$STATE/restarts"
+echo 0 > "$fails_file"
 log "restart xray: $trig (storm_threshold=$STORM_THRESHOLD probe_min_cycles=$PROBE_MIN_CYCLES restarts_in_hour=$((n + 1))/$MAX_RESTARTS_PER_HOUR mem=${mem:-?} NRestarts=${nrest:-?})"
 if [[ "${XRAY_WATCHDOG_DRY_RUN:-0}" = "1" ]]; then
   log "[DRY] systemctl reset-failed xray && systemctl restart xray"

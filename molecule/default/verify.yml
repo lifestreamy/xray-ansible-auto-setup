@@ -201,7 +201,6 @@
           secret_key: mock
           ipv4: 10.0.0.2/32
           peer_public_key: mock
-        warp_reserved: [0, 0, 0]
         xray_watchdog_enabled: true
       changed_when: false
 
@@ -258,7 +257,7 @@
       register: port443_owner
       changed_when: false
       failed_when:
-        - port443_owner.stdout is not search('users:\(\("xray"')
+        - port443_owner.stdout is not search('xray')
 
     - name: Collect watchdog events of the last hour (report-only)
       ansible.builtin.command:

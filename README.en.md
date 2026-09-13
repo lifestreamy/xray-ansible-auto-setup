@@ -1,4 +1,4 @@
-**Version:** v0.4.1 · **Last updated:** 2026-09-12
+**Version:** v0.4.2 · **Last updated:** 2026-09-13
 
 [![Русский](https://img.shields.io/badge/%D0%A0%D1%83%D1%81%D1%81%D0%BA%D0%B8%D0%B9-808080?style=flat)](README.md)
 [![English](https://img.shields.io/badge/English-00a693?style=flat)](README.en.md)
@@ -52,7 +52,7 @@ I went with Ansible — more on why below.
 
 This project isn't a one-time test — I (and many other people) use it constantly, because I built it first and foremost for myself. If something breaks, it breaks for me too, so I fix it quickly.
 
-But if I missed something, something broke for you, it doesn't start at all, or you have suggestions — create a new issue.
+But if I missed something, something broke for you, it doesn't start at all, or you have suggestions — create a new issue. If an already-deployed VPN stopped working — start with [`docs/RUNBOOK.en.md`](docs/RUNBOOK.en.md).
 
 
 
@@ -251,6 +251,7 @@ I use Clash Verge (Windows) and FlClash (Android). Amnezia works, but because of
 ## Detailed documentation
 
 - [`docs/SETUP.en.md`](docs/SETUP.en.md) — setup, `config/settings.yml` variables, WARP, post-deployment checks.
+- [`docs/RUNBOOK.en.md`](docs/RUNBOOK.en.md) — what to do when the VPN stops working.
 - [`docs/ROTATION.en.md`](docs/ROTATION.en.md) — rotating keys and client UUIDs.
 - [`docs/TEST-VPS.en.md`](docs/TEST-VPS.en.md) — checking a VPS before paying.
 - [`docs/GLOSSARY.en.md`](docs/GLOSSARY.en.md) — project terms.

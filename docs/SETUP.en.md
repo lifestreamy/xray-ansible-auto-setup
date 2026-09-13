@@ -1,4 +1,4 @@
-> **Document:** `docs/SETUP.en.md` · **Location:** `docs/` · **Version:** v0.4.1 · **Last updated:** 2026-09-12
+> **Document:** `docs/SETUP.en.md` · **Location:** `docs/` · **Version:** v0.4.2 · **Last updated:** 2026-09-13
 >
 > [Main README](../README.en.md) — project overview and quick start
 
@@ -44,6 +44,16 @@ Which parameters can be passed as CLI flags — connection (`--host`, `-u`, `-p`
 | `warp_wgcf_url` | URL for downloading wgcf. |
 | `xray_backup_enabled` | Timestamped backups before overwriting (`true`). |
 | `xray_reality_rotate` | Full REALITY rotation. Default `false`. Details — in [`docs/ROTATION.en.md`](ROTATION.en.md). |
+| `xray_log_level` | Xray verbosity inside journald (`warning`). |
+| `xray_log_access` | Xray per-connection access log. Default `false`. |
+| `xray_journal_max_use` | Disk cap for the whole host journal, not only Xray (`120M`). |
+| `xray_journal_retention_days` | How many days of journal history to keep (`3`). |
+| `xray_obs_timer` | Black box: a read-only server-state snapshot into journald every ~10 min (`true`). |
+| `xray_watchdog_enabled` | Watchdog: detect WARP-egress / error-stream failure and point-restart Xray (`true`). |
+| `xray_watchdog_storm_count` | How many outbound errors in 5 min count as a storm (`20`). |
+| `xray_watchdog_min_fail_cycles` | Consecutive dead egress-probe cycles before a restart (`2`). |
+| `xray_watchdog_max_restarts_per_hour` | Auto-restart budget per hour; beyond it, only `[ALERT]` (`3`). |
+| `xray_watchdog_probe_port` | Loopback-only probe port on `127.0.0.1` (`10820`). |
 
 </details>
 
@@ -99,6 +109,7 @@ The simplest way to use the tool is a single executable from [Releases](https://
 - Double-click (or running with no arguments) opens the console assistant: `deploy` asks for the host and password (hidden), `ru`/`en` switch the language, `help` and `deploy --help` show the rest.
 - Configuration files live next to the binary: `config/settings.yml` and `inventory.yml` (from the same-folder `inventory.yml.example`) behave exactly as in a clone.
 - Workspace resolution order (where the generated inventory, downloaded configs and staging are written): `XRAYVPN_HOME` → the binary's folder (if writable) → per-user state folder (Windows `%LOCALAPPDATA%\xrayvpn`, Linux `~/.local/share/xrayvpn`, macOS `~/Library/Application Support/xrayvpn`) → current folder. Do not put the binary into OneDrive/Google Drive or other synced folders — working files will fight the sync client.
+- When the VPN stops answering: `xrayvpn service status` / `restart` / `logs`; the full sequence — [`docs/RUNBOOK.en.md`](RUNBOOK.en.md).
 - Environment variables:
 
 | Variable | Meaning |
@@ -137,6 +148,8 @@ nc -zv <VPS_IP> 443                           # port listening; replace <VPS_IP>
 Then connect with at least one real client (Clash Verge / FlClash / Amnezia) and verify traffic goes through it. The role's built-in checks don't replace this.
 
 In the generated Clash/Mihomo profiles (Clash Verge, FlClash) the server IP is pinned by a DIRECT rule — traffic to the VPS itself must not go through the tunnel (anti-hairpin). If the server IP changes, regenerate the config instead of editing the rule by hand.
+
+If the VPN stops working — step-by-step diagnosis and recovery: [`docs/RUNBOOK.en.md`](RUNBOOK.en.md).
 
 ## Adding more clients without rotation
 

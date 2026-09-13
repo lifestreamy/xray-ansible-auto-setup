@@ -1,4 +1,4 @@
-> **Document:** `docs/SETUP.md` · **Location:** `docs/` · **Version:** v0.4.1 · **Last updated:** 2026-09-12
+> **Document:** `docs/SETUP.md` · **Location:** `docs/` · **Version:** v0.4.2 · **Last updated:** 2026-09-13
 >
 > [Главный README](../README.md) — обзор проекта и быстрый старт
 
@@ -44,6 +44,16 @@
 | `warp_wgcf_url` | URL для скачивания wgcf. |
 | `xray_backup_enabled` | Резервные копии с меткой времени перед перезаписью (`true`). |
 | `xray_reality_rotate` | Полная ротация REALITY. По умолчанию `false`. Подробности — в [`docs/ROTATION.md`](ROTATION.md). |
+| `xray_log_level` | Уровень подробных логов Xray внутри journald (`warning`). |
+| `xray_log_access` | Access-лог Xray (пер-подключение). По умолчанию `false`. |
+| `xray_journal_max_use` | Диск-потолок всего journal хоста (`120M`), не только Xray. |
+| `xray_journal_retention_days` | Глубина истории journal в днях (`3`). |
+| `xray_obs_timer` | «Чёрный ящик» — снапшот состояния сервера в journal каждый ~10 мин (`true`). |
+| `xray_watchdog_enabled` | Watchdog: детект деградации WARP-egress / потока ошибок и точечный рестарт Xray (`true`). |
+| `xray_watchdog_storm_count` | Сколько ошибок исходящего за 5 мин = «шторм» (`20`). |
+| `xray_watchdog_min_fail_cycles` | Сколько циклов подряд без egress-ответа перед рестартом (`2`). |
+| `xray_watchdog_max_restarts_per_hour` | Потолок авто-рестартов в час; дальше только `[ALERT]` (`3`). |
+| `xray_watchdog_probe_port` | Порт loopback-зонда на `127.0.0.1` (`10820`). |
 
 </details>
 
@@ -99,6 +109,7 @@ uv run --project python-client xrayvpn deploy --use-inventory --no-warp
 - Двойной клик (или запуск без аргументов) открывает консольного ассистента: `deploy` спросит узел и пароль скрыто, `ru`/`en` переключают язык, `help` и `deploy --help` показывают остальное.
 - Файлы конфигурации кладутся рядом с бинарём: `config/settings.yml` и `inventory.yml` (из `inventory.yml.example` рядом же) работают с той же семантикой, что в клоне.
 - Каталог рабочей области (куда пишутся временный inventory, скачанные конфиги, staging) определяется по порядку: `XRAYVPN_HOME` → папка бинаря (если запись разрешена) → пользовательский каталог состояния (Windows `%LOCALAPPDATA%\xrayvpn`, Linux `~/.local/share/xrayvpn`, macOS `~/Library/Application Support/xrayvpn`) → текущая папка. Не помещайте бинарь в OneDrive/Google Drive и прочие синхронизируемые папки: рабочие файлы будут конфликтовать с синхронизацией.
+- Если VPN перестал отвечать: `xrayvpn service status` / `restart` / `logs`, полный порядок действий — [`docs/RUNBOOK.md`](RUNBOOK.md).
 - Переменные окружения:
 
 | Переменная | Действие |
@@ -137,6 +148,8 @@ nc -zv <VPS_IP> 443                           # порт слушает; <VPS_IP
 Затем подключитесь хотя бы одним реальным клиентом (Clash Verge / FlClash / Amnezia) и проверьте, что трафик идёт через него. Встроенные проверки роли этого не заменяют.
 
 В генерируемых Clash/Mihomo-профилях (Clash Verge, FlClash) IP сервера закреплён правилом DIRECT: трафик к самому VPS не должен идти через туннель (анти-hairpin). Сменили IP сервера — перегенерируйте конфиг, а не правьте правило вручную.
+
+Если VPN перестал работать — диагностика и восстановление по шагам: [`docs/RUNBOOK.md`](RUNBOOK.md).
 
 ## Как добавить ещё клиентов без ротации
 

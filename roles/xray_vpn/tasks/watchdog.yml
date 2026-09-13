@@ -28,11 +28,6 @@
       become: true
       notify: Reload systemd
 
-    # The probe inbound only exists in the RUNNING config after the notify-restart; start the timer
-    # behind that flush so mid-play cycles cannot see a false dead probe.
-    - name: Flush config-restart handlers before arming the watchdog
-      ansible.builtin.meta: flush_handlers
-
     - name: Enable and start xray-watchdog timer
       ansible.builtin.systemd:
         name: xray-watchdog.timer
