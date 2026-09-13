@@ -46,7 +46,7 @@ I went with Ansible — more on why below.
 
   Ansible is a mature automation tool. It's idempotent: running it again doesn't break the state, it brings the server to the desired state. It's extensible — roles and plugins are already written and tested, no need to write them from scratch. It shows exactly what changes at each step and touches nothing until you ask. It's declarative (but allows imperative parts). The logic is already there: I just describe the desired server state through ready-made modules.
 
-  Ansible runs on your machine (inside WSL on Windows) and executes commands on the server over SSH. It's not installed on the VPS.
+  Ansible runs on your machine in the local scenario (inside WSL on Windows) and executes commands on the server over SSH. In the remote scenario Ansible is installed on the VPS itself — then no local setup is needed.
 
 </details>
 

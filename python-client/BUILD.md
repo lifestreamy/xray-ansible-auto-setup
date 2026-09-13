@@ -1,4 +1,4 @@
-# Сборка standalone-бинарей xrayvpn
+# Сборка standalone-приложения xrayvpn
 
 Суть: `xrayvpn` упаковывается Nuitka (`--mode=onefile`) в один исполняемый
 файл `xrayvpn-<os>-<arch>[.exe]` с bundled payload (`roles/`, `config/`, `deploy.yml`,

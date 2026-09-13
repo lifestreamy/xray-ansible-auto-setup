@@ -63,7 +63,7 @@
 
 | `xray_runtime` | Что устанавливается | Когда выбирать |
 |---|---|---|
-| `native` (по умолчанию) | Xray-бинарь `/usr/local/xray/xray` под управлением systemd | Наименьший footprint (~10 МБ RAM); рекомендуемый вариант для новых развёртываний. |
+| `native` (по умолчанию) | исполняемый файл Xray `/usr/local/xray/xray` под управлением systemd | Наименьший footprint (~10 МБ RAM); рекомендуемый вариант для новых развёртываний. |
 | `docker` | Docker Engine + `teddysun/xray:26.6.27` через `xray.service.docker.j2` | Легаси-путь. Оставлен для совместимости со старыми развёртываниями; не покрыт molecule-тестами. |
 
 Изменить runtime можно в `config/settings.yml` (`xray_runtime: native` → `docker`) и перезапустить playbook. Дополнительные переменные:
@@ -101,14 +101,14 @@ uv run --project python-client xrayvpn deploy --use-inventory --no-warp
 
 Альтернативные shell-клиенты (`shell-clients/`) принимают только параметры подключения плюс cleanup и verbosity — подробности в их `--help`.
 
-## Standalone-бинарь
+## Standalone-приложение
 
-Самый простой способ пользования — одиночный исполняемый файл из [Releases](https://github.com/lifestreamy/xray-ansible-auto-setup/releases): `xrayvpn-windows-x64.exe`, `xrayvpn-linux-x64`, `xrayvpn-linux-arm64`, `xrayvpn-macos-arm64`. Внутри — тот же клиент и встроенный набор ролей/плейбуков (`xrayvpn/payload/…`), поэтому клон репозитория и python не нужны.
+Самый простой способ пользования — единый исполняемый файл из [Releases](https://github.com/lifestreamy/xray-ansible-auto-setup/releases): `xrayvpn-windows-x64.exe`, `xrayvpn-linux-x64`, `xrayvpn-linux-arm64`, `xrayvpn-macos-arm64`. Внутри — тот же клиент и встроенный набор ролей/плейбуков (`xrayvpn/payload/…`), поэтому клон репозитория и python не нужны.
 
 - Первый запуск: Windows — SmartScreen «Подробнее → Всё равно выполнить» (сборки без подписи); macOS — `chmod +x`, при Gatekeeper — открыть через ПКМ → «Открыть».
 - Двойной клик (или запуск без аргументов) открывает консольного ассистента: `deploy` спросит узел и пароль скрыто, `ru`/`en` переключают язык, `help` и `deploy --help` показывают остальное.
-- Файлы конфигурации кладутся рядом с бинарём: `config/settings.yml` и `inventory.yml` (из `inventory.yml.example` рядом же) работают с той же семантикой, что в клоне.
-- Каталог рабочей области (куда пишутся временный inventory, скачанные конфиги, staging) определяется по порядку: `XRAYVPN_HOME` → папка бинаря (если запись разрешена) → пользовательский каталог состояния (Windows `%LOCALAPPDATA%\xrayvpn`, Linux `~/.local/share/xrayvpn`, macOS `~/Library/Application Support/xrayvpn`) → текущая папка. Не помещайте бинарь в OneDrive/Google Drive и прочие синхронизируемые папки: рабочие файлы будут конфликтовать с синхронизацией.
+- Файлы конфигурации кладутся рядом с исполняемым файлом: `config/settings.yml` и `inventory.yml` (из `inventory.yml.example` рядом же) работают с той же семантикой, что в клоне.
+- Каталог рабочей области (куда пишутся временный inventory, скачанные конфиги, staging) определяется по порядку: `XRAYVPN_HOME` → папка с исполняемым файлом (если запись разрешена) → пользовательский каталог состояния (Windows `%LOCALAPPDATA%\xrayvpn`, Linux `~/.local/share/xrayvpn`, macOS `~/Library/Application Support/xrayvpn`) → текущая папка. Не помещайте standalone-приложение в OneDrive/Google Drive и прочие синхронизируемые папки: рабочие файлы будут конфликтовать с синхронизацией.
 - Если VPN перестал отвечать: `xrayvpn service status` / `restart` / `logs`, полный порядок действий — [`docs/RUNBOOK.md`](RUNBOOK.md).
 - Переменные окружения:
 
@@ -116,7 +116,7 @@ uv run --project python-client xrayvpn deploy --use-inventory --no-warp
 |---|---|
 | `XRAYVPN_LANG` | `ru` / `en` — язык интерфейса и `--help` (флаг `--ru` то же); без неё берётся системная локаль. |
 | `XRAYVPN_HOME` | явный каталог рабочей области — переопределяет порядок выше. |
-| `XRAYVPN_UPDATE_CHECK` | в бинаре проверка новых релизов включена по умолчанию (не чаще раза в сутки, failures silent); исходный python-режим — по запросу `1`. Pre-release-сборки в подсказке не участвуют, пока не появится stable-релиз. |
+| `XRAYVPN_UPDATE_CHECK` | в standalone-приложении проверка новых релизов включена по умолчанию (не чаще раза в сутки, failures silent); исходный python-режим — по запросу `1`. Pre-release-сборки в подсказке не участвуют, пока не появится stable-релиз. |
 
 ## Про проект
 
