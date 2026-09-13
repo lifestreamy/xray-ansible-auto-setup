@@ -142,7 +142,4 @@ def banner_hint(
         _store_tag(cache, tag, moment)
     if not tag or not is_newer(tag, current):
         return None
-    return i18n.t(
-        f"update available: {tag} — {LATEST_RELEASE_PAGE}",
-        f"доступно обновление: {tag} — {LATEST_RELEASE_PAGE}",
-    )
+    return i18n.t("EXEC_UPDATE_AVAILABLE", tag=tag, page=LATEST_RELEASE_PAGE)

@@ -115,67 +115,36 @@ def _box(lines: list[str]) -> str:
 
 def lang_notice() -> str:
     """One-line confirmation in the NEW language; the welcome box prints once."""
-    return i18n.t("interface language: English", "язык интерфейса: русский")
+    return i18n.t("REPL_LANG_NOTICE")
 
 
 def welcome_screen(version: str = __version__) -> str:
     """Screen 0: what this does, the just-start path, and the language threshold."""
-    threshold = i18n.t(
-        "type RU — русский интерфейс",
-        "type EN — English interface",
-    )
-    title = i18n.t(
-        "xrayvpn — VPN server provisioning assistant",
-        "xrayvpn — помощник развёртывания VPN-сервера",
-    )
-    purpose = i18n.t(
-        "Deploys a self-hosted Xray VLESS + REALITY VPN server on a remote VPS.",
-        "Разворачивает собственный VPN-сервер Xray VLESS + REALITY на удалённом VPS.",
-    )
-    start_line = i18n.t("Just start:", "Просто начни:")
-    keys = i18n.t(
-        "help — command list   deploy --help — all flags   version — version   exit — leave",
-        "help — список команд   deploy --help — все флаги   version — версия   exit — выход",
-    )
+    threshold = i18n.t("REPL_WELCOME_THRESHOLD")
+    title = i18n.t("REPL_WELCOME_TITLE")
+    purpose = i18n.t("REPL_WELCOME_PURPOSE")
+    start_line = i18n.t("REPL_WELCOME_START")
+    keys = i18n.t("REPL_WELCOME_KEYS")
     return _box([title, f"v{version}", purpose, "", start_line, "  deploy", "", keys, "", threshold])
 
 
 def short_hint() -> str:
-    return i18n.t(
-        'type "deploy" to start, "help" for the command list, "exit" to leave',
-        'введите "deploy" чтобы начать, "help" — список команд, "exit" — выход',
-    )
+    return i18n.t("REPL_SHORT_HINT")
 
 
 def help_text() -> str:
     """Dynamic command reference (t() at call time, unlike baked typer help)."""
     return "\n".join(
         [
-            i18n.t("commands:", "команды:"),
-            i18n.t(
-                "  deploy [flags]   same syntax as: xrayvpn deploy --help",
-                "  deploy [флаги]   тот же синтаксис, что у xrayvpn deploy --help",
-            ),
-            i18n.t(
-                "  service status|restart|logs|reboot --help — recovery actions",
-                "  service status|restart|logs|reboot --help — диагностика и восстановление",
-            ),
-            i18n.t(
-                "  lang ru|en       switch interface language now (рус/англ ok)",
-                "  lang ru|en       переключить язык интерфейса (рус/англ тоже)",
-            ),
-            i18n.t("  help             this list", "  help             этот список"),
-            i18n.t("  version          show version", "  version          показать версию"),
-            i18n.t(
-                "  exit|quit|q      leave (Ctrl+D works too)",
-                "  exit|quit|q      выход (или Ctrl+D)",
-            ),
+            i18n.t("REPL_HELP_HEADER"),
+            i18n.t("REPL_HELP_DEPLOY"),
+            i18n.t("REPL_HELP_SERVICE"),
+            i18n.t("REPL_HELP_LANG"),
+            i18n.t("REPL_HELP_HELP"),
+            i18n.t("REPL_HELP_VERSION"),
+            i18n.t("REPL_HELP_EXIT"),
             "",
-            i18n.t(
-                "note: the built-in --help language is fixed at process start (--ru / XRAYVPN_LANG).",
-                "заметка: язык встроенного --help фиксируется при запуске процесса "
-                "(--ru / XRAYVPN_LANG).",
-            ),
+            i18n.t("REPL_HELP_NOTE"),
         ]
     )
 
@@ -204,10 +173,7 @@ def start(
             return last_rc
         except KeyboardInterrupt:
             print()
-            print(i18n.t(
-                'type "exit" or press Ctrl+D to leave',
-                'введите "exit" или нажмите Ctrl+D для выхода',
-            ))
+            print(i18n.t("REPL_KI_TIP"))
             continue
         tokens = tokenize(line)
         if tokens and tokens[0].lower() in _PREFIX_ALIASES:
@@ -234,12 +200,7 @@ def start(
             unknown = options - {"--ru", "--version"}
             if unknown:
                 joined = ", ".join(sorted(unknown))
-                print(
-                    i18n.t(
-                        f"unknown option: {joined} (help — command list)",
-                        f"неизвестная опция: {joined} (help — список команд)",
-                    )
-                )
+                print(i18n.t("REPL_UNKNOWN_OPT", opts=joined))
             continue
         try:
             if command == "help":
@@ -249,29 +210,20 @@ def start(
             elif command == "lang":
                 _switch_lang(tokens[1:])
             elif command == "repl":
-                print(i18n.t(
-                    "[session] you are already in a session",
-                    "[сессия] вы уже в сессии",
-                ))
+                print(i18n.t("REPL_ALREADY"))
             else:
                 last_rc = dispatch(tokens)
                 if last_rc == 130:
-                    print(i18n.t(
-                        "[cancel] command aborted; the session continues",
-                        "[отмена] команда прервана; сессия продолжает работу",
-                    ))
+                    print(i18n.t("REPL_ABORTED"))
                     last_rc = 0
         except KeyboardInterrupt:
-            print(i18n.t(
-                "[interrupted] command aborted; the session continues",
-                "[прервано] команда остановлена; сессия продолжает работу",
-            ))
+            print(i18n.t("REPL_INTERRUPTED"))
 
 
 def _switch_lang(args: Sequence[str]) -> None:
     lang = normalize_lang(args[0]) if args else None
     if lang is None:
-        print(i18n.t("usage: lang ru|en", "использование: lang ru|en"))
+        print(i18n.t("REPL_LANG_USAGE"))
         return
     set_session_lang(lang)
     print(lang_notice())

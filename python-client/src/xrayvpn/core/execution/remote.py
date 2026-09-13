@@ -145,11 +145,8 @@ class RemoteExecutor:
             result = self._remote.run(command, warn=True)
             if result.failed:
                 print(
-                    i18n.t(
-                        f"[remote] bootstrap failed: {command}\n{result.stderr}",
-                        f"[remote] ошибка bootstrap: {command}\n{result.stderr}",
-                    )
-                )
+                    i18n.t("EXEC_BOOTSTRAP_FAIL", command=command, err=result.stderr)
+            )
                 return result.return_code
 
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -164,7 +161,7 @@ class RemoteExecutor:
             )
             result = self._remote.run(extract, warn=True)
             if result.failed:
-                print(i18n.t(f"[remote] extract failed:\n{result.stderr}", f"[remote] ошибка распаковки:\n{result.stderr}"))
+                print(i18n.t("EXEC_EXTRACT_FAIL", err=result.stderr))
                 return result.return_code
 
             inv = temp / "inventory.yml"
@@ -181,7 +178,7 @@ class RemoteExecutor:
 
             result = self._remote.run(playbook_command(request, extra_vars), warn=True)
             if result.failed:
-                print(i18n.t(f"[remote] playbook failed (rc={result.return_code})", f"[remote] ошибка playbook (rc={result.return_code})"))
+                print(i18n.t("EXEC_PLAYBOOK_FAIL", rc=result.return_code))
                 return result.return_code
 
         if not request.dry_run:
@@ -207,4 +204,4 @@ class RemoteExecutor:
             remote_path = f"{SERVER_FETCH_DIR}/{name}"
             local_path = clients_dir / name
             self._remote.get(remote_path, local_path)
-            print(i18n.t(f"[remote] fetched {name}", f"[remote] получен {name}"))
+            print(i18n.t("EXEC_FETCHED", name=name))

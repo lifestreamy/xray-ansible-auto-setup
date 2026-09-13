@@ -3,14 +3,16 @@
 `preinit()` runs before the Typer app is built, so `--ru` in any argv
 position or `XRAYVPN_LANG=ru` also translates `--help`: Typer bakes help
 texts at import time. Two-letter language codes keep the door open for
-more languages; the internal state is currently a RU boolean and `t(en, ru)`
-is the translation primitive.
+more languages; the internal state is currently a RU boolean. `t(KEY, **fmt)`
+resolves the pair stored in `xrayvpn.text.MESSAGES`.
 """
 
 from __future__ import annotations
 
 import os
 import sys
+
+from xrayvpn.text import MESSAGES
 
 LANG_ENV = "XRAYVPN_LANG"
 
@@ -25,9 +27,16 @@ def is_ru() -> bool:
     return _STATE["ru"]
 
 
-def t(en: str, ru: str) -> str:
-    """Return the RU or EN variant of a user-facing string."""
-    return ru if _STATE["ru"] else en
+def t(en_or_key: str, ru: str | None = None, **fmt: object) -> str:
+    """Resolve a catalog entry by KEY; legacy `t(en, ru)` literal pairs still work."""
+    if en_or_key in MESSAGES:
+        entry = MESSAGES[en_or_key]
+        text = entry.ru if _STATE["ru"] else entry.en
+    elif ru is not None:
+        text = ru if _STATE["ru"] else en_or_key
+    else:
+        raise KeyError(f"i18n key not in catalog: {en_or_key!r}")
+    return text.format(**fmt) if fmt else text
 
 
 def set_lang(lang: str) -> None:
@@ -38,10 +47,7 @@ def set_lang(lang: str) -> None:
         set_ru(False)
     else:
         set_ru(False)
-        print(
-            f"warning: unknown {LANG_ENV} value {lang!r}; falling back to English",
-            file=sys.stderr,
-        )
+        print(t("I18N_LANG_WARNING", env=LANG_ENV, value=lang), file=sys.stderr)
 
 
 def preinit(argv: list[str] | None = None) -> None:
