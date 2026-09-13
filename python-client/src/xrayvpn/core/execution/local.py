@@ -20,13 +20,16 @@ import subprocess
 from pathlib import Path
 
 from xrayvpn.core import runtime_paths, wsl
+from xrayvpn.core.config import (
+    COLLECTIONS_DIR,
+    CONFIG_SOURCE,
+    DEFAULT_WSL_VENV,
+    GALAXY_COLLECTION,
+    GALAXY_COLLECTION_DIR,
+    SERVER_FETCH_PREFIX,
+    SSH_ARGS,
+)
 from xrayvpn.core.execution.base import DeployRequest, extra_var_args
-
-DEFAULT_WSL_VENV = "~/xray-venv"
-COLLECTIONS_DIR = "xrayvpn-collections"
-SERVER_FETCH_PREFIX = "xrayvpn-fetch."
-CONFIG_SOURCE = "/root/vpn-configs"
-SSH_ARGS = "-o StrictHostKeyChecking=accept-new"
 
 VENV_HINT = (
     "create it from the repository root: python3 scripts/dev/setup_test_env.py "
@@ -54,9 +57,6 @@ SSHPASS_HINT = (
 
 _WINDOWS_PATH = re.compile(r"^[A-Za-z]:[\\/]")
 
-# Staging must be private (fresh mktemp per run, 0700, removed at the end):
-# a fixed world-readable /tmp dir would leak generated client credentials on
-# multi-user VPSes and survive the deploy silently.
 FETCH_PLAYBOOK = """- name: Fetch client configs
   hosts: vpn
   gather_facts: false
@@ -185,8 +185,8 @@ class LocalExecutor:
         gal = self.galaxy_binary(wsl_home=home)
         return (
             f"cd {wsl.quote(wsl.to_wsl_path(repo_root))} && "
-            f"[ -d {colls}/ansible_collections/community/general ] || "
-            f"{wsl.quote(gal)} collection install community.general -p {colls} || exit 22; "
+            f"[ -d {colls}/{GALAXY_COLLECTION_DIR} ] || "
+            f"{wsl.quote(gal)} collection install {GALAXY_COLLECTION} -p {colls} || exit 22; "
             f"ANSIBLE_FORCE_COLOR=1 "
             f"ANSIBLE_COLLECTIONS_PATH={colls} "
             f"ANSIBLE_SSH_ARGS={wsl.quote(SSH_ARGS)} {quoted}"
@@ -239,10 +239,10 @@ class LocalExecutor:
     def run(self, argv: list[str], request: DeployRequest) -> int:
         if not wsl.is_windows():
             colls = Path(self.collections_path())
-            if not (colls / "ansible_collections" / "community" / "general").is_dir():
+            if not (colls / Path(GALAXY_COLLECTION_DIR)).is_dir():
                 galaxy = self._native_galaxy()
                 if galaxy is None or subprocess.call(
-                    [galaxy, "collection", "install", "community.general", "-p", str(colls)]
+                    [galaxy, "collection", "install", GALAXY_COLLECTION, "-p", str(colls)]
                 ) != 0:
                     return 22
             env = dict(os.environ)

@@ -14,18 +14,22 @@ from pathlib import Path
 
 from xrayvpn import i18n
 from xrayvpn.core import manifest
+from xrayvpn.core.config import (
+    ANSIBLE_CORE_PIN,
+    ANSIBLE_VENV_APT_PKG,
+    CONFIG_SOURCE,
+    GALAXY_COLLECTION,
+    GALAXY_COLLECTION_DIR,
+    SERVER_COLLECTIONS,
+    SERVER_FETCH_DIR,
+    SERVER_STAGING,
+    SERVER_VENV,
+    SWAP_GUARD_MIN_RAM_KB,
+    SWAPFILE,
+)
 from xrayvpn.core.execution.base import DeployRequest, extra_var_args
 from xrayvpn.core.inventory import build_inventory
 from xrayvpn.core.transport.remote import Remote
-
-ANSIBLE_CORE_PIN = "2.21.3"
-SERVER_VENV = "/opt/xrayvpn-venv"
-# Staging lives in /tmp: the SFTP user must be able to write it (a non-root
-# SSH user cannot write /opt). The playbook itself runs with become anyway.
-SERVER_STAGING = "/tmp/xrayvpn"
-SERVER_COLLECTIONS = f"{SERVER_VENV}/collections"
-SERVER_FETCH_DIR = f"{SERVER_STAGING}/fetch"
-CONFIG_SOURCE = "/root/vpn-configs"
 
 
 def bootstrap_commands() -> list[str]:
@@ -42,13 +46,13 @@ def bootstrap_commands() -> list[str]:
         (
             f"sudo -n [ -x {SERVER_VENV}/bin/python ] || "
             f"sudo -n bash -c 'python3 -m venv {SERVER_VENV} || "
-            f"{{ apt-get update -y && apt-get install -y python3-venv && "
+            f"{{ apt-get update -y && apt-get install -y {ANSIBLE_VENV_APT_PKG} && "
             f"python3 -m venv {SERVER_VENV}; }}'"
         ),
         f"sudo -n {SERVER_VENV}/bin/pip install -q ansible-core=={ANSIBLE_CORE_PIN}",
         (
-            f"sudo -n [ -d {SERVER_COLLECTIONS}/ansible_collections/community/general ] || "
-            f"sudo -n {SERVER_VENV}/bin/ansible-galaxy collection install community.general "
+            f"sudo -n [ -d {SERVER_COLLECTIONS}/{GALAXY_COLLECTION_DIR} ] || "
+            f"sudo -n {SERVER_VENV}/bin/ansible-galaxy collection install {GALAXY_COLLECTION} "
             f"-p {SERVER_COLLECTIONS}"
         ),
         f"mkdir -p {SERVER_STAGING} {SERVER_FETCH_DIR}",
@@ -88,10 +92,6 @@ def cleanup_commands(mode: str) -> list[str]:
     if mode == "no-cleanup":
         return []
     return [f"rm -rf {SERVER_STAGING}"]
-
-
-SWAPFILE = "/swapfile"
-SWAP_GUARD_MIN_RAM_KB = 1024 * 1024
 
 
 def swap_status_commands() -> list[str]:
