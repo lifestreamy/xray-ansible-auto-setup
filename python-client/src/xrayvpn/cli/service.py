@@ -19,7 +19,14 @@ from xrayvpn.core.conn import ConnResolveError, ResolvedConnection, resolve_conn
 from xrayvpn.core.inventory import parse_user_inventory
 from xrayvpn.core.runtime_paths import RunRoots, resolve_roots
 from xrayvpn.core.service_actions import (
+    DEFAULT_CONFIG_DIR,
+    deep_status_commands,
     logs_journal_command,
+    parse_egress,
+    parse_reality,
+    parse_runtime,
+    parse_version,
+    parse_warp,
     reboot_command,
     restart_commands,
     status_commands,
@@ -201,7 +208,9 @@ def _open(conn: ResolvedConnection) -> Iterator[FabricRemote]:
         _fail(str(exc))
 
 
-def _settings_ports(roots: RunRoots, use_inventory: bool) -> tuple[int, int]:
+def _settings_facts(
+    roots: RunRoots, use_inventory: bool
+) -> tuple[int, int, str, str | None]:
     try:
         settings = load_settings(roots.repo)
     except (RuntimeError, OSError):
@@ -213,9 +222,12 @@ def _settings_ports(roots: RunRoots, use_inventory: bool) -> tuple[int, int]:
             settings = merge_overrides(settings, user_vars)
         except (RuntimeError, TypeError):
             pass
+    expected = settings.get("xray_version")
     return (
         int(settings.get("xray_port", 443)),
         int(settings.get("xray_watchdog_probe_port", 10820)),
+        str(settings.get("xray_config_dir") or DEFAULT_CONFIG_DIR),
+        str(expected) if expected is not None else None,
     )
 
 
@@ -239,9 +251,13 @@ def service_status(
     _apply_ru(ru)
     roots = _roots()
     conn = _resolve_conn(host, user, port, pkey, password, use_inventory, no_interactive, roots)
-    xray_port, probe_port = _settings_ports(roots, use_inventory)
+    xray_port, probe_port, config_dir, expected_version = _settings_facts(roots, use_inventory)
     with _open(conn) as remote:
         results = [_run(remote, cmd) for cmd in status_commands(xray_port, probe_port)]
+        deep = [
+            _run(remote, cmd)
+            for cmd in deep_status_commands(xray_port, probe_port, config_dir)
+        ]
     active = results[0].stdout.strip() or "?"
     facts = dict(
         line.split("=", 1) for line in results[1].stdout.splitlines() if "=" in line
@@ -277,7 +293,57 @@ def service_status(
     typer.echo(i18n.t("SVC_MEMORY"))
     for line in results[6].stdout.splitlines()[:3]:
         typer.echo(f"  {line}")
+    _echo_deep_sections(deep, expected_version)
     raise typer.Exit(0 if active == "active" else 1)
+
+
+def _echo_deep_sections(deep: list[CommandResult], expected_version: str | None) -> None:
+    runtime_info = parse_runtime(deep[0].stdout)
+    version_info = parse_version(deep[1].stdout, expected_version)
+    reality_info = parse_reality(deep[2].stdout)
+    warp_info = parse_warp(deep[3].stdout)
+    egress_info = parse_egress(deep[4].stdout, deep[5].stdout)
+
+    typer.echo(i18n.t("SVC_DEEP_RUNTIME", runtime=runtime_info["runtime"]))
+    version = version_info["version"]
+    if version is None:
+        typer.echo(theme.warn(i18n.t("SVC_DEEP_VERSION_NA")))
+    elif version_info["match"] is False:
+        typer.echo(theme.warn(i18n.t(
+            "SVC_DEEP_VERSION_MISMATCH", version=version, expected=expected_version
+        )))
+    elif version_info["match"] is True:
+        typer.echo(i18n.t("SVC_DEEP_VERSION_OK", version=version))
+    else:
+        typer.echo(i18n.t("SVC_DEEP_VERSION", version=version))
+
+    if reality_info["mtime"] is None:
+        typer.echo(theme.warn(i18n.t("SVC_DEEP_REALITY_NA")))
+    else:
+        age = i18n.t(
+            "SVC_DEEP_AGE", days=reality_info["age_days"], hours=reality_info["age_hours"]
+        )
+        typer.echo(i18n.t(
+            "SVC_DEEP_REALITY",
+            age=age,
+            prefix=reality_info["public_prefix"] or "?",
+            sid=reality_info["short_id"] or "?",
+            clients="?" if reality_info["clients"] is None else reality_info["clients"],
+        ))
+
+    server_ip = egress_info["server_ip"] or "n/a"
+    if warp_info["warp"] is True:
+        if egress_info["egress_ip"] is None:
+            typer.echo(theme.warn(i18n.t("SVC_DEEP_WARP_NO_PROBE")))
+        else:
+            line = i18n.t(
+                "SVC_DEEP_WARP_ON", egress=egress_info["egress_ip"], server=server_ip
+            )
+            typer.echo(theme.warn(line) if egress_info["differs"] is False else line)
+    elif warp_info["warp"] is False:
+        typer.echo(i18n.t("SVC_DEEP_WARP_OFF", server=server_ip))
+    else:
+        typer.echo(theme.warn(i18n.t("SVC_DEEP_WARP_NA")))
 
 
 @service_app.command("restart")

@@ -86,6 +86,12 @@ def _stub_transport(monkeypatch, tmp_path: Path) -> None:
         "sudo -n journalctl -u xray -u xray-obs-snapshot -u xray-watchdog --since '-30m' -o short-iso --no-pager | grep -E": "2026-09-13T00:00:00Z xray[1]: proxy/wireguard: connection failed\n",
         "sudo -n journalctl -u xray -u xray-obs-snapshot -u xray-watchdog --since '-30m' -o short-iso --no-pager | tail -n 5": "2026-09-13T00:00:00Z xray[1]: sample journal line\n",
         "sudo -n journalctl -u xray -u xray-obs-snapshot": "2026-09-13T00:00:00Z xray[1]: sample journal line\n",
+        "systemctl cat xray": "[Service]\nExecStart=/usr/local/bin/xray run -c /usr/local/etc/xray/config.json\n",
+        "/usr/local/bin/xray version": "Xray 26.6.27 (Xray, Penetrates Everything.) custom\n",
+        "stat -c %Y": "1757700000\npub=AbCdEfGh\nshortid=1234abcd\nclients=3\n",
+        "python3 -c": "warp=True\nclients=3\n",
+        "timeout 8 curl": "1.2.3.4\n",
+        "curl -sS": "5.6.7.8\n",
     }
     monkeypatch.setattr(service_mod, "FabricRemote", FakeRemote)
     monkeypatch.setattr(
@@ -291,6 +297,72 @@ def test_service_status_ru(monkeypatch, tmp_path) -> None:
     )
     out = _output(result)
     assert "сервис xray@1.2.3.4" in out and "ошибок исходящего" in out
+
+
+def _write_settings(tmp_path: Path, version: str) -> None:
+    (tmp_path / "config").mkdir(exist_ok=True)
+    (tmp_path / "config" / "settings.yml").write_text(
+        f"xray_version: '{version}'\nxray_config_dir: /root/xray-config\n",
+        encoding="utf-8",
+    )
+
+
+def test_service_status_deep_sections(monkeypatch, tmp_path) -> None:
+    _stub_transport(monkeypatch, tmp_path)
+    _write_settings(tmp_path, "26.6.27")
+    key = _key(tmp_path)
+    result = runner.invoke(
+        app, ["service", "status", "-H", "1.2.3.4", "--pkey", str(key), "--no-interactive"]
+    )
+    assert result.exit_code == 0, _output(result)
+    out = _output(result)
+    assert "runtime: native" in out
+    assert "xray: 26.6.27 (matches settings.yml)" in out
+    assert "REALITY:" in out and "public AbCdEfGh…" in out
+    assert "shortId 1234abcd" in out and "clients 3" in out
+    assert "WARP: on, egress 1.2.3.4 vs server 5.6.7.8" in out
+
+
+def test_service_status_deep_version_mismatch(monkeypatch, tmp_path) -> None:
+    _stub_transport(monkeypatch, tmp_path)
+    _write_settings(tmp_path, "26.7.1")
+    key = _key(tmp_path)
+    result = runner.invoke(
+        app, ["service", "status", "-H", "1.2.3.4", "--pkey", str(key), "--no-interactive"]
+    )
+    assert result.exit_code == 0, _output(result)
+    assert "xray: 26.6.27 (settings.yml expects 26.7.1)" in _output(result)
+
+
+def test_service_status_deep_warp_off(monkeypatch, tmp_path) -> None:
+    _stub_transport(monkeypatch, tmp_path)
+    FakeRemote.responses = dict(FakeRemote.responses)
+    FakeRemote.responses["python3 -c"] = "warp=False\nclients=3\n"
+    key = _key(tmp_path)
+    result = runner.invoke(
+        app, ["service", "status", "-H", "1.2.3.4", "--pkey", str(key), "--no-interactive"]
+    )
+    assert result.exit_code == 0, _output(result)
+    assert "WARP: off, server egress 5.6.7.8" in _output(result)
+
+
+def test_service_status_deep_na_is_graceful(monkeypatch, tmp_path) -> None:
+    _stub_transport(monkeypatch, tmp_path)
+    FakeRemote.responses = {
+        key: value
+        for key, value in FakeRemote.responses.items()
+        if key.startswith(("systemctl is-active", "systemctl show", "sudo -n journalctl"))
+    }
+    key = _key(tmp_path)
+    result = runner.invoke(
+        app, ["service", "status", "-H", "1.2.3.4", "--pkey", str(key), "--no-interactive"]
+    )
+    assert result.exit_code == 0, _output(result)
+    out = _output(result)
+    assert "runtime: n/a" in out
+    assert "xray: n/a" in out
+    assert "REALITY: n/a" in out
+    assert "WARP: n/a" in out
 
 
 def test_reboot_requires_yes(monkeypatch, tmp_path) -> None:

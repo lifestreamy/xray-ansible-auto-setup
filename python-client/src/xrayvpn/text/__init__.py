@@ -189,6 +189,39 @@ MESSAGES: Final[dict[str, Entry]] = {
     "SVC_STATUS_NO_ERRORS": Entry(
         "  no errors in the window", "  в окне ошибок нет"
     ),
+    "SVC_DEEP_RUNTIME": Entry("runtime: {runtime}", "рантайм: {runtime}"),
+    "SVC_DEEP_VERSION": Entry("xray: {version}", "xray: {version}"),
+    "SVC_DEEP_VERSION_OK": Entry(
+        "xray: {version} (matches settings.yml)",
+        "xray: {version} (совпадает с settings.yml)",
+    ),
+    "SVC_DEEP_VERSION_MISMATCH": Entry(
+        "xray: {version} (settings.yml expects {expected})",
+        "xray: {version} (settings.yml ожидает {expected})",
+    ),
+    "SVC_DEEP_VERSION_NA": Entry("xray: n/a", "xray: н/д"),
+    "SVC_DEEP_AGE": Entry("{days}d {hours}h", "{days} д {hours} ч"),
+    "SVC_DEEP_REALITY": Entry(
+        "REALITY: {age} since rotation, public {prefix}…, shortId {sid}, clients {clients}",
+        "REALITY: {age} с ротации, public {prefix}…, shortId {sid}, клиентов {clients}",
+    ),
+    "SVC_DEEP_REALITY_NA": Entry(
+        "REALITY: n/a (no state file)", "REALITY: н/д (нет файла состояния)"
+    ),
+    "SVC_DEEP_WARP_ON": Entry(
+        "WARP: on, egress {egress} vs server {server}",
+        "WARP: вкл, egress {egress} vs сервер {server}",
+    ),
+    "SVC_DEEP_WARP_NO_PROBE": Entry(
+        "WARP: on, probe n/a (egress IP unavailable)",
+        "WARP: вкл, зонд н/д (egress IP недоступен)",
+    ),
+    "SVC_DEEP_WARP_OFF": Entry(
+        "WARP: off, server egress {server}", "WARP: выкл, egress сервера {server}"
+    ),
+    "SVC_DEEP_WARP_NA": Entry(
+        "WARP: n/a (config not readable)", "WARP: н/д (конфиг не читается)"
+    ),
     "SVC_JOURNAL_TAIL": Entry("journal tail (last 5):", "хвост журнала (5):"),
     "SVC_LISTENERS": Entry("listeners:", "слушатели:"),
     "SVC_MEMORY": Entry("memory:", "память:"),
