@@ -43,7 +43,10 @@ class FakeRemote:
     """Scripted Remote: returns a canned CommandResult per executed prefix."""
 
     calls: ClassVar[list[str]] = []
+    run_kwargs: ClassVar[list[dict]] = []
     responses: ClassVar[dict[str, str]] = {}
+    ki_on_prefix: ClassVar[str | None] = None
+    ki_partial: ClassVar[str] = ""
 
     def __init__(self, *args, **kwargs) -> None:
         pass
@@ -54,20 +57,34 @@ class FakeRemote:
     def __exit__(self, *exc) -> None:
         return None
 
-    def run(self, command, *, sudo=False, warn=True, env=None) -> CommandResult:
+    def run(
+        self, command, *, sudo=False, warn=True, env=None, hide=False, out_stream=None
+    ) -> CommandResult:
         FakeRemote.calls.append(command)
+        FakeRemote.run_kwargs.append({"hide": hide, "out_stream": out_stream})
+        if FakeRemote.ki_on_prefix and command.startswith(FakeRemote.ki_on_prefix):
+            if out_stream is not None:
+                out_stream.write(FakeRemote.ki_partial)
+            raise KeyboardInterrupt
         for prefix, out in FakeRemote.responses.items():
             if command.startswith(prefix):
+                if out_stream is not None:
+                    out_stream.write(out)
                 return CommandResult(return_code=0, stdout=out)
         return CommandResult(return_code=0, stdout="")
 
 
 def _stub_transport(monkeypatch, tmp_path: Path) -> None:
     FakeRemote.calls = []
+    FakeRemote.run_kwargs = []
+    FakeRemote.ki_on_prefix = None
+    FakeRemote.ki_partial = ""
     FakeRemote.responses = {
         "systemctl is-active xray": "active\n",
         "systemctl show xray -p NRestarts": "NRestarts=0\nActiveEnterTimestamp=Sat 2026-09-13 00:00:00 UTC\nSubState=running\n",
         "sudo -n journalctl -u xray --since '-30m' -o cat": "3\n",
+        "sudo -n journalctl -u xray -u xray-obs-snapshot -u xray-watchdog --since '-30m' -o short-iso --no-pager | grep -E": "2026-09-13T00:00:00Z xray[1]: proxy/wireguard: connection failed\n",
+        "sudo -n journalctl -u xray -u xray-obs-snapshot -u xray-watchdog --since '-30m' -o short-iso --no-pager | tail -n 5": "2026-09-13T00:00:00Z xray[1]: sample journal line\n",
         "sudo -n journalctl -u xray -u xray-obs-snapshot": "2026-09-13T00:00:00Z xray[1]: sample journal line\n",
     }
     monkeypatch.setattr(service_mod, "FabricRemote", FakeRemote)
@@ -91,8 +108,12 @@ def test_status_commands_are_exact() -> None:
     assert cmds == [
         "systemctl is-active xray",
         "systemctl show xray -p NRestarts -p ActiveEnterTimestamp -p SubState",
-        "sudo -n journalctl -u xray --since '-30m' -o cat | grep -Ec 'wireguard|outbound' || true",
-        "sudo -n journalctl -u xray -u xray-obs-snapshot -u xray-watchdog --since '-30m' -o short-iso --no-pager | tail -n 60",
+        "sudo -n journalctl -u xray --since '-30m' -o cat | grep -Ec 'proxy/wireguard.*(failed|timeout)' || true",
+        (
+            "sudo -n journalctl -u xray -u xray-obs-snapshot -u xray-watchdog --since '-30m' -o short-iso --no-pager"
+            " | grep -E 'proxy/wireguard.*(failed|timeout)|level=(error|warning)' | tail -n 10 || true"
+        ),
+        "sudo -n journalctl -u xray -u xray-obs-snapshot -u xray-watchdog --since '-30m' -o short-iso --no-pager | tail -n 5",
         "sudo -n ss -tulpn '( sport = :443 or sport = :10820 or sport = :22 )'",
         "free -m",
     ]
@@ -114,6 +135,14 @@ def test_logs_command_streams_over_ssh() -> None:
         '--since "-24h" -o short-iso --no-pager'
     )
     assert ">" not in cmd and "; " not in cmd and "&&" not in cmd
+
+
+def test_logs_command_line_limit() -> None:
+    cmd = logs_journal_command("30m", 500)
+    assert cmd == (
+        'sudo -n journalctl -u xray -u xray-obs-snapshot -u xray-watchdog '
+        '--since "-30m" -n 500 -o short-iso --no-pager'
+    )
 
 
 # --- conn.resolve_connection ---
@@ -232,7 +261,25 @@ def test_service_status_end_to_end(monkeypatch, tmp_path) -> None:
     out = _output(result)
     assert "service xray@1.2.3.4" in out and "ошибок" not in out
     assert "outbound errors in the last 30 min: 3" in out
+    assert "errors in the last 30 min (wireguard/level):" in out
+    assert "proxy/wireguard: connection failed" in out
+    assert "journal tail (last 5):" in out
     assert any(c.startswith("sudo -n ss -tulpn") for c in FakeRemote.calls)
+    assert FakeRemote.run_kwargs and all(kw["hide"] is True for kw in FakeRemote.run_kwargs)
+
+
+def test_service_status_no_errors_block(monkeypatch, tmp_path) -> None:
+    _stub_transport(monkeypatch, tmp_path)
+    FakeRemote.responses = dict(FakeRemote.responses)
+    FakeRemote.responses[
+        "sudo -n journalctl -u xray -u xray-obs-snapshot -u xray-watchdog --since '-30m' -o short-iso --no-pager | grep -E"
+    ] = "\n"
+    key = _key(tmp_path)
+    result = runner.invoke(
+        app, ["service", "status", "-H", "1.2.3.4", "--pkey", str(key), "--no-interactive"]
+    )
+    assert result.exit_code == 0, _output(result)
+    assert "no errors in the window" in _output(result)
 
 
 def test_service_status_ru(monkeypatch, tmp_path) -> None:
@@ -325,3 +372,88 @@ def test_service_restart_output(monkeypatch, tmp_path) -> None:
     assert result.exit_code == 0, _output(result)
     assert "[done] xray restarted (active)" in _output(result)
     assert "sudo -n systemctl restart xray" in FakeRemote.calls
+    assert FakeRemote.run_kwargs and all(kw["hide"] is True for kw in FakeRemote.run_kwargs)
+
+
+def test_service_reboot_runs_quiet(monkeypatch, tmp_path) -> None:
+    _stub_transport(monkeypatch, tmp_path)
+    key = _key(tmp_path)
+    result = runner.invoke(
+        app,
+        ["service", "reboot", "--yes", "-H", "1.2.3.4", "--pkey", str(key), "--no-interactive"],
+    )
+    assert result.exit_code == 0, _output(result)
+    assert FakeRemote.run_kwargs and all(kw["hide"] is True for kw in FakeRemote.run_kwargs)
+
+
+def test_logs_streams_line_by_line_via_tee(monkeypatch, tmp_path) -> None:
+    _stub_transport(monkeypatch, tmp_path)
+    key = _key(tmp_path)
+    out_file = tmp_path / "dump.txt"
+    result = runner.invoke(
+        app,
+        ["service", "logs", "--since", "6h", "--out", str(out_file),
+         "-H", "1.2.3.4", "--pkey", str(key), "--no-interactive"],
+    )
+    assert result.exit_code == 0, _output(result)
+    assert "sample journal line" in out_file.read_text(encoding="utf-8")
+    assert "1 lines" in _output(result)
+    journal_kwargs = [
+        kw for c, kw in zip(FakeRemote.calls, FakeRemote.run_kwargs) if "journalctl" in c
+    ]
+    assert journal_kwargs and journal_kwargs[-1]["out_stream"] is not None
+
+
+def test_logs_lines_option_reaches_command(monkeypatch, tmp_path) -> None:
+    _stub_transport(monkeypatch, tmp_path)
+    key = _key(tmp_path)
+    result = runner.invoke(
+        app,
+        ["service", "logs", "--since", "6h", "--lines", "120", "--out", str(tmp_path / "d.txt"),
+         "-H", "1.2.3.4", "--pkey", str(key), "--no-interactive"],
+    )
+    assert result.exit_code == 0, _output(result)
+    assert any("-n 120" in c for c in FakeRemote.calls)
+
+
+def test_logs_rejects_non_positive_lines(monkeypatch, tmp_path) -> None:
+    _stub_transport(monkeypatch, tmp_path)
+    key = _key(tmp_path)
+    result = runner.invoke(
+        app,
+        ["service", "logs", "--lines", "0",
+         "-H", "1.2.3.4", "--pkey", str(key), "--no-interactive"],
+    )
+    assert result.exit_code == 2
+    assert "invalid --lines" in _output(result)
+
+
+def test_logs_ctrl_c_saves_partial_and_exits_130(monkeypatch, tmp_path) -> None:
+    _stub_transport(monkeypatch, tmp_path)
+    FakeRemote.ki_on_prefix = "sudo -n journalctl -u xray -u xray-obs-snapshot"
+    FakeRemote.ki_partial = "2026-09-13T00:00:00Z xray[1]: partial line\n"
+    key = _key(tmp_path)
+    out_file = tmp_path / "partial.txt"
+    result = runner.invoke(
+        app,
+        ["service", "logs", "--since", "6h", "--out", str(out_file),
+         "-H", "1.2.3.4", "--pkey", str(key), "--no-interactive"],
+    )
+    assert result.exit_code == 130
+    assert out_file.exists()
+    assert "partial line" in out_file.read_text(encoding="utf-8")
+    out = _output(result)
+    assert "[cancel] interrupted" in out and "1 lines" in out
+
+
+def test_tee_counts_lines_and_dots(tmp_path: Path) -> None:
+    target = tmp_path / "tee.txt"
+    tee = service_mod._Tee(target)
+    tee.write("a\nb\n")
+    assert tee.lines == 2
+    tee.write("c\n" + "x\n" * 400)
+    tee.flush()
+    tee.close()
+    assert tee.lines == 403
+    content = target.read_text(encoding="utf-8")
+    assert content.startswith("a\nb\nc\n")

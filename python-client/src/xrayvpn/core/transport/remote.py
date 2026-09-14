@@ -41,6 +41,8 @@ class Remote(Protocol):
         sudo: bool = False,
         warn: bool = True,
         env: dict[str, str] | None = None,
+        hide: bool = False,
+        out_stream: object | None = None,
     ) -> CommandResult: ...
 
     def put(self, local: str | Path, remote: str) -> None: ...
@@ -107,10 +109,15 @@ class FabricRemote:
         sudo: bool = False,
         warn: bool = True,
         env: dict[str, str] | None = None,
+        hide: bool = False,
+        out_stream: object | None = None,
     ) -> CommandResult:
         self._ensure_open()
         runner = self._conn.sudo if sudo else self._conn.run
-        result = runner(command, warn=warn, env=env)
+        kwargs: dict[str, object] = {"warn": warn, "env": env, "hide": hide}
+        if out_stream is not None:
+            kwargs["out_stream"] = out_stream
+        result = runner(command, **kwargs)
         return CommandResult(
             return_code=result.exited,
             stdout=result.stdout or "",

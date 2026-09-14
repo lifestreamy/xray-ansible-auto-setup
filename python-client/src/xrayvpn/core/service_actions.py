@@ -4,6 +4,8 @@ of operator input beyond integer ports). This module never talks to the network.
 from __future__ import annotations
 
 XRAY_UNITS = ("xray", "xray-obs-snapshot", "xray-watchdog")
+STORM_REGEX = "proxy/wireguard.*(failed|timeout)"
+ERRORS_REGEX = f"{STORM_REGEX}|level=(error|warning)"
 
 
 def journal_filter() -> str:
@@ -18,8 +20,12 @@ def status_commands(xray_port: int = 443, probe_port: int = 10820, minutes: int 
     return [
         "systemctl is-active xray",
         "systemctl show xray -p NRestarts -p ActiveEnterTimestamp -p SubState",
-        f"sudo -n journalctl -u xray --since '-{mins}m' -o cat | grep -Ec 'wireguard|outbound' || true",
-        f"sudo -n journalctl {journal_filter()} --since '-{mins}m' -o short-iso --no-pager | tail -n 60",
+        f"sudo -n journalctl -u xray --since '-{mins}m' -o cat | grep -Ec '{STORM_REGEX}' || true",
+        (
+            f"sudo -n journalctl {journal_filter()} --since '-{mins}m' -o short-iso --no-pager"
+            f" | grep -E '{ERRORS_REGEX}' | tail -n 10 || true"
+        ),
+        f"sudo -n journalctl {journal_filter()} --since '-{mins}m' -o short-iso --no-pager | tail -n 5",
         f"sudo -n ss -tulpn '( sport = :{port} or sport = :{probe} or sport = :22 )'",
         "free -m",
     ]
@@ -33,10 +39,11 @@ def restart_commands() -> list[str]:
     ]
 
 
-def logs_journal_command(since: str) -> str:
+def logs_journal_command(since: str, lines: int | None = None) -> str:
     # `since` must match ^[0-9]+[mhd]$ (CLI normalizes before calling); never free text reaches the shell.
     # The journal is small by construction (capped in the role); stream it over SSH, no server-side file.
-    return f"sudo -n journalctl {journal_filter()} --since \"-{since}\" -o short-iso --no-pager"
+    limit = f" -n {int(lines)}" if lines is not None else ""
+    return f"sudo -n journalctl {journal_filter()} --since \"-{since}\"{limit} -o short-iso --no-pager"
 
 
 def reboot_command() -> str:

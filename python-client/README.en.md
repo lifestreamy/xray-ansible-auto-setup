@@ -127,8 +127,9 @@ Full list: `xrayvpn deploy --help`.
 Once the VPN is deployed and something degrades — point actions over SSH with the same
 connection flags (`-H/--pkey/--pass/--use-inventory`): `service status` (state, journal,
 listeners), `service restart` (restarts xray — WARP lives inside it), `service logs
-[--since 24h] [--out DIR]` (dumps the journal to your machine), `service reboot --yes`
-(last resort, requires the explicit `--yes`). The recovery sequence —
+[--since 30m] [--lines N] [--out DIR]` (dumps the journal to your machine: a finite snapshot
+of the window, 30 minutes by default; Ctrl+C aborts the download and keeps the partial file),
+`service reboot --yes` (last resort, requires the explicit `--yes`). The recovery sequence —
 [`docs/RUNBOOK.en.md`](../docs/RUNBOOK.en.md).
 
 ## Layout

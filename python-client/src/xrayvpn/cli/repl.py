@@ -155,7 +155,25 @@ def start(
     version: str = __version__,
     update_hint: Callable[[], str | None] | None = None,
 ) -> int:
-    """Session loop; the process exit code is the last dispatched command's rc."""
+    """Session loop; the process exit code is the last dispatched command's rc.
+
+    A KeyboardInterrupt that escapes the inner handlers (a second Ctrl+C during
+    output, one inside paramiko on Windows) still exits cleanly with rc 130.
+    """
+    try:
+        return _session(dispatch, version=version, update_hint=update_hint)
+    except KeyboardInterrupt:
+        print()
+        print(i18n.t("REPL_INTERRUPTED"))
+        return 130
+
+
+def _session(
+    dispatch: Callable[[list[str]], int],
+    *,
+    version: str,
+    update_hint: Callable[[], str | None] | None,
+) -> int:
     explicit_lang = (os.environ.get(i18n.LANG_ENV) or "").strip()
     if not explicit_lang and not i18n.is_ru() and locale_suggests_ru():
         set_session_lang("ru")

@@ -145,8 +145,16 @@ MESSAGES: Final[dict[str, Entry]] = {
         "Never prompt (CI/scripts)", "Никогда не спрашивать (CI/скрипты)"
     ),
     "SVC_SINCE_OPT": Entry(
-        "journal window for the dump: 30m | 24h | 7d (default 24h)",
-        "окно дампа журнала: 30m | 24h | 7d (по умолчанию 24h)",
+        "journal window for the dump: 30m | 24h | 7d (default 30m)",
+        "окно дампа журнала: 30m | 24h | 7d (по умолчанию 30m)",
+    ),
+    "SVC_LINES_OPT": Entry(
+        "keep only the last N journal lines (default: the whole window)",
+        "сохранить только последние N строк журнала (по умолчанию: всё окно)",
+    ),
+    "SVC_LINES_INVALID": Entry(
+        "invalid --lines {value} (expected a positive number)",
+        "неверный --lines {value} (ожидается положительное число)",
     ),
     "SVC_OUT_OPT": Entry(
         "where to save the dump (file or folder; default <workspace>/logs/)",
@@ -172,7 +180,14 @@ MESSAGES: Final[dict[str, Entry]] = {
         "outbound errors in the last 30 min: {count}",
         "ошибок исходящего за последние 30 мин: {count}",
     ),
-    "SVC_JOURNAL_TAIL": Entry("journal tail:", "хвост журнала:"),
+    "SVC_STATUS_ERRORS": Entry(
+        "errors in the last 30 min (wireguard/level):",
+        "ошибки за последние 30 мин (wireguard/level):",
+    ),
+    "SVC_STATUS_NO_ERRORS": Entry(
+        "  no errors in the window", "  в окне ошибок нет"
+    ),
+    "SVC_JOURNAL_TAIL": Entry("journal tail (last 5):", "хвост журнала (5):"),
     "SVC_LISTENERS": Entry("listeners:", "слушатели:"),
     "SVC_MEMORY": Entry("memory:", "память:"),
     "SVC_RESTARTED": Entry(
@@ -180,8 +195,12 @@ MESSAGES: Final[dict[str, Entry]] = {
         "[готово] xray перезапущен ({state}); клиенты переподключатся за 10-15 с",
     ),
     "SVC_LOGS_SAVED": Entry(
-        "[done] journal ({since}) saved to {path}",
-        "[готово] журнал ({since}) сохранён в {path}",
+        "[done] journal ({since}, {lines} lines) saved to {path}",
+        "[готово] журнал ({since}, строк: {lines}) сохранён в {path}",
+    ),
+    "SVC_LOGS_CANCELLED": Entry(
+        "[cancel] interrupted; the partial dump ({lines} lines) is saved to {path}",
+        "[отмена] прервано; частичный дамп (строк: {lines}) сохранён в {path}",
     ),
     "SVC_REBOOT_NEED_YES": Entry(
         "error: a full host reboot is a last resort (see docs/RUNBOOK first);"

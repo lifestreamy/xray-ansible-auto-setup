@@ -129,8 +129,10 @@ uv run --project python-client xrayvpn deploy --host 1.2.3.4 --dry-run
 
 Когда VPN уже развёрнут и что-то деградировало — точечные действия по SSH теми же флагами
 подключения (`-H/--pkey/--pass/--use-inventory`): `service status` (состояние, журнал, слушатели),
-`service restart` (перезапуск xray — WARP живёт внутри него), `service logs [--since 24h] [--out DIR]`
-(дамп журнала на свою машину), `service reboot --yes` (крайний случай, только с явным `--yes`).
+`service restart` (перезапуск xray — WARP живёт внутри него),
+`service logs [--since 30m] [--lines N] [--out DIR]` (дамп журнала на свою машину: конечный снимок
+окна, по умолчанию 30 минут; Ctrl+C прерывает загрузку и сохраняет частичный файл),
+`service reboot --yes` (крайний случай, только с явным `--yes`).
 Порядок действий при сбое — [`docs/RUNBOOK.md`](../docs/RUNBOOK.md).
 
 ## Где что лежит

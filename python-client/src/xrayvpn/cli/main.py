@@ -176,12 +176,19 @@ def run() -> None:
             app()
         except SystemExit:
             raise
-        except (Exception, KeyboardInterrupt):  # noqa: BLE001
+        except KeyboardInterrupt:
+            typer.echo(i18n.t("REPL_INTERRUPTED"), err=True)
+            sys.exit(130)
+        except Exception:  # noqa: BLE001
             traceback.print_exc()
             _pause_before_exit()
             sys.exit(1)
         return
-    app()
+    try:
+        app()
+    except KeyboardInterrupt:
+        typer.echo(i18n.t("REPL_INTERRUPTED"), err=True)
+        sys.exit(130)
 
 
 def _resolve_execution(execution: str | None) -> str:

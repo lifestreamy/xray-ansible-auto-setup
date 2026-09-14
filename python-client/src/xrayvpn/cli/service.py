@@ -24,7 +24,7 @@ from xrayvpn.core.service_actions import (
     restart_commands,
     status_commands,
 )
-from xrayvpn.core.transport.remote import FabricRemote, SshConnectError
+from xrayvpn.core.transport.remote import CommandResult, FabricRemote, SshConnectError
 
 HOST_OPT = Annotated[
     str | None,
@@ -83,6 +83,13 @@ SINCE_OPT = Annotated[
         help=i18n.t("SVC_SINCE_OPT"),
     ),
 ]
+LINES_OPT = Annotated[
+    int | None,
+    typer.Option(
+        "--lines",
+        help=i18n.t("SVC_LINES_OPT"),
+    ),
+]
 OUT_OPT = Annotated[
     Path | None,
     typer.Option(
@@ -109,6 +116,34 @@ service_app = typer.Typer(
 def _fail(message: str) -> NoReturn:
     typer.echo(i18n.t("COMMON_ERR", err=message), err=True)
     raise typer.Exit(2)
+
+
+def _run(remote: FabricRemote, command: str) -> CommandResult:
+    return remote.run(command, warn=True, hide=True)
+
+
+class _Tee:
+    """Streaming mirror for the journal dump: file line by line, a progress
+    dot on stderr per 200 lines."""
+
+    def __init__(self, path: Path) -> None:
+        self._handle = path.open("w", encoding="utf-8")
+        self.lines = 0
+        self._dots = 0
+
+    def write(self, text: str) -> None:
+        self._handle.write(text)
+        self.lines += text.count("\n")
+        dots = self.lines // 200
+        if dots > self._dots:
+            self._dots = dots
+            typer.echo(".", err=True, nl=False)
+
+    def flush(self) -> None:
+        self._handle.flush()
+
+    def close(self) -> None:
+        self._handle.close()
 
 
 def _normalize_since(value: str) -> str:
@@ -206,7 +241,7 @@ def service_status(
     conn = _resolve_conn(host, user, port, pkey, password, use_inventory, no_interactive, roots)
     xray_port, probe_port = _settings_ports(roots, use_inventory)
     with _open(conn) as remote:
-        results = [remote.run(cmd, warn=True) for cmd in status_commands(xray_port, probe_port)]
+        results = [_run(remote, cmd) for cmd in status_commands(xray_port, probe_port)]
     active = results[0].stdout.strip() or "?"
     facts = dict(
         line.split("=", 1) for line in results[1].stdout.splitlines() if "=" in line
@@ -222,14 +257,21 @@ def service_status(
         sub=facts.get("SubState", "?"),
     ))
     typer.echo(i18n.t("SVC_STATUS_STORM", count=storm))
+    typer.echo(i18n.t("SVC_STATUS_ERRORS"))
+    error_lines = [line for line in results[3].stdout.splitlines() if line.strip()]
+    if error_lines:
+        for line in error_lines:
+            typer.echo(f"  {line}")
+    else:
+        typer.echo(i18n.t("SVC_STATUS_NO_ERRORS"))
     typer.echo(i18n.t("SVC_JOURNAL_TAIL"))
-    for line in results[3].stdout.splitlines()[-30:]:
-        typer.echo(f"  {line}")
-    typer.echo(i18n.t("SVC_LISTENERS"))
     for line in results[4].stdout.splitlines():
         typer.echo(f"  {line}")
+    typer.echo(i18n.t("SVC_LISTENERS"))
+    for line in results[5].stdout.splitlines():
+        typer.echo(f"  {line}")
     typer.echo(i18n.t("SVC_MEMORY"))
-    for line in results[5].stdout.splitlines()[:3]:
+    for line in results[6].stdout.splitlines()[:3]:
         typer.echo(f"  {line}")
     raise typer.Exit(0 if active == "active" else 1)
 
@@ -251,10 +293,10 @@ def service_restart(
     conn = _resolve_conn(host, user, port, pkey, password, use_inventory, no_interactive, roots)
     with _open(conn) as remote:
         for cmd in restart_commands()[:2]:
-            result = remote.run(cmd, warn=True)
+            result = _run(remote, cmd)
             if result.failed:
                 _fail(f"{cmd} → rc={result.return_code} {result.stderr.strip()[:200]}")
-        after = remote.run(restart_commands()[2], warn=True).stdout.strip()
+        after = _run(remote, restart_commands()[2]).stdout.strip()
     typer.echo(i18n.t("SVC_RESTARTED", state=after))
     raise typer.Exit(0 if after == "active" else 1)
 
@@ -269,12 +311,15 @@ def service_logs(
     use_inventory: INVENTORY_OPT = False,
     ru: RU_OPT = False,
     no_interactive: NO_INTERACTIVE_OPT = False,
-    since: SINCE_OPT = "24h",
+    since: SINCE_OPT = "30m",
     out: OUT_OPT = None,
+    lines: LINES_OPT = None,
 ) -> None:
     """Dump the server journal (xray + obs + watchdog) to a local file."""
     _apply_ru(ru)
     since_norm = _normalize_since(since)
+    if lines is not None and lines <= 0:
+        _fail(i18n.t("SVC_LINES_INVALID", value=lines))
     roots = _roots()
     conn = _resolve_conn(host, user, port, pkey, password, use_inventory, no_interactive, roots)
     stamp = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime())
@@ -284,13 +329,23 @@ def service_logs(
         target_dir = (out.expanduser().resolve() if out is not None else roots.workspace / "logs")
         target_dir.mkdir(parents=True, exist_ok=True)
         local = target_dir / f"logs-{conn.host}-{stamp}.txt"
-    with _open(conn) as remote:
-        dump = remote.run(logs_journal_command(since_norm), warn=True)
+    local.parent.mkdir(parents=True, exist_ok=True)
+    tee = _Tee(local)
+    try:
+        with _open(conn) as remote:
+            dump = remote.run(
+                logs_journal_command(since_norm, lines), warn=True, out_stream=tee
+            )
+    except KeyboardInterrupt:
+        tee.close()
+        typer.echo(
+            i18n.t("SVC_LOGS_CANCELLED", path=local, lines=tee.lines), err=True
+        )
+        raise typer.Exit(130) from None
+    tee.close()
     if dump.failed:
         _fail(f"log read failed (rc={dump.return_code}) {dump.stderr.strip()[:200]}")
-    local.parent.mkdir(parents=True, exist_ok=True)
-    local.write_text(dump.stdout, encoding="utf-8")
-    typer.echo(i18n.t("SVC_LOGS_SAVED", since=since_norm, path=local))
+    typer.echo(i18n.t("SVC_LOGS_SAVED", since=since_norm, path=local, lines=tee.lines))
 
 
 @service_app.command("reboot")
@@ -313,7 +368,7 @@ def service_reboot(
     roots = _roots()
     conn = _resolve_conn(host, user, port, pkey, password, use_inventory, no_interactive, roots)
     with _open(conn) as remote:
-        result = remote.run(reboot_command(), warn=True)
+        result = _run(remote, reboot_command())
     if result.failed:
         _fail(f"reboot failed (rc={result.return_code}) {result.stderr.strip()[:200]}")
     typer.echo(i18n.t("SVC_REBOOTING", host=conn.host))
