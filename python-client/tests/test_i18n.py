@@ -302,3 +302,19 @@ def test_invalid_int_error_is_russian() -> None:
 def test_extra_argument_error_is_russian() -> None:
     out = _run_cli(["deploy", "--ru", "surplus"])
     assert "Получены неожиданные лишние аргументы (surplus)" in out
+
+
+def test_help_bool_defaults_are_worded_en() -> None:
+    out = _run_cli(["deploy", "--help"])
+    assert "default: true" not in out and "default: false" not in out
+    assert "[default: True]" not in out and "[default: False]" not in out
+    assert "default: enabled" in out or "default: disabled" in out
+    assert "(default: keep existing state)" in out
+
+
+def test_help_bool_defaults_are_worded_ru() -> None:
+    out = _run_cli(["deploy", "--ru", "--help"])
+    assert "по умолчанию: true" not in out and "по умолчанию: false" not in out
+    assert "[по умолчанию: True]" not in out and "[по умолчанию: False]" not in out
+    assert "по умолчанию: включено" in out or "по умолчанию: выключено" in out
+    assert "по умолчанию: сохранить текущее состояние" in out

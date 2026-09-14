@@ -92,7 +92,7 @@ _HELP_DEFAULTS = _settings_for_help()
 def _d(key: str) -> str:
     value = _HELP_DEFAULTS.get(key)
     if isinstance(value, bool):
-        return str(value).lower()
+        return i18n.t("COMMON_DEFAULT_ON") if value else i18n.t("COMMON_DEFAULT_OFF")
     return "settings.yml" if value is None else str(value)
 
 
@@ -380,7 +380,7 @@ def deploy(
         bool | None,
         typer.Option(
             "--rotate/--no-rotate",
-            help=i18n.t("MAIN_ROTATE_OPT", d=_d("xray_reality_rotate")),
+            help=i18n.t("MAIN_ROTATE_OPT"),
         ),
     ] = None,
     manage_ufw: Annotated[

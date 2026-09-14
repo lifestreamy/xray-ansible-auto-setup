@@ -328,8 +328,10 @@ def test_deploy_help_carries_settings_defaults_and_examples() -> None:
     assert "default:443" in dense
     assert "default:3" in dense
     assert "default:dl.google.com" in dense
-    assert "default:true" in dense
-    assert "default:false" in dense
+    assert "default:enabled" in dense
+    assert "default:keepexistingstate" in dense
+    assert "default:true" not in dense
+    assert "default:false" not in dense
 
 
 # --- l10n_typer symmetry ------------------------------------------------------

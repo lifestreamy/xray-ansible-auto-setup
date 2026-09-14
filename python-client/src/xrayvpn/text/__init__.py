@@ -23,6 +23,8 @@ MESSAGES: Final[dict[str, Entry]] = {
         "Хост VPS (IP, hostname или алиас ~/.ssh/config)",
     ),
     "COMMON_SSH_PASS_PROMPT": Entry("SSH password: ", "SSH-пароль: "),
+    "COMMON_DEFAULT_ON": Entry("enabled", "включено"),
+    "COMMON_DEFAULT_OFF": Entry("disabled", "выключено"),
     "COMMON_ERR": Entry("error: {err}", "ошибка: {err}"),
     "COMMON_USER": Entry("SSH user", "SSH-пользователь"),
     "COMMON_PORT": Entry("SSH port", "SSH-порт"),
@@ -347,9 +349,9 @@ MESSAGES: Final[dict[str, Entry]] = {
         "Включить/выключить исходящий туннель Cloudflare WARP (по умолчанию: {d})",
     ),
     "MAIN_ROTATE_OPT": Entry(
-        "Force REALITY key + UUID regeneration / keep existing state (default: {d} = keep)",
-        "Принудительно перегенерировать ключ REALITY и UUID / сохранить "
-        "текущее состояние (по умолчанию: {d} — не перегенерировать)",
+        "Force REALITY key + UUID regeneration (default: keep existing state)",
+        "Принудительно перегенерировать ключ REALITY и UUID "
+        "(по умолчанию: сохранить текущее состояние)",
     ),
     "MAIN_UFW_OPT": Entry(
         "Enable/disable ufw allow-rule management (default: {d}; disable on WSL test hosts)",
