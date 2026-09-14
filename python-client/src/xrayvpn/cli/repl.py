@@ -108,11 +108,19 @@ def _unwrap(token: str) -> str | None:
     return None
 
 
-def _box(lines: list[str]) -> str:
-    width = max(len(line) for line in lines) + 2
-    top = "+" + "-" * width + "+"
-    body = "\n".join(f"| {line.ljust(width - 2)} |" for line in lines)
+def _box(lines: list[str], color: Callable[[str], str] | None = None) -> str:
+    paint = color if color is not None else (lambda text: text)
+    width = max(theme.visible_len(line) for line in lines) + 2
+    top = paint("+" + "-" * width + "+")
+    body = "\n".join(
+        paint("|") + " " + line + " " * (width - 2 - theme.visible_len(line)) + " " + paint("|")
+        for line in lines
+    )
     return f"{top}\n{body}\n{top}"
+
+
+def _cmd_line(command: str, description: str) -> str:
+    return f"  {theme.accent(command)} — {description}"
 
 
 def lang_notice() -> str:
@@ -122,12 +130,29 @@ def lang_notice() -> str:
 
 def welcome_screen(version: str = __version__) -> str:
     """Screen 0: what this does, the just-start path, and the language threshold."""
-    threshold = i18n.t("REPL_WELCOME_THRESHOLD")
-    title = i18n.t("REPL_WELCOME_TITLE")
-    purpose = i18n.t("REPL_WELCOME_PURPOSE")
-    start_line = i18n.t("REPL_WELCOME_START")
-    keys = i18n.t("REPL_WELCOME_KEYS")
-    return _box([title, f"v{version}", purpose, "", start_line, "  deploy", "", keys, "", threshold])
+    commands = _box(
+        [
+            i18n.t("REPL_WELCOME_START"),
+            f"  {theme.accent('deploy')}",
+            "",
+            _cmd_line("help", i18n.t("REPL_WELCOME_CMD_HELP")),
+            _cmd_line("deploy --help", i18n.t("REPL_WELCOME_CMD_FLAGS")),
+            _cmd_line("version", i18n.t("REPL_WELCOME_CMD_VERSION")),
+            _cmd_line("banner", i18n.t("REPL_WELCOME_CMD_BANNER")),
+            _cmd_line("exit", i18n.t("REPL_WELCOME_CMD_EXIT")),
+        ]
+    )
+    language = _box([i18n.t("REPL_WELCOME_THRESHOLD")], color=theme.warn)
+    lines = [
+        theme.accent(i18n.t("REPL_WELCOME_TITLE")),
+        f"v{version}",
+        i18n.t("REPL_WELCOME_PURPOSE"),
+        "",
+    ]
+    lines += commands.splitlines()
+    lines.append("")
+    lines += language.splitlines()
+    return _box(lines, color=theme.muted)
 
 
 def short_hint() -> str:
@@ -143,6 +168,7 @@ def help_text() -> str:
             i18n.t("REPL_HELP_SERVICE"),
             i18n.t("REPL_HELP_LANG"),
             i18n.t("REPL_HELP_HELP"),
+            i18n.t("REPL_HELP_BANNER"),
             i18n.t("REPL_HELP_VERSION"),
             i18n.t("REPL_HELP_EXIT"),
             "",
@@ -229,6 +255,8 @@ def _session(
                 print(f"xrayvpn {version}")
             elif command == "lang":
                 _switch_lang(tokens[1:])
+            elif command == "banner":
+                typer.echo(welcome_screen(version))
             elif command == "repl":
                 print(i18n.t("REPL_ALREADY"))
             else:

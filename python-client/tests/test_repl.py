@@ -280,25 +280,44 @@ def test_dispatched_ru_flag_switches_full_session(capsys: pytest.CaptureFixture)
 # --- screen/guard strings ----------------------------------------------------
 
 
-def test_welcome_and_help_strings_guards_en_ru() -> None:
+def test_welcome_and_help_strings_guards_en_ru(monkeypatch) -> None:
+    monkeypatch.setenv("NO_COLOR", "1")
     with Restore():
         i18n.set_ru(False)
         en_screen = welcome_screen("1.2.3")
         assert "Just start:" in en_screen
-        assert "REALITY" in en_screen and "type RU" in en_screen and "v1.2.3" in en_screen
+        assert "REALITY" in en_screen and 'type "ru"' in en_screen and "v1.2.3" in en_screen
         assert "command list" in en_screen and "deploy --help" in en_screen
         assert "all flags" in en_screen
+        assert "banner" in en_screen and "show this screen again" in en_screen
         assert "this list" in help_text()
         set_session_lang("ru")
         ru_screen = welcome_screen("1.2.3")
         assert "Разворачивает собственный VPN-сервер Xray VLESS + REALITY" in ru_screen
-        assert "Просто начни:" in ru_screen and "type EN" in ru_screen
+        assert "Просто начни:" in ru_screen and 'введите "en"' in ru_screen
         assert "deploy --help — все флаги" in ru_screen
         ru_help = help_text()
         assert "тот же синтаксис" in ru_help
         assert "фиксируется при запуске процесса" in ru_help
         set_session_lang("en")
         assert not l10n_typer._BACKUP
+
+
+def test_banner_command_reprints_welcome() -> None:
+    rc, _, out = _run(["banner", "exit"])
+    assert rc == 0
+    assert out.count("VPN server provisioning assistant") == 2
+
+
+def test_welcome_box_borders_align_with_colors(monkeypatch) -> None:
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    with Restore():
+        i18n.set_ru(False)
+        screen = welcome_screen("1.2.3")
+    from xrayvpn.cli import theme
+
+    widths = {theme.visible_len(line) for line in screen.splitlines()}
+    assert len(widths) == 1
 
 
 def test_lang_notice_renders_in_new_language_each_way() -> None:

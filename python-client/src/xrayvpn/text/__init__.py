@@ -62,7 +62,8 @@ MESSAGES: Final[dict[str, Entry]] = {
         "interface language: English", "язык интерфейса: русский"
     ),
     "REPL_WELCOME_THRESHOLD": Entry(
-        "type RU — русский интерфейс", "type EN — English interface"
+        'type "ru" (any case) — русский интерфейс',
+        'введите "en" (в любом регистре) — English interface',
     ),
     "REPL_WELCOME_TITLE": Entry(
         "xrayvpn — VPN server provisioning assistant",
@@ -73,10 +74,13 @@ MESSAGES: Final[dict[str, Entry]] = {
         "Разворачивает собственный VPN-сервер Xray VLESS + REALITY на удалённом VPS.",
     ),
     "REPL_WELCOME_START": Entry("Just start:", "Просто начни:"),
-    "REPL_WELCOME_KEYS": Entry(
-        "help — command list   deploy --help — all flags   version — version   exit — leave",
-        "help — список команд   deploy --help — все флаги   version — версия   exit — выход",
+    "REPL_WELCOME_CMD_HELP": Entry("command list", "список команд"),
+    "REPL_WELCOME_CMD_FLAGS": Entry("all flags", "все флаги"),
+    "REPL_WELCOME_CMD_VERSION": Entry("show version", "показать версию"),
+    "REPL_WELCOME_CMD_BANNER": Entry(
+        "show this screen again", "показать этот экран снова"
     ),
+    "REPL_WELCOME_CMD_EXIT": Entry("leave", "выход"),
     "REPL_SHORT_HINT": Entry(
         'type "deploy" to start, "help" for the command list, "exit" to leave',
         'введите "deploy" чтобы начать, "help" — список команд, "exit" — выход',
@@ -95,6 +99,10 @@ MESSAGES: Final[dict[str, Entry]] = {
         "  lang ru|en       переключить язык интерфейса (рус/англ тоже)",
     ),
     "REPL_HELP_HELP": Entry("  help             this list", "  help             этот список"),
+    "REPL_HELP_BANNER": Entry(
+        "  banner           show the welcome screen again",
+        "  banner           показать приветственный экран снова",
+    ),
     "REPL_HELP_VERSION": Entry(
         "  version          show version", "  version          показать версию"
     ),

@@ -15,14 +15,30 @@ PACKAGE = Path(xrayvpn.__file__).resolve().parent
 HELPERS = (theme.ok, theme.err, theme.warn, theme.muted, theme.accent)
 
 
-def test_tokens_are_ansi_names() -> None:
+def test_tokens_are_hex_palette() -> None:
     assert theme.TOKENS == {
-        "ok": "green",
-        "error": "red",
-        "warn": "yellow",
-        "muted": "dim",
-        "accent": "bright_green",
+        "ok": "#1DB954",
+        "error": "#F85149",
+        "warn": "#D29922",
+        "muted": "#A8B2BE",
+        "accent": "#00D587",
     }
+
+
+def test_tokens_match_assets_color_tokens_json() -> None:
+    import json
+
+    tokens_file = PACKAGE.parents[2] / "assets" / "color-tokens.json"
+    mirror = json.loads(tokens_file.read_text(encoding="utf-8"))
+    assert mirror == theme.TOKENS
+
+
+def test_visible_len_ignores_ansi(monkeypatch) -> None:
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    styled = theme.accent("abcd")
+    assert styled != "abcd"
+    assert theme.visible_len(styled) == 4
+    assert theme.plain(styled) == "abcd"
 
 
 def test_helpers_emit_ansi_by_default(monkeypatch) -> None:
