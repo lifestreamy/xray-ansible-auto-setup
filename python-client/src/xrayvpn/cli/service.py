@@ -13,7 +13,7 @@ from typing import Annotated, NoReturn
 import typer
 
 from xrayvpn import i18n
-from xrayvpn.cli import prompts, repl
+from xrayvpn.cli import prompts, repl, theme
 from xrayvpn.core.config import find_repo_root, load_settings, merge_overrides
 from xrayvpn.core.conn import ConnResolveError, ResolvedConnection, resolve_connection
 from xrayvpn.core.inventory import parse_user_inventory
@@ -114,7 +114,7 @@ service_app = typer.Typer(
 
 
 def _fail(message: str) -> NoReturn:
-    typer.echo(i18n.t("COMMON_ERR", err=message), err=True)
+    typer.echo(theme.err(i18n.t("COMMON_ERR", err=message)), err=True)
     raise typer.Exit(2)
 
 
@@ -247,16 +247,20 @@ def service_status(
         line.split("=", 1) for line in results[1].stdout.splitlines() if "=" in line
     )
     storm = results[2].stdout.strip() or "?"
-    typer.echo(i18n.t(
-        "SVC_STATUS_TITLE", host=conn.host, port=conn.port, active=active
-    ))
+    title = i18n.t("SVC_STATUS_TITLE", host=conn.host, port=conn.port, active=active)
+    typer.echo(theme.ok(title) if active == "active" else theme.err(title))
     typer.echo(i18n.t(
         "SVC_STATUS_FACTS",
         n=facts.get("NRestarts", "?"),
         since=facts.get("ActiveEnterTimestamp", "?"),
         sub=facts.get("SubState", "?"),
     ))
-    typer.echo(i18n.t("SVC_STATUS_STORM", count=storm))
+    storm_line = i18n.t("SVC_STATUS_STORM", count=storm)
+    try:
+        storm_hit = int(storm) > 0
+    except ValueError:
+        storm_hit = False
+    typer.echo(theme.warn(storm_line) if storm_hit else storm_line)
     typer.echo(i18n.t("SVC_STATUS_ERRORS"))
     error_lines = [line for line in results[3].stdout.splitlines() if line.strip()]
     if error_lines:
@@ -297,7 +301,7 @@ def service_restart(
             if result.failed:
                 _fail(f"{cmd} → rc={result.return_code} {result.stderr.strip()[:200]}")
         after = _run(remote, restart_commands()[2]).stdout.strip()
-    typer.echo(i18n.t("SVC_RESTARTED", state=after))
+    typer.echo(theme.ok(i18n.t("SVC_RESTARTED", state=after)))
     raise typer.Exit(0 if after == "active" else 1)
 
 
@@ -345,7 +349,7 @@ def service_logs(
     tee.close()
     if dump.failed:
         _fail(f"log read failed (rc={dump.return_code}) {dump.stderr.strip()[:200]}")
-    typer.echo(i18n.t("SVC_LOGS_SAVED", since=since_norm, path=local, lines=tee.lines))
+    typer.echo(theme.ok(i18n.t("SVC_LOGS_SAVED", since=since_norm, path=local, lines=tee.lines)))
 
 
 @service_app.command("reboot")
@@ -371,4 +375,4 @@ def service_reboot(
         result = _run(remote, reboot_command())
     if result.failed:
         _fail(f"reboot failed (rc={result.return_code}) {result.stderr.strip()[:200]}")
-    typer.echo(i18n.t("SVC_REBOOTING", host=conn.host))
+    typer.echo(theme.ok(i18n.t("SVC_REBOOTING", host=conn.host)))

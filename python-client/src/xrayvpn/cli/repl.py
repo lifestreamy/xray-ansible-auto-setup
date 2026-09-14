@@ -17,8 +17,10 @@ import shlex
 import sys
 from collections.abc import Callable, Mapping, Sequence
 
+import typer
+
 from xrayvpn import __version__, i18n
-from xrayvpn.cli import l10n_typer, prompts
+from xrayvpn.cli import l10n_typer, prompts, theme
 
 REPL_SELFTEST_ENV = "XRAYVPN_REPL_SELFTEST"
 PROMPT = "> "
@@ -177,11 +179,11 @@ def _session(
     explicit_lang = (os.environ.get(i18n.LANG_ENV) or "").strip()
     if not explicit_lang and not i18n.is_ru() and locale_suggests_ru():
         set_session_lang("ru")
-    print(welcome_screen(version))
+    typer.echo(theme.accent(welcome_screen(version)))
     if update_hint is not None:
         hint = update_hint()
         if hint:
-            print(hint)
+            typer.echo(theme.muted(hint))
     last_rc = 0
     while True:
         try:
@@ -191,13 +193,13 @@ def _session(
             return last_rc
         except KeyboardInterrupt:
             print()
-            print(i18n.t("REPL_KI_TIP"))
+            typer.echo(theme.muted(i18n.t("REPL_KI_TIP")))
             continue
         tokens = tokenize(line)
         if tokens and tokens[0].lower() in _PREFIX_ALIASES:
             tokens = tokens[1:]
         if not tokens:
-            print(short_hint())
+            typer.echo(theme.muted(short_hint()))
             continue
         if len(tokens) == 1:
             lang = normalize_lang(tokens[0])

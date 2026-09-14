@@ -27,7 +27,7 @@ from typing import Annotated
 import typer
 
 from xrayvpn import __version__, i18n
-from xrayvpn.cli import l10n_typer, prompts, repl, service
+from xrayvpn.cli import l10n_typer, prompts, repl, service, theme
 from xrayvpn.core import runtime_paths, update_check, wsl
 from xrayvpn.core.config import find_repo_root, load_settings, merge_overrides
 from xrayvpn.core.conn import apply_ssh_config
@@ -101,7 +101,7 @@ def _version_callback(value: bool) -> None:
         typer.echo(f"xrayvpn {__version__}")
         hint = _update_hint()
         if hint:
-            typer.echo(hint)
+            typer.echo(theme.muted(hint))
         raise typer.Exit()
 
 
@@ -206,7 +206,7 @@ def _resolve_execution(execution: str | None) -> str:
 
 
 def _confirm_deploy(plan: list[str], *, no_interactive: bool) -> None:
-    typer.echo(i18n.t("MAIN_PLAN_HEADER"))
+    typer.echo(theme.accent(i18n.t("MAIN_PLAN_HEADER")))
     for line in plan:
         typer.echo(f"  {line}")
     if no_interactive:
@@ -235,7 +235,7 @@ def _inventory_creds(
     try:
         connection, user_vars = parse_user_inventory(workspace, example_dir=payload)
     except (RuntimeError, TypeError) as exc:
-        typer.echo(i18n.t("COMMON_ERR", err=exc), err=True)
+        typer.echo(theme.err(i18n.t("COMMON_ERR", err=exc)), err=True)
         raise typer.Exit(2) from exc
     problems = validate_connection(connection)
     if problems:
@@ -740,7 +740,7 @@ def _run_remote(
             executor = RemoteExecutor(remote, cleanup=cleanup)
             rc = executor.deploy(request, extra_vars=extra_vars)
     except SshConnectError as exc:
-        typer.echo(i18n.t("COMMON_ERR", err=exc), err=True)
+        typer.echo(theme.err(i18n.t("COMMON_ERR", err=exc)), err=True)
         raise typer.Exit(2) from exc
     raise typer.Exit(rc)
 
@@ -926,7 +926,7 @@ def _run_local(
         try:
             executor.preflight(password_auth=bool(resolved_password))
         except RuntimeError as exc:
-            typer.echo(i18n.t("COMMON_ERR", err=exc), err=True)
+            typer.echo(theme.err(i18n.t("COMMON_ERR", err=exc)), err=True)
             raise typer.Exit(2) from exc
         rc = executor.deploy(request, inventory)
         if rc != 0:
@@ -941,7 +941,7 @@ def _run_local(
     finally:
         if temp_inventory is not None:
             temp_inventory.unlink(missing_ok=True)
-    typer.echo(i18n.t("MAIN_DONE_LOCAL", path=request.resolved_clients_dir()))
+    typer.echo(theme.ok(i18n.t("MAIN_DONE_LOCAL", path=request.resolved_clients_dir())))
 
 
 if __name__ == "__main__":
