@@ -264,13 +264,16 @@ def _plan_lines(
     overrides: dict[str, object],
     clients_dir: Path,
     cleanup: str,
+    alias: str | None = None,
 ) -> list[str]:
     if mode == "remote":
         runner = i18n.t("MAIN_PLAN_RUNNER_REMOTE")
     else:
         runner = i18n.t("MAIN_PLAN_RUNNER_LOCAL")
-    lines = [
-        runner,
+    lines = [runner]
+    if alias is not None:
+        lines.append(i18n.t("MAIN_PLAN_ALIAS", alias=alias, host=host, port=port))
+    lines += [
         i18n.t("MAIN_PLAN_TARGET", user=user, host=host, port=port),
         i18n.t("MAIN_PLAN_AUTH", desc=auth_desc),
     ]
@@ -848,6 +851,17 @@ def _run_local(
             raise typer.Exit(2)
         resolved_host = selected
 
+    alias: str | None = None
+    if not use_inventory:
+        requested = str(resolved_host)
+        resolved_host, resolved_user, resolved_port, alias_key = apply_ssh_config(
+            requested, str(resolved_user), int(resolved_port)
+        )
+        if resolved_host != requested:
+            alias = requested
+        if resolved_pkey is None and resolved_password is None and alias_key:
+            resolved_pkey = alias_key
+
     if resolved_pkey is not None and resolved_password is not None:
         typer.echo(i18n.t("MAIN_ERR_KEY_AND_PASS"), err=True)
         raise typer.Exit(2)
@@ -875,6 +889,7 @@ def _run_local(
             overrides=extra_vars,
             clients_dir=request.resolved_clients_dir(),
             cleanup=cleanup,
+            alias=alias,
         ),
         no_interactive=no_interactive,
     )

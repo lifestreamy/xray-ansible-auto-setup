@@ -250,6 +250,10 @@ MESSAGES: Final[dict[str, Entry]] = {
         "ansible runs ON THIS MACHINE (Windows: WSL) against the VPS over SSH",
         "ansible выполняется НА ЭТОЙ МАШИНЕ (Windows: WSL), цель — VPS по SSH",
     ),
+    "MAIN_PLAN_ALIAS": Entry(
+        "ssh alias: {alias} → {host}:{port}",
+        "ssh-алиас: {alias} → {host}:{port}",
+    ),
     "MAIN_PLAN_TARGET": Entry(
         "target: {user}@{host}:{port}", "цель: {user}@{host}:{port}"
     ),
