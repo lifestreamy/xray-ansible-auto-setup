@@ -22,8 +22,10 @@ Deadlines are rough targets, not promises. The order can change.
   runtime removed, `--execution remote` by default, key flags forwarded into the bash/PowerShell
   wrappers, `uv tool install --editable python-client` for a plain `xrayvpn` on PATH.
 - CI: client tests on Windows/macOS/Ubuntu plus the four-platform release binary matrix; uv pinned.
-- Release policy: three-component versions, one release per version, stable criteria without
-  a calendar soak (CI coverage of client scenarios + a manual click-through cheatsheet).
+- Release policy: three-component versions, one release per version, exit criteria without
+  a calendar soak (CI coverage of client scenarios + a manual click-through cheatsheet); a plain
+  `vX.Y.Z` tag is the release (the "Latest" channel), `_experimental` is an optional pre-release
+  marker, fix-forward.
 - Author contact links moved to korelov.dev.
 
 ## Done in v0.3 (2026-09-05)
@@ -41,9 +43,9 @@ Deadlines are rough targets, not promises. The order can change.
 
 ## High priority
 
-- Promote v0.4.1 to stable — per the criteria in `docs/RELEASE.en.md`: CI coverage of the client
-  scenarios (python + bash + PowerShell × Ubuntu/Windows/macOS) and a manual click-through of all
-  scenarios on a real VPS following the testing cheatsheet; no calendar soak.
+- Ship v0.4.1 as a plain tag — per the exit criteria in `docs/RELEASE.en.md`: CI coverage of the
+  client scenarios (python + bash + PowerShell × Ubuntu/Windows/macOS) and a manual click-through
+  of all scenarios on a real VPS following the testing cheatsheet; no calendar soak.
 - **[Client]** — a visual console client (TUI): the deploy wizard and everyday commands in one
   menu, RU/EN. Target: v0.4.2.
 - **[Server]** — observability and recovery: server-side logs with retention (days), a service

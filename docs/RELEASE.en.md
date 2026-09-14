@@ -1,4 +1,4 @@
-> **Document:** `docs/RELEASE.en.md` · **Location:** `docs/` · **Version:** v0.4.1 · **Last updated:** 2026-09-13
+> **Document:** `docs/RELEASE.en.md` · **Location:** `docs/` · **Version:** v0.4.1 · **Last updated:** 2026-09-14
 >
 > [Main README](../README.en.md) — project overview and quick start
 
@@ -8,7 +8,7 @@ How the project ships releases: versioning, statuses and the check sequence befo
 
 ## Purpose and scope
 
-Contributions to the project are welcome (issues and pull requests on GitHub). The quality signals for releases are automated CI runs (GitHub Actions), operation on a production VPS, and user reports on stable releases (GitHub issues). There is no "alpha → beta → stable" ladder; a status is defined by the concrete criteria below.
+Contributions to the project are welcome (issues and pull requests on GitHub). The quality signals for releases are automated CI runs (GitHub Actions), operation on a production VPS, and user reports on releases (GitHub issues). There is no "alpha → beta → stable" ladder; a status is defined by the concrete criteria below.
 
 ## Versioning
 
@@ -23,19 +23,18 @@ Every release is pinned by an annotated git tag on a commit of the `staging` dev
 Statuses — an explicit list:
 
 - Code in `staging` without a tag is **not a release and has no status**; it may never become one.
-- **experimental** — a shipped pre-release: tag `vX.Y.Z_experimental` + a GitHub Release with the pre-release flag, handed to manual operation — used on a production VPS, accumulating the promotion criteria. The experimental status is granted only after the pre-release is published.
-- **stable** — all promotion criteria are met (see below); a second tag `vX.Y.Z_stable` on the same commit + the latest flag on the GitHub Release.
+- **release** — a plain `vX.Y.Z` tag: a confident ship, published as a regular GitHub Release and taking the "Latest" channel. It is created only after the exit criteria below are met.
+- **experimental** — an optional marker of an unverified build: tag `vX.Y.Z_experimental` + a GitHub Release with the pre-release flag. Used when code must be handed to field operation without occupying the "Latest" channel.
 
-- Promoting does not change the commit: only the tag, the `Status` line in the CHANGELOG and the GitHub Release flag.
-- If the next release ships before `vX.Y.Z` meets the stable criteria, the older one stays experimental — a normal outcome.
-- The `v0.2_release` and `v0.3_experimental` tags use the old two-component naming — history, not renamed.
+- The `_stable` suffix is abolished (policy of 2026-09-14): there is no promotion anymore — a release ships as a plain tag right away, and a regression is fixed by the next patch `vX.Y.Z+1` (fix-forward).
+- The `v0.2_release` and `v0.3_experimental` tags were shipped under the previous policy — history, not renamed.
 
-### Criteria for experimental → stable (all four)
+### Release exit criteria (all four)
 
 1. A green full CI run on the release commit: distro matrix ubuntu 22.04 / 24.04 + debian 12, the firewall job, CLI tests and lint.
-2. CI covers the client scenarios as fully as possible: the python client + the bash and PowerShell wrappers × ubuntu / windows / macos runners; missing coverage is built before promotion.
+2. CI covers the client scenarios as fully as possible: the python client + the bash and PowerShell wrappers × ubuntu / windows / macos runners; missing coverage is built before the release.
 3. The maintainer has manually clicked through every usage scenario on a real VPS following the testing cheatsheets (`docs/TEST-LOCAL.en.md`, `docs/TEST-VPS.en.md`): deploy in two ways, rotation, client usability (responsiveness, translations, text clarity), real VPN traffic.
-4. No known open regressions or hotfixes at the moment of promotion.
+4. No known open regressions or hotfixes at the moment of the release.
 
 A calendar soak period is not a criterion (decision 2026-09-09): a deploy either fails immediately or works; the main risk lives in the deployment process and config generation, which the checks above cover.
 
@@ -48,14 +47,14 @@ One release per version — after the whole planned version scope is done; no in
 3. One `docs: finalize vX.Y.Z` commit: `docs/PLANNED.*`, both CHANGELOG halves, `Version` / `Last updated` stamps of the public docs, the README summary, the statuses table row below and the python-client package version bump (`pyproject.toml`, `src/xrayvpn/__init__.py`, `uv.lock`) to the release version.
 4. The maintainer performs a successful manual deployment of the release content on a real VPS — the release is published only after that.
 5. The PR from `staging` into `main` is merged with **Create a merge commit** (web rebase is prohibited — it recreates commits and strips signatures and dates).
-6. The signed annotated tag `vX.Y.Z_experimental` is created on the merge node and pushed (by hand). Pushing the tag launches the build workflow: it builds the four platform binaries and dists, computes `SHA256SUMS.txt` and `latest.json`, and creates the GitHub release as a draft (pre-release) — the assets never block the tag: if the build leg fails, the release can still be published without them and the assets rebuilt later by rerunning the workflow on the tag.
-7. A GitHub Release is created: title — the tag name; body — the matching CHANGELOG section; experimental releases are marked pre-release, stable promotions — latest. If the workflow already produced a draft, it is simply published (the body can be extended by hand). Release assets are public files only; configs with keys never go into a release.
+6. The signed annotated tag `vX.Y.Z` is created on the merge node and pushed (by hand). Pushing the tag launches the build workflow: it builds the four platform binaries and dists, computes `SHA256SUMS.txt` and — for plain tags only — `latest.json`, and creates the GitHub release as a draft — the assets never block the tag: if the build leg fails, the release can still be published without them and the assets rebuilt later by rerunning the workflow on the tag.
+7. The draft is published as a regular release (the "Latest" channel): title — the tag name; body — the matching CHANGELOG section (extended by hand if needed). For a `vX.Y.Z_experimental` tag the release is marked pre-release and does not take the "Latest" channel. Release assets are public files only; configs with keys never go into a release.
 
 Tagging an unverified (not CI-green) commit is prohibited by the policy.
 
 ## Release statuses
 
-The short sha is the verified code; its runs are visible in the repository's Actions history. A stable promotion updates the row (stable date) via the next finalize commit.
+The short sha is the verified code; its runs are visible in the repository's Actions history. A table row is updated by the finalize commit of its release.
 
 | Release | Verified code | Checked by CI | Status |
 |---|---|---|---|
