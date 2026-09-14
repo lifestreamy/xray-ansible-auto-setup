@@ -14,13 +14,16 @@ import json
 from pathlib import Path
 
 
-def asset_key(name: str) -> str:
+def asset_key(name: str, version: str = "") -> str:
     if name.endswith(".whl"):
         return "wheel"
     if name.endswith(".tar.gz"):
         return "sdist"
     stem = name.removeprefix("xrayvpn-")
-    return stem.removesuffix(".exe")
+    if version:
+        stem = stem.removeprefix(f"{version}-")
+    stem = stem.removesuffix(".exe")
+    return stem.removesuffix("-portable")
 
 
 def normalized_version(tag: str) -> str:
@@ -34,8 +37,9 @@ def build_manifest(release: str, tag: str, directory: Path) -> dict[str, object]
     )
     if not names:
         raise SystemExit("no xrayvpn release assets found to describe")
+    version = normalized_version(tag)
     assets = {
-        asset_key(name): {
+        asset_key(name, version): {
             "name": name,
             "url": f"https://github.com/{release}/releases/download/{tag}/{name}",
             "sha256": hashlib.sha256((directory / name).read_bytes()).hexdigest(),
@@ -44,7 +48,7 @@ def build_manifest(release: str, tag: str, directory: Path) -> dict[str, object]
     }
     stamp = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     return {
-        "version": normalized_version(tag),
+        "version": version,
         "date": stamp,
         "release_url": f"https://github.com/{release}/releases/tag/{tag}",
         "assets": assets,

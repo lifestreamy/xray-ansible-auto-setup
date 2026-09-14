@@ -7,6 +7,7 @@ Run through ``build-binary.ps1`` / ``build-binary.sh`` (uv-synced build group).
 from __future__ import annotations
 
 import argparse
+import os
 import platform
 import subprocess
 import sys
@@ -32,7 +33,7 @@ def nuitka_args(args: argparse.Namespace, staged: Path, version: str, outdir: Pa
         f"--product-version={version}",
         f"--file-description={build_support.FILE_DESCRIPTION}",
         f"--copyright={build_support.COPYRIGHT}",
-        f"--output-filename={build_support.artifact_name()}",
+        f"--output-filename={build_support.artifact_name(version)}",
         f"--output-dir={outdir}",
         "--include-package=xrayvpn",
     ]
@@ -80,6 +81,7 @@ def main(argv: list[str] | None = None) -> int:
     staged = build_support.stage_payload()
     outdir = args.output_dir.resolve()
     outdir.mkdir(parents=True, exist_ok=True)
+    os.environ["XRAYVPN_BUILD_VERSION"] = version
     argv_cmd = (
         nuitka_args(args, staged, version, outdir)
         if args.engine == "nuitka"

@@ -66,7 +66,7 @@ def test_nuitka_flags_carry_golden_payload_and_metadata(tmp_path: Path) -> None:
     assert "--company-name=korelov.dev" in argv
     assert "--product-name=xrayvpn" in argv
     assert "--file-version=0.4.1" in argv and "--product-version=0.4.1" in argv
-    assert f"--output-filename={build_support.artifact_name()}" in argv
+    assert f"--output-filename={build_support.artifact_name('0.4.1')}" in argv
     assert str(build_binary.ENTRY) in argv
 
 
@@ -80,10 +80,18 @@ def test_engines_share_single_payload_source() -> None:
 
 def test_platform_tokens_and_artifact_names() -> None:
     assert build_support.platform_token("Windows", "AMD64") == "windows-x64"
-    assert build_support.artifact_name("Windows", "AMD64") == "xrayvpn-windows-x64.exe"
-    assert build_support.artifact_name("Linux", "aarch64") == "xrayvpn-linux-arm64"
-    assert build_support.artifact_name("Linux", "x86_64") == "xrayvpn-linux-x64"
-    assert build_support.artifact_name("Darwin", "arm64") == "xrayvpn-macos-arm64"
+    assert build_support.artifact_name("0.4.1", "Windows", "AMD64") == (
+        "xrayvpn-0.4.1-windows-x64-portable.exe"
+    )
+    assert build_support.artifact_name("0.4.1", "Linux", "aarch64") == (
+        "xrayvpn-0.4.1-linux-arm64-portable"
+    )
+    assert build_support.artifact_name("0.4.1", "Linux", "x86_64") == (
+        "xrayvpn-0.4.1-linux-x64-portable"
+    )
+    assert build_support.artifact_name("0.4.1", "Darwin", "arm64") == (
+        "xrayvpn-0.4.1-macos-arm64-portable"
+    )
     try:
         build_support.platform_token("FreeBSD", "riscv")
     except RuntimeError as exc:

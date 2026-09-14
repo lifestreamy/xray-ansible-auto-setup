@@ -88,6 +88,7 @@ def platform_token(system: str | None = None, machine: str | None = None) -> str
     return f"{osname}-{arch}"
 
 
-def artifact_name(system: str | None = None, machine: str | None = None) -> str:
+def artifact_name(version: str, system: str | None = None, machine: str | None = None) -> str:
     token = platform_token(system=system, machine=machine)
-    return f"{PRODUCT_NAME}-{'windows-x64.exe' if token.startswith('windows') else token}"
+    ext = ".exe" if token.startswith("windows") else ""
+    return f"{PRODUCT_NAME}-{version}-{token}-portable{ext}"

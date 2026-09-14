@@ -37,13 +37,17 @@ jobs:
       matrix:
         include:
           - os: windows-latest
-            artifact: xrayvpn-windows-x64.exe
+            token: windows-x64
+            ext: .exe
           - os: ubuntu-22.04
-            artifact: xrayvpn-linux-x64
+            token: linux-x64
+            ext: ""
           - os: ubuntu-22.04-arm
-            artifact: xrayvpn-linux-arm64
+            token: linux-arm64
+            ext: ""
           - os: macos-latest
-            artifact: xrayvpn-macos-arm64
+            token: macos-arm64
+            ext: ""
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -72,15 +76,18 @@ jobs:
         working-directory: python-client
         run: uv sync --frozen --group build
       - name: Build
+        id: build
         working-directory: python-client
-        run: uv run --group build python build_binary.py --version "${{ steps.version.outputs.value }}"
+        run: |
+          uv run --group build python build_binary.py --version "${{ steps.version.outputs.value }}"
+          "asset=xrayvpn-${{ steps.version.outputs.value }}-${{ matrix.token }}-portable${{ matrix.ext }}" >> $env:GITHUB_OUTPUT
       - name: Smoke from a neutral cwd
         working-directory: python-client
         env:
           XRAYVPN_UPDATE_CHECK: "0"
         run: |
           $ErrorActionPreference = "Stop"
-          $artifact = "${{ matrix.artifact }}"
+          $artifact = "${{ steps.build.outputs.asset }}"
           $version = "${{ steps.version.outputs.value }}"
           $fixture = Join-Path ([IO.Path]::GetTempPath()) ("bin-smoke-" + [guid]::NewGuid().ToString("N"))
           New-Item -ItemType Directory -Path $fixture | Out-Null
@@ -110,8 +117,8 @@ jobs:
           }
       - uses: actions/upload-artifact@330a80a2a216371195056eb380486c0df05cbd70 # v5.0.8
         with:
-          name: ${{ matrix.artifact }}
-          path: python-client/dist-binary/${{ matrix.artifact }}
+          name: xrayvpn-${{ matrix.token }}
+          path: python-client/dist-binary/${{ steps.build.outputs.asset }}
           if-no-files-found: error
 
   dist:

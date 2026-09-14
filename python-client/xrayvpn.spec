@@ -1,12 +1,18 @@
 # -*- mode: python ; coding: utf-8 -*-
 # PyInstaller fallback spec (MYXRAY-30): same staged payload contract as Nuitka.
 
+import os
 import sys
 from pathlib import Path
 
 sys.path.insert(0, SPECPATH)
 
 import build_support
+
+version = os.environ.get("XRAYVPN_BUILD_VERSION", "")
+if not version:
+    sys.path.insert(0, str(Path(SPECPATH, "src")))
+    from xrayvpn import __version__ as version
 
 staged = build_support.stage_payload()
 datas = [(str(src), arc) for src, arc in build_support.payload_map(staged)]
@@ -24,7 +30,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name=build_support.artifact_name(),
+    name=build_support.artifact_name(version),
     debug=False,
     strip=False,
     upx=False,
