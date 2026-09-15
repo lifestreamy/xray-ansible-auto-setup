@@ -61,9 +61,9 @@ MESSAGES: Final[dict[str, Entry]] = {
     "REPL_LANG_NOTICE": Entry(
         "interface language: English", "язык интерфейса: русский"
     ),
-    "REPL_WELCOME_THRESHOLD": Entry(
-        'type "ru" (any case) — русский интерфейс',
-        'введите "en" (в любом регистре) — English interface',
+    "REPL_WELCOME_SWITCH": Entry(
+        'Русский интерфейс — введите "ru" (можно "рус")',
+        'English interface — type "en" (or "english")',
     ),
     "REPL_WELCOME_TITLE": Entry(
         "xrayvpn — VPN server provisioning assistant",
@@ -73,14 +73,27 @@ MESSAGES: Final[dict[str, Entry]] = {
         "Deploys a self-hosted Xray VLESS + REALITY VPN server on a remote VPS.",
         "Разворачивает собственный VPN-сервер Xray VLESS + REALITY на удалённом VPS.",
     ),
-    "REPL_WELCOME_START": Entry("Just start:", "Просто начни:"),
+    "REPL_WELCOME_MAIN": Entry("Main command:", "Основная команда:"),
+    "REPL_WELCOME_OTHER": Entry("Other commands:", "Другие команды:"),
     "REPL_WELCOME_CMD_HELP": Entry("command list", "список команд"),
     "REPL_WELCOME_CMD_FLAGS": Entry("all flags", "все флаги"),
     "REPL_WELCOME_CMD_VERSION": Entry("show version", "показать версию"),
     "REPL_WELCOME_CMD_BANNER": Entry(
         "show this screen again", "показать этот экран снова"
     ),
+    "REPL_WELCOME_CMD_SERVICE": Entry(
+        "status/restart/logs/reboot over SSH",
+        "состояние/рестарт/логи/перезагрузка по SSH",
+    ),
     "REPL_WELCOME_CMD_EXIT": Entry("leave", "выход"),
+    "REPL_WELCOME_AUTHOR": Entry("by:", "автор:"),
+    "REPL_WELCOME_AUTHOR_NAME": Entry("Tim Korelov", "Tim Korelov"),
+    "REPL_WELCOME_REPO": Entry("repository:", "репозиторий:"),
+    "REPL_WELCOME_REPO_NAME": Entry(
+        "xray-ansible-auto-setup", "xray-ansible-auto-setup"
+    ),
+    "REPL_WELCOME_RELEASES": Entry("releases:", "релизы:"),
+    "REPL_WELCOME_RELEASES_NAME": Entry("releases/latest", "releases/latest"),
     "REPL_SHORT_HINT": Entry(
         'type "deploy" to start, "help" for the command list, "exit" to leave',
         'введите "deploy" чтобы начать, "help" — список команд, "exit" — выход',

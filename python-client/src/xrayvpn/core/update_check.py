@@ -23,6 +23,8 @@ from typing import Any
 from xrayvpn import __version__, i18n
 
 RELEASE_OWNER_REPO = "lifestreamy/xray-ansible-auto-setup"
+PROFILE_URL = "https://github.com/lifestreamy"
+REPO_URL = f"https://github.com/{RELEASE_OWNER_REPO}"
 RELEASES_LATEST_API_URL = f"https://api.github.com/repos/{RELEASE_OWNER_REPO}/releases/latest"
 LATEST_RELEASE_PAGE = f"https://github.com/{RELEASE_OWNER_REPO}/releases/latest"
 CHECK_TIMEOUT_SECONDS = 2.0

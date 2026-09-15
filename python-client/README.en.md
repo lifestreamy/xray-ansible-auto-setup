@@ -56,7 +56,9 @@ directory. Remove with `uv tool uninstall xrayvpn`.
 `xrayvpn` with no arguments (or `xrayvpn repl`) opens a console session: commands use the exact
 CLI syntax without the prefix. `deploy` still asks for the missing pieces and confirms the plan;
 `help` lists the built-ins (`version`, `lang ru|en`, `exit`); `deploy --help` shows every flag of
-the deploy command. Double-clicking the binary and the `.pyw` launchers are this very mode.
+the deploy command. The welcome banner is reprinted whenever the language switches
+(`lang ru|en` or just `ru`/`en`) and already shows `service` — the SSH recovery commands.
+Double-clicking the binary and the `.pyw` launchers are this very mode.
 
 ## Where the deploy goes and where ansible runs
 

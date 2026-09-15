@@ -146,7 +146,7 @@ def test_session_exit_after_deploy_keeps_rc() -> None:
     rc, calls, out = _run(["deploy --dry-run", "exit"])
     assert rc == 0
     assert calls == [["deploy", "--dry-run"]]
-    assert "Just start:" in out
+    assert "Main command:" in out
 
 
 def test_session_clean_exit_is_zero() -> None:
@@ -214,9 +214,18 @@ def test_bare_word_language_switch_confirms_in_one_line() -> None:
         _, _, out = _run(["рус", "en", "exit"])
         assert "язык интерфейса: русский" in out
         assert "interface language: English" in out
-        assert out.count("Just start:") == 1
+        assert out.count("Main command:") == 2
+        assert out.count("Основная команда:") == 1
         assert i18n.is_ru() is False
         assert not l10n_typer._BACKUP
+
+
+def test_language_switch_reprints_banner_in_new_language() -> None:
+    with Restore():
+        _, _, out = _run(["рус", "exit"])
+        assert "Main command:" in out
+        assert "Основная команда:" in out
+        assert "English interface" in out
 
 
 def test_unknown_lang_prints_usage() -> None:
@@ -228,7 +237,7 @@ def test_unknown_lang_prints_usage() -> None:
 def test_update_hint_printed_under_banner() -> None:
     _, _, out = _run(["exit"], update_hint=lambda: "UPDATE-HINT")
     assert "UPDATE-HINT" in out
-    assert out.index("Just start:") < out.index("UPDATE-HINT")
+    assert out.index("Main command:") < out.index("UPDATE-HINT")
 
 
 def test_no_hint_without_provider() -> None:
@@ -242,7 +251,7 @@ def test_start_applies_ru_when_locale_suggests(
     with Restore():
         monkeypatch.delenv(i18n.LANG_ENV, raising=False)
         _, _, out = _run(["exit"], locale_ru=True)
-        assert "Просто начни:" in out
+        assert "Основная команда:" in out
         assert i18n.is_ru()
 
 
@@ -250,7 +259,7 @@ def test_explicit_lang_env_beats_locale_detect(monkeypatch: pytest.MonkeyPatch) 
     with Restore():
         monkeypatch.setenv(i18n.LANG_ENV, "en")
         _, _, out = _run(["exit"], locale_ru=True)
-        assert "Just start:" in out
+        assert "Main command:" in out
         assert i18n.is_ru() is False
 
 
@@ -282,25 +291,54 @@ def test_dispatched_ru_flag_switches_full_session(capsys: pytest.CaptureFixture)
 
 def test_welcome_and_help_strings_guards_en_ru(monkeypatch) -> None:
     monkeypatch.setenv("NO_COLOR", "1")
+    monkeypatch.setenv("XRAYVPN_HYPERLINK", "0")
     with Restore():
         i18n.set_ru(False)
         en_screen = welcome_screen("1.2.3")
-        assert "Just start:" in en_screen
-        assert "REALITY" in en_screen and 'type "ru"' in en_screen and "v1.2.3" in en_screen
+        assert "Main command:" in en_screen and "Other commands:" in en_screen
+        assert "Just start:" not in en_screen
+        assert "REALITY" in en_screen and 'введите "ru"' in en_screen
+        assert "Tim Korelov (https://github.com/lifestreamy)" in en_screen
+        assert "xray-ansible-auto-setup" in en_screen
+        assert "releases/latest" in en_screen
+        assert "v1.2.3" in en_screen
         assert "command list" in en_screen and "deploy --help" in en_screen
         assert "all flags" in en_screen
         assert "banner" in en_screen and "show this screen again" in en_screen
+        assert "service" in en_screen
+        assert "status/restart/logs/reboot over SSH" in en_screen
+        assert "exit|quit|q" in en_screen
         assert "this list" in help_text()
         set_session_lang("ru")
         ru_screen = welcome_screen("1.2.3")
         assert "Разворачивает собственный VPN-сервер Xray VLESS + REALITY" in ru_screen
-        assert "Просто начни:" in ru_screen and 'введите "en"' in ru_screen
+        assert "Основная команда:" in ru_screen
+        assert 'type "en"' in ru_screen and 'English interface — type "en"' in ru_screen
+        assert "автор:" in ru_screen and "репозиторий:" in ru_screen
         assert "deploy --help — все флаги" in ru_screen
+        assert "состояние/рестарт/логи/перезагрузка по SSH" in ru_screen
         ru_help = help_text()
         assert "тот же синтаксис" in ru_help
         assert "фиксируется при запуске процесса" in ru_help
         set_session_lang("en")
         assert not l10n_typer._BACKUP
+
+
+def test_welcome_switch_inverts_per_reader_language() -> None:
+    """The RU invite is written fully in Russian (EN banner), the EN invite fully
+    in English (RU banner): each line is read by whoever needs it."""
+    from xrayvpn.text import MESSAGES
+
+    switch = MESSAGES["REPL_WELCOME_SWITCH"]
+    assert "type" not in switch.en
+    assert "введите" not in switch.ru
+    with Restore():
+        i18n.set_ru(False)
+        en_screen = welcome_screen("1.2.3")
+        set_session_lang("ru")
+        ru_screen = welcome_screen("1.2.3")
+    assert switch.en in en_screen
+    assert switch.ru in ru_screen
 
 
 def test_banner_command_reprints_welcome() -> None:
@@ -311,13 +349,33 @@ def test_banner_command_reprints_welcome() -> None:
 
 def test_welcome_box_borders_align_with_colors(monkeypatch) -> None:
     monkeypatch.delenv("NO_COLOR", raising=False)
-    with Restore():
-        i18n.set_ru(False)
-        screen = welcome_screen("1.2.3")
     from xrayvpn.cli import theme
 
-    widths = {theme.visible_len(line) for line in screen.splitlines()}
-    assert len(widths) == 1
+    monkeypatch.setattr(theme, "_is_tty", lambda: True)
+    with Restore():
+        i18n.set_ru(False)
+        monkeypatch.delenv("XRAYVPN_HYPERLINK", raising=False)
+        screen = welcome_screen("1.2.3")
+        assert "\x1b[" in screen
+        widths = {theme.visible_len(line) for line in screen.splitlines()}
+        assert len(widths) == 1
+
+        monkeypatch.setenv("XRAYVPN_HYPERLINK", "1")
+        linked = welcome_screen("1.2.3")
+        assert "\x1b]8;;" in linked
+        widths = {theme.visible_len(line) for line in linked.splitlines()}
+        assert len(widths) == 1
+
+
+def test_run_capture_is_plain_without_tty(monkeypatch) -> None:
+    monkeypatch.delenv("NO_COLOR", raising=False)
+    monkeypatch.delenv("XRAYVPN_HYPERLINK", raising=False)
+    _, _, out = _run(["exit"])
+    assert "\x1b[" not in out
+    assert "\x1b]8;" not in out
+    assert (
+        "Tim Korelov (https://github.com/lifestreamy)" in out
+    )
 
 
 def test_lang_notice_renders_in_new_language_each_way() -> None:

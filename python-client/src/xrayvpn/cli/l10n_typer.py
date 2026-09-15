@@ -1,12 +1,14 @@
-"""Russian translations for Typer/Click built-in strings (typer 0.27.x).
+"""Russian translations and palette theming for Typer/Click built-ins (typer 0.27.x).
 
 Typer builds `--help` at import time and hard-codes its built-ins in
 English. `apply_ru()` patches the finite set of user-visible strings;
 `revert_ru()` restores the saved originals (idempotent pair, runtime-
 switchable for the REPL session — already-built help options keep the
-language chosen at process start). The dependency is pinned to typer
-<0.28: the patches touch private internals, and the pin plus
-tests/test_i18n.py bound the drift.
+language chosen at process start). `apply_palette()` re-styles the rich
+help panels onto the project color tokens (cli/theme.py) and is applied
+unconditionally at startup; it is never reverted. The dependency is pinned
+to typer <0.28: the patches touch private internals, and the pin plus
+tests/test_i18n.py and tests/test_cli_palette.py bound the drift.
 
 Reachability on the current CLI surface — live and test-guarded: panel
 titles, RICH_HELP, DEFAULT_STRING, the Usage prefix, the help-option text,
@@ -22,7 +24,43 @@ from __future__ import annotations
 
 import re
 
+from xrayvpn.cli import theme
+
 _BACKUP: list[tuple[object, str, object]] = []
+
+
+def _rich_style(token: str, *, bold: bool = False) -> str:
+    hex_value = theme.TOKENS[token]
+    return f"bold {hex_value}" if bold else hex_value
+
+
+PALETTE_OVERRIDES: dict[str, str] = {
+    "STYLE_USAGE": _rich_style("accent", bold=True),
+    "STYLE_USAGE_COMMAND": _rich_style("accent", bold=True),
+    "STYLE_OPTION": _rich_style("accent", bold=True),
+    "STYLE_SWITCH": _rich_style("accent", bold=True),
+    "STYLE_COMMANDS_TABLE_FIRST_COLUMN": _rich_style("accent", bold=True),
+    "STYLE_NEGATIVE_OPTION": _rich_style("ok", bold=True),
+    "STYLE_NEGATIVE_SWITCH": _rich_style("ok", bold=True),
+    "STYLE_TYPES": _rich_style("muted"),
+    "STYLE_OPTION_ENVVAR": _rich_style("muted"),
+    "STYLE_OPTION_DEFAULT": _rich_style("muted"),
+    "STYLE_OPTIONS_PANEL_BORDER": _rich_style("muted"),
+    "STYLE_COMMANDS_PANEL_BORDER": _rich_style("muted"),
+    "STYLE_TYPES_SEPARATOR": _rich_style("muted"),
+    "STYLE_REQUIRED_SHORT": _rich_style("error"),
+    "STYLE_REQUIRED_LONG": _rich_style("error"),
+    "STYLE_ERRORS_PANEL_BORDER": _rich_style("error"),
+    "STYLE_ABORTED": _rich_style("error"),
+    "STYLE_DEPRECATED": _rich_style("error"),
+}
+
+
+def apply_palette() -> None:
+    from typer import rich_utils
+
+    for name, value in PALETTE_OVERRIDES.items():
+        setattr(rich_utils, name, value)
 
 _EXTRA_ARGS = re.compile(r"^Got unexpected extra argument\(s\) \((?P<args>.*)\)$")
 _REQUIRES_ARG = re.compile(

@@ -21,6 +21,7 @@ import typer
 
 from xrayvpn import __version__, i18n
 from xrayvpn.cli import l10n_typer, prompts, theme
+from xrayvpn.core.update_check import LATEST_RELEASE_PAGE, PROFILE_URL, REPO_URL
 
 REPL_SELFTEST_ENV = "XRAYVPN_REPL_SELFTEST"
 PROMPT = "> "
@@ -120,7 +121,19 @@ def _box(lines: list[str], color: Callable[[str], str] | None = None) -> str:
 
 
 def _cmd_line(command: str, description: str) -> str:
-    return f"  {theme.accent(command)} — {description}"
+    return f"  {theme.ok(command)} — {description}"
+
+
+def _join_boxes(left: str, right: str, gap: int = 2) -> list[str]:
+    la = left.splitlines()
+    ra = right.splitlines()
+    lw = max(theme.visible_len(line) for line in la)
+    rows = []
+    for index in range(max(len(la), len(ra))):
+        l = la[index] if index < len(la) else ""
+        r = ra[index] if index < len(ra) else ""
+        rows.append(l + " " * (lw - theme.visible_len(l) + gap) + r)
+    return rows
 
 
 def lang_notice() -> str:
@@ -129,30 +142,55 @@ def lang_notice() -> str:
 
 
 def welcome_screen(version: str = __version__) -> str:
-    """Screen 0: what this does, the just-start path, and the language threshold."""
-    commands = _box(
+    """Screen 0: purpose, Main|Other side by side, language switch, credits."""
+    main_block = _box(
         [
-            i18n.t("REPL_WELCOME_START"),
-            f"  {theme.accent('deploy')}",
-            "",
-            _cmd_line("help", i18n.t("REPL_WELCOME_CMD_HELP")),
+            i18n.t("REPL_WELCOME_MAIN"),
+            f"  {theme.ok_bold('deploy')}",
             _cmd_line("deploy --help", i18n.t("REPL_WELCOME_CMD_FLAGS")),
-            _cmd_line("version", i18n.t("REPL_WELCOME_CMD_VERSION")),
-            _cmd_line("banner", i18n.t("REPL_WELCOME_CMD_BANNER")),
-            _cmd_line("exit", i18n.t("REPL_WELCOME_CMD_EXIT")),
         ]
     )
-    language = _box([i18n.t("REPL_WELCOME_THRESHOLD")], color=theme.warn)
+    other_block = _box(
+        [
+            i18n.t("REPL_WELCOME_OTHER"),
+            "",
+            _cmd_line("help", i18n.t("REPL_WELCOME_CMD_HELP")),
+            _cmd_line("version", i18n.t("REPL_WELCOME_CMD_VERSION")),
+            _cmd_line("banner", i18n.t("REPL_WELCOME_CMD_BANNER")),
+            _cmd_line("service", i18n.t("REPL_WELCOME_CMD_SERVICE")),
+            _cmd_line("exit|quit|q", i18n.t("REPL_WELCOME_CMD_EXIT")),
+        ]
+    )
+    language = _box([i18n.t("REPL_WELCOME_SWITCH")], color=theme.warn)
+    credits = _box(
+        [
+            (
+                f"{i18n.t('REPL_WELCOME_AUTHOR')} "
+                f"{theme.accent(theme.link(i18n.t('REPL_WELCOME_AUTHOR_NAME'), PROFILE_URL))}"
+            ),
+            (
+                f"{i18n.t('REPL_WELCOME_REPO')} "
+                f"{theme.link(i18n.t('REPL_WELCOME_REPO_NAME'), REPO_URL)}"
+            ),
+            (
+                f"{i18n.t('REPL_WELCOME_RELEASES')} "
+                f"{theme.link(i18n.t('REPL_WELCOME_RELEASES_NAME'), LATEST_RELEASE_PAGE)}"
+            ),
+        ],
+        color=theme.muted,
+    )
     lines = [
         theme.accent(i18n.t("REPL_WELCOME_TITLE")),
         f"v{version}",
         i18n.t("REPL_WELCOME_PURPOSE"),
         "",
     ]
-    lines += commands.splitlines()
-    lines.append("")
+    lines += _join_boxes(main_block, other_block)
+    lines += [""]
     lines += language.splitlines()
-    return _box(lines, color=theme.muted)
+    lines += [""]
+    lines += credits.splitlines()
+    return _box(lines, color=theme.accent)
 
 
 def short_hint() -> str:
@@ -205,7 +243,7 @@ def _session(
     explicit_lang = (os.environ.get(i18n.LANG_ENV) or "").strip()
     if not explicit_lang and not i18n.is_ru() and locale_suggests_ru():
         set_session_lang("ru")
-    typer.echo(theme.accent(welcome_screen(version)))
+    typer.echo(welcome_screen(version))
     if update_hint is not None:
         hint = update_hint()
         if hint:
@@ -232,6 +270,7 @@ def _session(
             if lang is not None:
                 set_session_lang(lang)
                 print(lang_notice())
+                typer.echo(welcome_screen(version))
                 continue
         command = tokens[0].lower()
         if command in _EXIT_WORDS:
@@ -241,6 +280,7 @@ def _session(
             if "--ru" in options:
                 set_session_lang("ru")
                 print(lang_notice())
+                typer.echo(welcome_screen(version))
             if "--version" in options:
                 print(f"xrayvpn {version}")
             unknown = options - {"--ru", "--version"}
@@ -254,7 +294,7 @@ def _session(
             elif command == "version":
                 print(f"xrayvpn {version}")
             elif command == "lang":
-                _switch_lang(tokens[1:])
+                _switch_lang(tokens[1:], version)
             elif command == "banner":
                 typer.echo(welcome_screen(version))
             elif command == "repl":
@@ -268,10 +308,11 @@ def _session(
             print(i18n.t("REPL_INTERRUPTED"))
 
 
-def _switch_lang(args: Sequence[str]) -> None:
+def _switch_lang(args: Sequence[str], version: str) -> None:
     lang = normalize_lang(args[0]) if args else None
     if lang is None:
         print(i18n.t("REPL_LANG_USAGE"))
         return
     set_session_lang(lang)
     print(lang_notice())
+    typer.echo(welcome_screen(version))

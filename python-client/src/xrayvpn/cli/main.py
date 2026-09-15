@@ -69,6 +69,9 @@ _harden_stdio()
 i18n.preinit()
 if i18n.is_ru():
     l10n_typer.apply_ru()
+l10n_typer.apply_palette()
+if os.environ.get("XRAYVPN_THEME_DEBUG") == "1":
+    typer.echo(theme.debug_line(), err=True)
 
 app = typer.Typer(
     name="xrayvpn",
