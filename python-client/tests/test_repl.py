@@ -352,6 +352,7 @@ def test_welcome_box_borders_align_with_colors(monkeypatch) -> None:
     from xrayvpn.cli import theme
 
     monkeypatch.setattr(theme, "_is_tty", lambda: True)
+    monkeypatch.setattr(theme, "_console_vt_ready", lambda: True)
     with Restore():
         i18n.set_ru(False)
         monkeypatch.delenv("XRAYVPN_HYPERLINK", raising=False)

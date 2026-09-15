@@ -62,6 +62,20 @@ def apply_palette() -> None:
     for name, value in PALETTE_OVERRIDES.items():
         setattr(rich_utils, name, value)
 
+
+def disable_click_colorama() -> None:
+    # click.echo wraps console streams in colorama, which converts ANSI to
+    # legacy Win32 16-color and mangles 38;2/OSC-8 (colorama#217); patched in
+    # both namespaces because echo imported the name into typer._click.utils.
+    from typer._click import _compat
+    from typer._click import utils as click_utils
+
+    def _passthrough(stream: object, color: bool | None = None) -> object:
+        return stream
+
+    _compat.auto_wrap_for_ansi = _passthrough
+    click_utils.auto_wrap_for_ansi = _passthrough
+
 _EXTRA_ARGS = re.compile(r"^Got unexpected extra argument\(s\) \((?P<args>.*)\)$")
 _REQUIRES_ARG = re.compile(
     r"^Option (?P<opt>'[^']+') requires (?P<what>an argument\.|\d+ arguments\.)$"

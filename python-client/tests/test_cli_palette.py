@@ -33,3 +33,30 @@ def test_palette_is_idempotent_and_survives_ru_revert() -> None:
     l10n_typer.revert_ru()
     l10n_typer.apply_palette()
     assert {n: getattr(rich_utils, n) for n in l10n_typer.PALETTE_OVERRIDES} == snapshot
+
+
+def test_disable_click_colorama_is_passthrough() -> None:
+    from typer._click import _compat
+    from typer._click import utils as click_utils
+
+    l10n_typer.disable_click_colorama()
+    assert click_utils.auto_wrap_for_ansi("stream") == "stream"
+    assert click_utils.auto_wrap_for_ansi("stream", color=True) == "stream"
+    assert _compat.auto_wrap_for_ansi("stream") == "stream"
+
+
+def test_echo_keeps_truecolor_on_windows_console(monkeypatch) -> None:
+    import io
+
+    from typer._click import utils as click_utils
+
+    l10n_typer.disable_click_colorama()
+    monkeypatch.setattr(click_utils, "WIN", True)
+
+    class TtyStringIO(io.StringIO):
+        def isatty(self) -> bool:
+            return True
+
+    buf = TtyStringIO()
+    click_utils.echo("\x1b[38;2;0;213;135mx\x1b[0m", file=buf)
+    assert "\x1b[38;2;0;213;135m" in buf.getvalue()

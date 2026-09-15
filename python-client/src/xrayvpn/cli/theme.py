@@ -1,15 +1,18 @@
 """Semantic color tokens and OSC-8 hyperlinks for CLI output.
 
 Truecolor is emitted when the host signals it (COLORTERM=truecolor|24bit,
-Windows Terminal, VS Code, or a VT-enabled console — the same capability rich
-probes on Windows, so help panels and banners never disagree); otherwise a
-16-color SGR fallback map keeps output visible everywhere. NO_COLOR or a
-non-tty stream make all helpers plain at the source.
-XRAYVPN_FORCE_COLOR=1 forces truecolor for diagnostics; XRAYVPN_THEME_DEBUG=1
-prints the gate decision (see debug_line()). Hyperlinks: link() emits OSC-8
-only on terminals that render it (Windows Terminal / VS Code) or when
-XRAYVPN_HYPERLINK=1 forces it; the fallback appends the bare URL. The
-design-time mirror of this palette lives in assets/color-tokens.json.
+Windows Terminal, VS Code) or on a Windows console with VT processing active
+(enabled by this module when the host left it off, truecolor since build
+15063 — the same capability rich probes, so help panels and banners never
+disagree); otherwise a 16-color SGR fallback map keeps output visible. A
+Windows console where VT cannot be turned on gets plain output: uninterpreted
+ANSI is worse than no ANSI. NO_COLOR or a non-tty stream make all helpers
+plain at the source. XRAYVPN_FORCE_COLOR=1 forces truecolor for diagnostics;
+XRAYVPN_THEME_DEBUG=1 prints the gate decision (see debug_line()).
+Hyperlinks: link() emits OSC-8 only on terminals that render it (Windows
+Terminal / VS Code) or when XRAYVPN_HYPERLINK=1 forces it; the fallback
+appends the bare URL. The design-time mirror of this palette lives in
+assets/color-tokens.json.
 """
 
 from __future__ import annotations
@@ -83,11 +86,47 @@ def _console_vt_enabled() -> bool:
     return _VT_PROBE_CACHE
 
 
+def _enable_console_vt() -> bool:
+    if sys.platform != "win32":
+        return False
+    try:
+        import ctypes
+
+        k32 = ctypes.windll.kernel32
+        handle = k32.GetStdHandle(-11)
+        mode = ctypes.c_uint32()
+        if not k32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return False
+        if not k32.SetConsoleMode(handle, mode.value | 0x0004):
+            return False
+        after = ctypes.c_uint32()
+        return bool(k32.GetConsoleMode(handle, ctypes.byref(after)) and after.value & 0x0004)
+    except Exception:  # noqa: BLE001
+        return False
+
+
+_VT_READY_CACHE: bool | None = None
+
+
+def _console_vt_ready() -> bool:
+    global _VT_READY_CACHE
+    if _VT_READY_CACHE is None:
+        _VT_READY_CACHE = _console_vt_enabled() or _enable_console_vt()
+    return _VT_READY_CACHE
+
+
+def _windows_truecolor_capable() -> bool:
+    version = sys.getwindowsversion()
+    return version.major > 10 or (version.major == 10 and version.build >= 15063)
+
+
 def _supports_truecolor() -> bool:
     if os.environ.get("COLORTERM", "").lower() in ("truecolor", "24bit"):
         return True
     if os.environ.get("WT_SESSION") or os.environ.get("TERM_PROGRAM") == "vscode":
         return True
+    if sys.platform == "win32":
+        return _console_vt_ready() and _windows_truecolor_capable()
     return _console_vt_enabled()
 
 
@@ -96,13 +135,21 @@ def color_mode() -> str:
         return "plain"
     if os.environ.get(_FORCE_COLOR_ENV) == "1" or _supports_truecolor():
         return "truecolor"
+    if sys.platform == "win32" and not _console_vt_ready():
+        return "plain"
     return "16"
 
 
 def debug_line() -> str:
     env = os.environ
+    if sys.platform == "win32":
+        version = sys.getwindowsversion()
+        win = f"{version.major}.{version.build}"
+    else:
+        win = "-"
     return (
-        f"theme: mode={color_mode()} tty={_is_tty()} NO_COLOR={env.get('NO_COLOR')!r} "
+        f"theme: mode={color_mode()} tty={_is_tty()} vt={_console_vt_ready()} win={win} "
+        f"NO_COLOR={env.get('NO_COLOR')!r} "
         f"COLORTERM={env.get('COLORTERM')!r} WT_SESSION={env.get('WT_SESSION')!r} "
         f"TERM_PROGRAM={env.get('TERM_PROGRAM')!r}"
     )

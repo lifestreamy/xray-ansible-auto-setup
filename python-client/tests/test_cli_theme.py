@@ -24,6 +24,7 @@ def _clean_color_env(monkeypatch) -> None:
         "TERM_PROGRAM",
     ):
         monkeypatch.delenv(key, raising=False)
+    monkeypatch.setattr(theme.sys, "platform", "linux")
     monkeypatch.setattr(theme, "_console_vt_enabled", lambda: False)
 
 
@@ -78,6 +79,38 @@ def test_color_mode_table(monkeypatch) -> None:
     assert theme.color_mode() == "plain"
 
 
+def test_windows_vt_matrix(monkeypatch) -> None:
+    _clean_color_env(monkeypatch)
+    monkeypatch.setattr(theme.sys, "platform", "win32")
+    monkeypatch.setattr(theme, "_is_tty", lambda: True)
+    monkeypatch.setattr(theme, "_console_vt_ready", lambda: False)
+    assert theme.color_mode() == "plain"
+    monkeypatch.setattr(theme, "_console_vt_ready", lambda: True)
+    monkeypatch.setattr(theme, "_windows_truecolor_capable", lambda: False)
+    assert theme.color_mode() == "16"
+    monkeypatch.setattr(theme, "_windows_truecolor_capable", lambda: True)
+    assert theme.color_mode() == "truecolor"
+    monkeypatch.setattr(theme, "_console_vt_ready", lambda: False)
+    monkeypatch.setenv("XRAYVPN_FORCE_COLOR", "1")
+    assert theme.color_mode() == "truecolor"
+    monkeypatch.delenv("XRAYVPN_FORCE_COLOR")
+    monkeypatch.setenv("COLORTERM", "truecolor")
+    assert theme.color_mode() == "truecolor"
+
+
+def test_windows_vt_self_enable_wiring(monkeypatch) -> None:
+    _clean_color_env(monkeypatch)
+    monkeypatch.setattr(theme.sys, "platform", "win32")
+    monkeypatch.setattr(theme, "_is_tty", lambda: True)
+    monkeypatch.setattr(theme, "_VT_READY_CACHE", None)
+    monkeypatch.setattr(theme, "_enable_console_vt", lambda: True)
+    monkeypatch.setattr(theme, "_windows_truecolor_capable", lambda: True)
+    assert theme.color_mode() == "truecolor"
+    monkeypatch.setattr(theme, "_VT_READY_CACHE", None)
+    monkeypatch.setattr(theme, "_enable_console_vt", lambda: False)
+    assert theme.color_mode() == "plain"
+
+
 def test_truecolor_and_16color_codes(monkeypatch) -> None:
     _clean_color_env(monkeypatch)
     monkeypatch.setattr(theme, "_is_tty", lambda: True)
@@ -111,8 +144,10 @@ def test_no_color_disables_codes(monkeypatch) -> None:
 def test_debug_line_reports_mode(monkeypatch) -> None:
     _clean_color_env(monkeypatch)
     monkeypatch.setattr(theme, "_is_tty", lambda: True)
+    monkeypatch.setattr(theme, "_console_vt_ready", lambda: False)
     line = theme.debug_line()
     assert "mode=16" in line and "COLORTERM=None" in line
+    assert "vt=False" in line and "win=-" in line
 
 
 def test_visible_len_ignores_ansi(monkeypatch) -> None:
